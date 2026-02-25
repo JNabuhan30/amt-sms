@@ -447,6 +447,54 @@
   body.student-mode .admin-only { display: none !important; }
 
 </style>
+
+<!-- ══════════════════════════════════════════════════════════════
+     FIREBASE CONFIG — Replace the values below with YOUR project's
+     config from: Firebase Console → Project Settings → Your apps
+     ══════════════════════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, remove }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ⬇️ PASTE YOUR FIREBASE CONFIG HERE ⬇️
+  const firebaseConfig = {
+    apiKey:            "AIzaSyD9R_zv4IgDbFB6NWzdbZZRrcw3ftOAuU0",
+    authDomain:        "sms-ca8ef.firebaseapp.com",
+    databaseURL:       "https://sms-ca8ef-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "sms-ca8ef",
+    storageBucket:     "sms-ca8ef.firebasestorage.app",
+    messagingSenderId: "917549356443",
+    appId:             "1:917549356443:web:2fcaf842ad19625dedbd3e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+
+  // Make Firebase helpers available globally
+  window._fbDB      = db;
+  window._fbRef     = ref;
+  window._fbSet     = set;
+  window._fbOnValue = onValue;
+  window._fbRemove  = remove;
+
+  // ── Real-time listeners — all devices stay in sync ──
+  onValue(ref(db, 'sms/reports'), snap => {
+    window.reports = snap.exists() ? Object.values(snap.val()) : [];
+    if (window._appReady) { window.updateDashboard?.(); window.renderRegister?.(); }
+  });
+  onValue(ref(db, 'sms/audits'), snap => {
+    window.audits = snap.exists() ? Object.values(snap.val()) : [];
+    if (window._appReady) { window.renderSavedAudits?.(); window.updateDashboard?.(); }
+  });
+  onValue(ref(db, 'sms/auditA'), snap => {
+    window.auditA = snap.exists() ? Object.values(snap.val()) : [];
+    if (window._appReady) { window.renderSavedInspections?.(); window.updateDashboard?.(); }
+  });
+
+  window._firebaseReady = true;
+  console.log('✅ Firebase connected and syncing!');
+</script>
 </head>
 <body>
 
@@ -1186,20 +1234,64 @@
 </div>
 
 <script>
-// ─── DATA STORE ───────────────────────────────────────────────────────────────
-let reports = JSON.parse(localStorage.getItem('sms_reports') || '[]');
-let audits  = JSON.parse(localStorage.getItem('sms_audits')  || '[]');
-let auditA  = JSON.parse(localStorage.getItem('sms_audit_a') || '[]');
+// ─── DATA STORE (Firebase) ────────────────────────────────────────────────────
+// Data is loaded from Firebase in real-time via the listeners in <head>.
+// These globals start empty and get populated once Firebase connects.
+if (typeof window.reports === 'undefined') window.reports = [];
+if (typeof window.audits  === 'undefined') window.audits  = [];
+if (typeof window.auditA  === 'undefined') window.auditA  = [];
+
+// Use var so the script-level variables point to the same globals
+var reports = window.reports;
+var audits  = window.audits;
+var auditA  = window.auditA;
+
+// Proxy getters so local var always reflects window state
+Object.defineProperty(window, 'reports', {
+  get() { return this._reports || []; },
+  set(v) { this._reports = v; reports = v; },
+  configurable: true
+});
+Object.defineProperty(window, 'audits', {
+  get() { return this._audits || []; },
+  set(v) { this._audits = v; audits = v; },
+  configurable: true
+});
+Object.defineProperty(window, 'auditA', {
+  get() { return this._auditA || []; },
+  set(v) { this._auditA = v; auditA = v; },
+  configurable: true
+});
 
 // Current audit state
 let auditState  = {};
 let auditAState = {};
 
+// ─── FIREBASE SAVE ────────────────────────────────────────────────────────────
 function save() {
-  localStorage.setItem('sms_reports', JSON.stringify(reports));
-  localStorage.setItem('sms_audits',  JSON.stringify(audits));
-  localStorage.setItem('sms_audit_a', JSON.stringify(auditA));
+  if (!window._fbDB) {
+    // Firebase not yet loaded — fall back silently (data will sync on next load)
+    console.warn('Firebase not ready yet, save skipped');
+    return;
+  }
+  const db  = window._fbDB;
+  const ref = window._fbRef;
+  const set = window._fbSet;
+
+  // Convert arrays to objects keyed by id for Firebase
+  const toObj = arr => {
+    const obj = {};
+    arr.forEach(item => { if (item && item.id) obj[item.id] = item; });
+    return obj;
+  };
+
+  set(ref(db, 'sms/reports'), toObj(window.reports));
+  set(ref(db, 'sms/audits'),  toObj(window.audits));
+  set(ref(db, 'sms/auditA'),  toObj(window.auditA));
 }
+
+// Signal that app JS is ready for real-time updates
+window._appReady = true;
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 function showPage(id) {
@@ -1451,7 +1543,7 @@ function submitReport() {
     submittedBy: currentRole || 'admin',
   };
 
-  reports.unshift(report);
+  window.reports.unshift(report);
   save();
 
   if (currentRole === 'student') {
@@ -1604,20 +1696,20 @@ function executeDelete() {
   closeDelModal();
 
   if (type === 'report') {
-    reports = reports.filter(r => r.id !== id);
+    window.reports = window.reports.filter(r => r.id !== id);
     save(); renderRegister(); updateDashboard();
     toast('🗑 Report deleted.', 'error');
     if (document.getElementById('modal').classList.contains('open')) closeModal();
   } else if (type === 'all-reports') {
-    reports = [];
+    window.reports = [];
     save(); renderRegister(); updateDashboard();
     toast('🗑 All hazard reports deleted.', 'error');
   } else if (type === 'audit') {
-    audits = audits.filter(a => a.id !== id);
+    window.audits = window.audits.filter(a => a.id !== id);
     save(); renderSavedAudits(); updateDashboard();
     toast('🗑 Audit deleted.', 'error');
   } else if (type === 'inspection') {
-    auditA = auditA.filter(a => a.id !== id);
+    window.auditA = window.auditA.filter(a => a.id !== id);
     save(); renderSavedInspections(); updateDashboard();
     toast('🗑 Inspection deleted.', 'error');
   }
@@ -2289,7 +2381,7 @@ function saveAudit() {
     state: {...auditState},
     saved: new Date().toISOString(),
   };
-  audits.push(record);
+  window.audits.push(record);
   save();
   renderSavedAudits();
   toast('✅ Audit saved!', 'success');
@@ -2347,7 +2439,7 @@ function saveAuditA() {
     nextDate: document.getElementById('ga-next').value,
     saved: new Date().toISOString(),
   };
-  auditA.push(record);
+  window.auditA.push(record);
   save();
   renderSavedInspections();
   toast('✅ Inspection saved!', 'success');
@@ -2812,4 +2904,10 @@ function logout() {
   }
   // Always keep login screen shown until role chosen (no auto-hide)
 })();
+
+// ── Expose functions globally so Firebase real-time listeners can call them ──
+window.updateDashboard       = updateDashboard;
+window.renderRegister        = renderRegister;
+window.renderSavedAudits     = renderSavedAudits;
+window.renderSavedInspections = renderSavedInspections;
 </script>
