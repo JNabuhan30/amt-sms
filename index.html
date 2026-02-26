@@ -453,14 +453,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
   firebase.initializeApp({
-    apiKey:            "AIzaSyCYCRAzC14p1bamGm4PgWwCLnEqjSAMYUU",
-    authDomain:        "safety-7748b.firebaseapp.com",
-    databaseURL:       "https://safety-7748b-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId:         "safety-7748b",
-    storageBucket:     "safety-7748b.firebasestorage.app",
-    messagingSenderId: "48044514525",
-    appId:             "1:48044514525:web:0a15970d057fa435a58f34",
-    measurementId:     "G-82N7G2GEQ7"
+    apiKey:            "AIzaSyDm1VR4pilII6gf0Wik9083kaEho5OkhA8",
+    authDomain:        "sm-system-6b8c9.firebaseapp.com",
+    databaseURL:       "https://sm-system-6b8c9-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "sm-system-6b8c9",
+    storageBucket:     "sm-system-6b8c9.firebasestorage.app",
+    messagingSenderId: "971616876967",
+    appId:             "1:971616876967:web:51119b817cc03b7cbd9e82",
+    measurementId:     "G-HBP36G9WSG"
   });
   window._db = firebase.database();
 </script>
@@ -1324,7 +1324,7 @@ function setLoading(on) {
   if (el) el.style.display = on ? 'flex' : 'none';
 }
 
-// ─── REAL-TIME LISTENERS (sync across all devices) ────────────────────────────
+// REAL-TIME LISTENERS (sync across all devices)
 window.addEventListener('load', function() {
   if (!db()) {
     console.error('Firebase db not initialised');
@@ -1333,42 +1333,60 @@ window.addEventListener('load', function() {
   }
 
   let loadedCount = 0;
-  const TOTAL = 3;
+  let loadingDone = false;
+  const TOTAL = 4;
   function onLoaded() {
     loadedCount++;
-    if (loadedCount >= TOTAL) { setLoading(false); }
+    if (loadedCount >= TOTAL && !loadingDone) {
+      loadingDone = true;
+      setLoading(false);
+    }
   }
 
-  // Admin PIN — load from Firebase, seed default if not set
-  db().ref('sms/config/adminPin').once('value', snap => {
+  // Safety timeout — always hide overlay after 6 seconds no matter what
+  setTimeout(function() {
+    if (!loadingDone) { loadingDone = true; setLoading(false); }
+  }, 6000);
+
+  // Admin PIN
+  db().ref('sms/config/adminPin').once('value', function(snap) {
     if (snap.exists()) {
       ADMIN_PIN = snap.val();
     } else {
-      // First time: seed the default PIN into Firebase
       db().ref('sms/config/adminPin').set('1234');
     }
-  });
-    reports = snap.exists() ? Object.values(snap.val()) : [];
-    updateDashboard();
-    renderRegister();
     onLoaded();
-  });
+  }, function() { onLoaded(); });
+
+  // Hazard Reports
+  db().ref('sms/reports').on('value', function(snap) {
+    reports = snap.exists() ? Object.values(snap.val()) : [];
+    if (currentRole === 'admin') {
+      try { updateDashboard(); } catch(e) {}
+      try { renderRegister(); } catch(e) {}
+    }
+    onLoaded();
+  }, function() { onLoaded(); });
 
   // Audits G.1
-  db().ref('sms/audits').on('value', snap => {
+  db().ref('sms/audits').on('value', function(snap) {
     audits = snap.exists() ? Object.values(snap.val()) : [];
-    renderSavedAudits();
-    updateDashboard();
+    if (currentRole === 'admin') {
+      try { renderSavedAudits(); } catch(e) {}
+      try { updateDashboard(); } catch(e) {}
+    }
     onLoaded();
-  });
+  }, function() { onLoaded(); });
 
   // Audits G.1-A
-  db().ref('sms/auditA').on('value', snap => {
+  db().ref('sms/auditA').on('value', function(snap) {
     auditA = snap.exists() ? Object.values(snap.val()) : [];
-    renderSavedInspections();
-    updateDashboard();
+    if (currentRole === 'admin') {
+      try { renderSavedInspections(); } catch(e) {}
+      try { updateDashboard(); } catch(e) {}
+    }
     onLoaded();
-  });
+  }, function() { onLoaded(); });
 });
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
