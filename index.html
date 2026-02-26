@@ -448,7 +448,7 @@
 
 </style>
 
-<!-- Firebase (compat version — works in any browser, no modules needed) -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
@@ -536,12 +536,17 @@
 <nav class="nav">
   <div class="nav-logo">✈ AMTS <span>SMS</span></div>
   <div class="nav-tabs">
-    <button class="nav-tab active admin-only" onclick="showPage('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab admin-only" onclick="showPage('dashboard')">📊 Dashboard</button>
     <button class="nav-tab" onclick="showPage('report')">⚠️ Report Hazard</button>
     <button class="nav-tab admin-only" onclick="showPage('register')">📋 Register</button>
-    <button class="nav-tab admin-only" onclick="showPage('audit')">✅ Audit G.1</button>
+    <button class="nav-tab admin-only" onclick="showPage('cap-tracker')">✅ CAP Tracker</button>
+    <button class="nav-tab admin-only" onclick="showPage('audit')">🔍 Audit G.1</button>
     <button class="nav-tab admin-only" onclick="showPage('audit-a')">🏢 Audit G.1-A</button>
     <button class="nav-tab admin-only" onclick="showPage('statistics')">📈 Statistics</button>
+    <button class="nav-tab admin-only" onclick="showPage('meetings')">📅 Meetings</button>
+    <button class="nav-tab admin-only" onclick="showPage('documents')">📁 Documents</button>
+    <button class="nav-tab admin-only" onclick="showPage('spi')">🎯 SPIs</button>
+    <button class="nav-tab" onclick="showPage('track-report')">🔎 Track Report</button>
     <button class="nav-tab admin-only" onclick="showPage('settings')">⚙️ Settings</button>
   </div>
   <div class="user-badge" id="user-badge">
@@ -568,6 +573,13 @@
     <div class="stat gold"><div class="stat-num" id="stat-high">0</div><div class="stat-label">High / Immediate</div></div>
     <div class="stat green"><div class="stat-num" id="stat-closed">0</div><div class="stat-label">Closed</div></div>
     <div class="stat teal"><div class="stat-num" id="stat-audits">0</div><div class="stat-label">Audits Run</div></div>
+    <div class="stat" style="background:#FEF3C7;border-color:#FCD34D;"><div class="stat-num" id="stat-recurring" style="color:#B45309;">0</div><div class="stat-label">Recurring Hazards</div></div>
+    <div class="stat" style="background:#FFF1F1;border-color:#FECACA;"><div class="stat-num" id="stat-overdue" style="color:#DC2626;">0</div><div class="stat-label">Overdue Reports</div></div>
+  </div>
+
+  <!-- Recurring Hazards & Overdue Alert Panel -->
+  <div class="card" style="margin-bottom:16px;" id="card-recurring-alerts">
+    <div id="recurring-alerts"><div style="color:var(--muted);font-size:13px;">Loading hazard analysis…</div></div>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
@@ -827,7 +839,7 @@
       <thead>
         <tr>
           <th>#</th><th>Date</th><th>Type</th><th>Location</th>
-          <th>Description</th><th>Urgency</th><th>Risk</th><th>Status</th><th>Actions</th>
+          <th>Description</th><th>Urgency</th><th>Risk</th><th>Age / Recurrence</th><th>Status</th><th>Actions</th>
         </tr>
       </thead>
       <tbody id="register-tbody"></tbody>
@@ -1227,7 +1239,7 @@
   <div class="card" style="max-width:480px;">
     <div class="card-title"><span class="icon">🔐</span> Change Admin Password</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
-      The password is stored securely in Firebase and applies across all devices.
+      The password is stored securely in Firebase Realtime Database.
     </p>
 
     <div class="form-group" style="margin-bottom:14px;">
@@ -1271,90 +1283,216 @@
     <div class="card-title" style="color:var(--blue);"><span class="icon">ℹ️</span> How it works</div>
     <ul style="font-size:13px;color:var(--text);line-height:2;list-style:none;padding:0;">
       <li>🔥 Password is stored in <strong>Firebase Realtime Database</strong></li>
-      <li>🌐 Changes apply instantly on <strong>all devices</strong></li>
+      <li>🌐 Changes sync instantly across <strong>all devices</strong></li>
       <li>🔑 Default password is <strong>1234</strong> (change it after first login)</li>
-      <li>⚠️ If you forget your password, reset it directly in the Firebase Console under <code style="background:#DBEAFE;padding:1px 5px;border-radius:4px;">sms/config/adminPin</code></li>
+      <li>⚠️ If you forget your password, reset it in Firebase Console under <code style="background:#DBEAFE;padding:1px 5px;border-radius:4px;">sms/config/adminPin</code></li>
     </ul>
   </div>
 </div>
-// ─── DATA STORE (Firebase Realtime Database) ──────────────────────────────────
-let reports = [];
-let audits  = [];
-let auditA  = [];
+
+<!-- CAP TRACKER PAGE -->
+<div id="page-cap-tracker" class="page">
+  <div class="section-title">✅ Corrective Action Plan Tracker</div>
+  <div class="section-sub">All open corrective actions across every hazard report — sorted by due date</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+    <select id="cap-filter-status" onchange="renderCapTracker()" style="max-width:160px;">
+      <option value="">All Statuses</option><option>Open</option><option>In Progress</option><option>Done</option>
+    </select>
+    <select id="cap-filter-overdue" onchange="renderCapTracker()" style="max-width:160px;">
+      <option value="">All</option><option value="overdue">Overdue Only</option>
+    </select>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead style="background:var(--navy);color:white;">
+        <tr>
+          <th style="padding:10px 14px;text-align:left;">Report ID</th>
+          <th style="padding:10px 14px;text-align:left;">Hazard / Location</th>
+          <th style="padding:10px 14px;text-align:left;">Action</th>
+          <th style="padding:10px 14px;text-align:left;">Type</th>
+          <th style="padding:10px 14px;text-align:left;">Owner</th>
+          <th style="padding:10px 14px;text-align:left;">Target Date</th>
+          <th style="padding:10px 14px;text-align:left;">Status</th>
+        </tr>
+      </thead>
+      <tbody id="cap-tracker-tbody"></tbody>
+    </table>
+    <div id="cap-tracker-empty" style="display:none;padding:32px;text-align:center;color:var(--muted);font-size:14px;">No corrective actions found.</div>
+  </div>
+</div>
+
+<!-- SAFETY MEETING MINUTES PAGE -->
+<div id="page-meetings" class="page">
+  <div class="section-title">📅 Safety Meeting Minutes</div>
+  <div class="section-sub">Log safety committee meetings as required by SMS Section 4.8</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+    <div class="card">
+      <div class="card-title"><span class="icon">➕</span> Log New Meeting</div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Meeting Date</label><input type="date" id="mtg-date"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Meeting Type</label>
+        <select id="mtg-type"><option>Safety Committee Meeting</option><option>Safety Briefing</option><option>Incident Review</option><option>Toolbox Talk</option><option>Emergency Drill Debrief</option><option>Other</option></select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Attendees</label><input type="text" id="mtg-attendees" placeholder="e.g. J. Cruz, M. Santos, Safety Officer"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Agenda / Topics Discussed</label><textarea id="mtg-agenda" rows="3" placeholder="List agenda items or topics covered…" style="resize:vertical;"></textarea></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Key Decisions / Actions</label><textarea id="mtg-actions" rows="3" placeholder="Decisions made, actions assigned, follow-ups needed…" style="resize:vertical;"></textarea></div>
+      <div class="form-group" style="margin-bottom:16px;"><label>Next Meeting Date (optional)</label><input type="date" id="mtg-next"/></div>
+      <div id="mtg-error" style="color:var(--red);font-size:13px;margin-bottom:8px;"></div>
+      <button class="btn btn-primary" onclick="saveMeeting()" style="width:100%;justify-content:center;">💾 Save Meeting Record</button>
+    </div>
+    <div>
+      <div class="card-title" style="margin-bottom:12px;"><span class="icon">📋</span> Meeting Records</div>
+      <div id="meetings-list"><div style="color:var(--muted);font-size:13px;">No meetings logged yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DOCUMENT CONTROL PAGE -->
+<div id="page-documents" class="page">
+  <div class="section-title">📁 Document Control Register</div>
+  <div class="section-sub">Track controlled documents, versions, and review dates</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+    <div class="card">
+      <div class="card-title"><span class="icon">➕</span> Add Document</div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Document Title</label><input type="text" id="doc-title" placeholder="e.g. SMS Manual, Emergency Response Plan"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Document Number / Code</label><input type="text" id="doc-number" placeholder="e.g. UB-AMT-SMS-001"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Version</label><input type="text" id="doc-version" placeholder="e.g. Rev 2.0"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Date Issued</label><input type="date" id="doc-issued"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Next Review Date</label><input type="date" id="doc-review"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Document Owner</label><input type="text" id="doc-owner" placeholder="e.g. Safety Manager"/></div>
+      <div class="form-group" style="margin-bottom:16px;"><label>Status</label>
+        <select id="doc-status"><option>Active</option><option>Under Review</option><option>Superseded</option><option>Archived</option></select>
+      </div>
+      <div id="doc-error" style="color:var(--red);font-size:13px;margin-bottom:8px;"></div>
+      <button class="btn btn-primary" onclick="saveDocument()" style="width:100%;justify-content:center;">💾 Save Document</button>
+    </div>
+    <div>
+      <div class="card-title" style="margin-bottom:12px;"><span class="icon">📄</span> Registered Documents</div>
+      <div id="documents-list"><div style="color:var(--muted);font-size:13px;">No documents registered yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SAFETY PERFORMANCE INDICATORS PAGE -->
+<div id="page-spi" class="page">
+  <div class="section-title">🎯 Safety Performance Indicators</div>
+  <div class="section-sub">Set targets and monitor whether safety goals are being met (Section 4.8.3)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title"><span class="icon">➕</span> Add / Edit SPI Target</div>
+      <div class="form-group" style="margin-bottom:12px;"><label>SPI Name</label><input type="text" id="spi-name" placeholder="e.g. Open Reports Closure Rate"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Metric Type</label>
+        <select id="spi-metric">
+          <option value="overdue_zero">Zero Overdue Reports</option>
+          <option value="cap_completion">CAP Completion Rate (%)</option>
+          <option value="closure_rate">Report Closure Rate (%)</option>
+          <option value="recurring_zero">Zero Recurring Hazards</option>
+          <option value="reports_month">Monthly Report Count</option>
+          <option value="custom">Custom (manual entry)</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Target Value</label><input type="number" id="spi-target" placeholder="e.g. 90 for 90%, or 0 for zero"/></div>
+      <div class="form-group" style="margin-bottom:12px;"><label>Unit / Description</label><input type="text" id="spi-unit" placeholder="e.g. %, reports, days"/></div>
+      <div id="spi-error" style="color:var(--red);font-size:13px;margin-bottom:8px;"></div>
+      <button class="btn btn-primary" onclick="saveSpi()" style="width:100%;justify-content:center;">💾 Save SPI</button>
+    </div>
+    <div class="card" style="background:#F0FDF4;border:1.5px solid #86EFAC;">
+      <div class="card-title" style="color:var(--teal);"><span class="icon">ℹ️</span> What are SPIs?</div>
+      <p style="font-size:13px;color:var(--text);line-height:1.7;">Safety Performance Indicators are measurable values showing whether your SMS meets its safety objectives. CAAP requires SPIs to be defined, monitored, and reviewed regularly (Section 4.8.3).</p>
+      <p style="font-size:13px;color:var(--text);line-height:1.7;margin-top:10px;"><strong>Examples:</strong> Closure rate of hazard reports, % of CAPs completed on time, number of overdue investigations.</p>
+    </div>
+  </div>
+  <div class="card-title" style="margin-bottom:14px;"><span class="icon">📊</span> Current SPI Performance</div>
+  <div id="spi-dashboard" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+    <div style="color:var(--muted);font-size:13px;">No SPIs defined yet.</div>
+  </div>
+</div>
+
+<!-- TRACK REPORT PAGE (Student-facing) -->
+<div id="page-track-report" class="page">
+  <div class="section-title">🔎 Track Your Report</div>
+  <div class="section-sub">Enter your Report ID to check the current status of your submission</div>
+  <div class="card" style="max-width:520px;">
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Report ID</label>
+      <input type="text" id="track-id" placeholder="e.g. HR-1718012345678" style="font-family:monospace;font-size:15px;letter-spacing:.5px;" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+    <button class="btn btn-primary" onclick="trackReport()" style="width:100%;justify-content:center;">🔍 Find My Report</button>
+    <div id="track-result" style="margin-top:20px;"></div>
+  </div>
+  <div class="card" style="max-width:520px;background:#EFF6FF;border:1.5px solid #BFDBFE;margin-top:12px;">
+    <div class="card-title" style="color:var(--blue);"><span class="icon">ℹ️</span> How to find your Report ID</div>
+    <p style="font-size:13px;color:var(--text);line-height:1.7;">Your Report ID was shown after submitting. It looks like <code style="background:#DBEAFE;padding:1px 6px;border-radius:4px;">HR-1718012345678</code>. Enter it above to check status and see any acknowledgment from the Safety Manager.</p>
+  </div>
+</div>
+
+<script>
+// ─── DATA STORE ───────────────────────────────────────────────────────────────
+let reports   = [];
+let audits    = [];
+let auditA    = [];
+let meetings  = [];
+let documents = [];
+let spis      = [];
 
 // Current audit state
 let auditState  = {};
 let auditAState = {};
 
-// ─── FIREBASE HELPERS ─────────────────────────────────────────────────────────
-function db() {
-  return window._db;
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function lsGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e) { return fallback; }
 }
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+function db() { return window._db; }
 
-// Save a single record to Firebase (upsert by id)
+// Write a record to Firebase
 function fbSet(path, data) {
   if (!db()) { console.warn('Firebase not ready'); return; }
   db().ref(path).set(data);
 }
 
-// Save a full collection (array → keyed object)
-function fbSetAll(path, arr) {
-  if (!db()) { console.warn('Firebase not ready'); return; }
-  const obj = {};
-  arr.forEach(item => { if (item && item.id) obj[item.id] = item; });
-  db().ref(path).set(obj);
-}
-
-// Delete a single record by id
+// Delete a record from Firebase
 function fbDelete(path, id) {
   if (!db()) { console.warn('Firebase not ready'); return; }
-  db().ref(`${path}/${id}`).remove();
+  db().ref(path + '/' + id).remove();
 }
 
-// Legacy save() — still called throughout the app
+// Legacy full-save
 function save() {
-  fbSetAll('sms/reports', reports);
-  fbSetAll('sms/audits',  audits);
-  fbSetAll('sms/auditA',  auditA);
+  const toObj = arr => { const o = {}; arr.forEach(i => { if(i&&i.id) o[i.id]=i; }); return o; };
+  if (db()) {
+    db().ref('sms/reports').set(toObj(reports));
+    db().ref('sms/audits').set(toObj(audits));
+    db().ref('sms/auditA').set(toObj(auditA));
+  }
 }
 
-// Show/hide a loading overlay while Firebase connects
+// Show/hide loading overlay
 function setLoading(on) {
   const el = document.getElementById('fb-loading');
   if (el) el.style.display = on ? 'flex' : 'none';
 }
 
-// REAL-TIME LISTENERS (sync across all devices)
+// ─── FIREBASE REAL-TIME LISTENERS ─────────────────────────────────────────────
 window.addEventListener('load', function() {
-  if (!db()) {
-    console.error('Firebase db not initialised');
-    setLoading(false);
-    return;
-  }
+  if (!db()) { setLoading(false); return; }
 
-  let loadedCount = 0;
-  let loadingDone = false;
+  let loadedCount = 0, loadingDone = false;
   const TOTAL = 4;
   function onLoaded() {
     loadedCount++;
-    if (loadedCount >= TOTAL && !loadingDone) {
-      loadingDone = true;
-      setLoading(false);
-    }
+    if (loadedCount >= TOTAL && !loadingDone) { loadingDone = true; setLoading(false); }
   }
 
-  // Safety timeout — always hide overlay after 6 seconds no matter what
-  setTimeout(function() {
-    if (!loadingDone) { loadingDone = true; setLoading(false); }
-  }, 6000);
+  setTimeout(function() { if (!loadingDone) { loadingDone = true; setLoading(false); } }, 8000);
 
   // Admin PIN
   db().ref('sms/config/adminPin').once('value', function(snap) {
-    if (snap.exists()) {
-      ADMIN_PIN = snap.val();
-    } else {
-      db().ref('sms/config/adminPin').set('1234');
-    }
+    ADMIN_PIN = snap.exists() ? snap.val() : '1234';
+    if (!snap.exists()) db().ref('sms/config/adminPin').set('1234');
     onLoaded();
   }, function() { onLoaded(); });
 
@@ -1387,6 +1525,24 @@ window.addEventListener('load', function() {
     }
     onLoaded();
   }, function() { onLoaded(); });
+
+  // Meetings (non-blocking)
+  db().ref('sms/meetings').on('value', function(snap) {
+    meetings = snap.exists() ? Object.values(snap.val()) : [];
+    try { renderMeetings(); } catch(e) {}
+  });
+
+  // Documents (non-blocking)
+  db().ref('sms/documents').on('value', function(snap) {
+    documents = snap.exists() ? Object.values(snap.val()) : [];
+    try { renderDocuments(); } catch(e) {}
+  });
+
+  // SPIs (non-blocking)
+  db().ref('sms/spis').on('value', function(snap) {
+    spis = snap.exists() ? Object.values(snap.val()) : [];
+    try { renderSpiDashboard(); } catch(e) {}
+  });
 });
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
@@ -1395,12 +1551,383 @@ function showPage(id) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   event.currentTarget.classList.add('active');
-  if (id === 'dashboard') updateDashboard();
-  if (id === 'register')  renderRegister();
-  if (id === 'statistics') initStatistics();
-  if (id === 'audit')     renderSavedAudits();
-  if (id === 'audit-a')   renderSavedInspections();
-  if (id === 'settings')  initSettingsPage();
+  if (id === 'dashboard')    updateDashboard();
+  if (id === 'register')     renderRegister();
+  if (id === 'statistics')   initStatistics();
+  if (id === 'audit')        renderSavedAudits();
+  if (id === 'audit-a')      renderSavedInspections();
+  if (id === 'settings')     initSettingsPage();
+  if (id === 'cap-tracker')  renderCapTracker();
+  if (id === 'meetings')     renderMeetings();
+  if (id === 'documents')    renderDocuments();
+  if (id === 'spi')          renderSpiDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE 1 — CAP TRACKER
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderCapTracker() {
+  const tbody   = document.getElementById('cap-tracker-tbody');
+  const empty   = document.getElementById('cap-tracker-empty');
+  const fStatus = document.getElementById('cap-filter-status').value;
+  const fOver   = document.getElementById('cap-filter-overdue').value;
+
+  // Flatten all CAPs from all reports
+  const rows = [];
+  reports.forEach(r => {
+    (r.caps || []).forEach((c, i) => {
+      if (!c.action) return;
+      const isOverdue = c.status !== 'Done' && c.date && new Date(c.date) < new Date();
+      rows.push({ ...c, reportId: r.id, reportType: r.type, location: r.location, idx: i, isOverdue });
+    });
+  });
+
+  let filtered = rows;
+  if (fStatus) filtered = filtered.filter(c => c.status === fStatus);
+  if (fOver === 'overdue') filtered = filtered.filter(c => c.isOverdue);
+
+  // Sort by due date ascending (overdue first)
+  filtered.sort((a, b) => {
+    if (!a.date) return 1; if (!b.date) return -1;
+    return new Date(a.date) - new Date(b.date);
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(c => {
+    const overdueBadge = c.isOverdue
+      ? `<span style="font-size:10px;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px;">OVERDUE</span>` : '';
+    const statusColor = c.status === 'Done' ? '#166534' : c.isOverdue ? '#DC2626' : '#92400E';
+    const statusBg    = c.status === 'Done' ? '#DCFCE7' : c.isOverdue ? '#FEE2E2' : '#FEF3C7';
+    return `<tr style="border-bottom:1px solid var(--light);${c.isOverdue ? 'background:#FFF8F8;' : ''}">
+      <td style="padding:10px 14px;"><code style="font-size:11px;color:var(--blue);">${c.reportId}</code></td>
+      <td style="padding:10px 14px;font-size:12px;">${c.reportType || '—'}<br><span style="color:var(--muted);">📍 ${c.location || '—'}</span></td>
+      <td style="padding:10px 14px;font-size:12px;max-width:220px;">${c.action}</td>
+      <td style="padding:10px 14px;font-size:12px;">${c.type || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;">${c.owner || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;white-space:nowrap;">
+        ${c.date ? new Date(c.date).toLocaleDateString() : '—'}${overdueBadge}
+      </td>
+      <td style="padding:10px 14px;">
+        <select style="font-size:11px;padding:3px 6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBg};border-radius:6px;font-weight:600;"
+          onchange="updateCapStatus('${c.reportId}',${c.idx},this.value)">
+          <option ${c.status==='Open'?'selected':''}>Open</option>
+          <option ${c.status==='In Progress'?'selected':''}>In Progress</option>
+          <option ${c.status==='Done'?'selected':''}>Done</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateCapStatus(reportId, capIdx, newStatus) {
+  const r = reports.find(r => r.id === reportId);
+  if (!r || !r.caps || !r.caps[capIdx]) return;
+  r.caps[capIdx].status = newStatus;
+  fbSet('sms/reports/' + reportId, r);
+  toast('✅ Action status updated.', 'success');
+  // Refresh dashboard stats if visible
+  try { updateDashboard(); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE 2 — REPORT ACKNOWLEDGMENT (admin acknowledges a report with a note)
+// ═══════════════════════════════════════════════════════════════════════════════
+function openAckModal(reportId) {
+  const r = reports.find(x => x.id === reportId);
+  if (!r) return;
+  // Build simple modal inline
+  const existing = r.acknowledgment || {};
+  const overlay = document.createElement('div');
+  overlay.id = 'ack-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="font-weight:700;font-size:16px;color:var(--navy);margin-bottom:4px;">📬 Acknowledge Report</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Report ID: <code>${reportId}</code></div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Acknowledgment Note (visible to reporter)</label>
+        <textarea id="ack-note" rows="4" placeholder="e.g. Thank you for reporting. We have inspected the area and a work order has been raised…" style="resize:vertical;">${existing.note || ''}</textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Action Taken / Next Step</label>
+        <input type="text" id="ack-action" value="${existing.action || ''}" placeholder="e.g. Assigned to maintenance team, due 2025-07-01"/>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" onclick="saveAcknowledgment('${reportId}')" style="flex:1;justify-content:center;">✅ Save Acknowledgment</button>
+        <button class="btn btn-outline" onclick="document.getElementById('ack-overlay').remove()" style="flex:1;justify-content:center;">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveAcknowledgment(reportId) {
+  const r = reports.find(x => x.id === reportId);
+  if (!r) return;
+  const note   = document.getElementById('ack-note').value.trim();
+  const action = document.getElementById('ack-action').value.trim();
+  if (!note) { toast('⚠️ Please enter an acknowledgment note.', 'error'); return; }
+  r.acknowledgment = { note, action, date: new Date().toISOString(), by: 'Safety Manager' };
+  fbSet('sms/reports/' + reportId, r);
+  document.getElementById('ack-overlay').remove();
+  toast('✅ Report acknowledged.', 'success');
+  try { renderRegister(); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE 3 — TRACK REPORT (student-facing)
+// ═══════════════════════════════════════════════════════════════════════════════
+function trackReport() {
+  const id = (document.getElementById('track-id').value || '').trim().toUpperCase();
+  const container = document.getElementById('track-result');
+  if (!id) { container.innerHTML = '<div style="color:var(--red);font-size:13px;">⚠️ Please enter a Report ID.</div>'; return; }
+  const r = reports.find(x => x.id === id);
+  if (!r) {
+    container.innerHTML = `<div style="background:#FFF1F1;border:1.5px solid #FECACA;border-radius:10px;padding:16px;font-size:13px;color:#DC2626;">
+      ❌ No report found with ID <strong>${id}</strong>. Please check and try again.</div>`;
+    return;
+  }
+  const statusColor = { Open:'#2563A8', 'In Progress':'#D97706', Closed:'#16A34A' }[r.status] || '#64748B';
+  const ack = r.acknowledgment;
+  container.innerHTML = `
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:20px;">
+      <div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:12px;">📋 Report Found</div>
+      <div style="font-size:13px;display:grid;gap:8px;">
+        <div><strong>Report ID:</strong> <code>${r.id}</code></div>
+        <div><strong>Submitted:</strong> ${r.submitted ? new Date(r.submitted).toLocaleDateString() : '—'}</div>
+        <div><strong>Type:</strong> ${r.type || '—'}</div>
+        <div><strong>Location:</strong> ${r.location || '—'}</div>
+        <div><strong>Urgency:</strong> <span class="badge ${r.urgency}">${r.urgency || '—'}</span></div>
+        <div><strong>Current Status:</strong> <span style="font-weight:700;color:${statusColor};">${r.status}</span></div>
+      </div>
+      ${ack ? `
+      <div style="margin-top:16px;padding:14px;background:white;border-radius:8px;border:1px solid #BBF7D0;">
+        <div style="font-weight:700;color:var(--teal);margin-bottom:6px;">📬 Safety Manager Acknowledgment</div>
+        <div style="font-size:13px;color:var(--text);margin-bottom:6px;">${ack.note}</div>
+        ${ack.action ? `<div style="font-size:12px;color:var(--muted);">Next step: ${ack.action}</div>` : ''}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Acknowledged on ${new Date(ack.date).toLocaleDateString()}</div>
+      </div>` : `
+      <div style="margin-top:14px;padding:12px;background:#FFFBEB;border-radius:8px;border:1px solid #FCD34D;font-size:13px;color:#92400E;">
+        ⏳ Your report has been received and is pending acknowledgment from the Safety Manager.
+      </div>`}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE 4 — SAFETY MEETING MINUTES
+// ═══════════════════════════════════════════════════════════════════════════════
+let meetings = [];
+
+function saveMeeting() {
+  const date      = document.getElementById('mtg-date').value;
+  const type      = document.getElementById('mtg-type').value;
+  const attendees = document.getElementById('mtg-attendees').value.trim();
+  const agenda    = document.getElementById('mtg-agenda').value.trim();
+  const actions   = document.getElementById('mtg-actions').value.trim();
+  const next      = document.getElementById('mtg-next').value;
+  const errEl     = document.getElementById('mtg-error');
+  errEl.textContent = '';
+  if (!date)      { errEl.textContent = '⚠️ Please select a meeting date.'; return; }
+  if (!attendees) { errEl.textContent = '⚠️ Please enter attendees.'; return; }
+  if (!agenda)    { errEl.textContent = '⚠️ Please enter agenda/topics.'; return; }
+
+  const m = { id: 'MTG-' + Date.now(), date, type, attendees, agenda, actions, next, created: new Date().toISOString() };
+  meetings.push(m);
+  fbSet('sms/meetings/' + m.id, m);
+  ['mtg-date','mtg-attendees','mtg-agenda','mtg-actions','mtg-next'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  toast('✅ Meeting record saved.', 'success');
+  renderMeetings();
+}
+
+function renderMeetings() {
+  const container = document.getElementById('meetings-list');
+  if (!container) return;
+  if (!meetings.length) { container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No meetings logged yet.</div>'; return; }
+  const sorted = [...meetings].sort((a,b) => new Date(b.date) - new Date(a.date));
+  container.innerHTML = sorted.map(m => `
+    <div class="card" style="margin-bottom:12px;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);">${m.type}</div>
+          <div style="font-size:12px;color:var(--muted);">📅 ${new Date(m.date).toLocaleDateString()}</div>
+        </div>
+        <button onclick="deleteMeeting('${m.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;" title="Delete">🗑</button>
+      </div>
+      <div style="font-size:12px;margin-top:10px;display:grid;gap:6px;">
+        <div><strong>Attendees:</strong> ${m.attendees}</div>
+        <div><strong>Agenda:</strong> ${m.agenda}</div>
+        ${m.actions ? `<div><strong>Actions:</strong> ${m.actions}</div>` : ''}
+        ${m.next ? `<div><strong>Next Meeting:</strong> ${new Date(m.next).toLocaleDateString()}</div>` : ''}
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;">ID: ${m.id}</div>
+    </div>`).join('');
+}
+
+function deleteMeeting(id) {
+  meetings = meetings.filter(m => m.id !== id);
+  fbDelete('sms/meetings', id);
+  renderMeetings();
+  toast('🗑 Meeting record deleted.', 'error');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE 5 — DOCUMENT CONTROL
+// ═══════════════════════════════════════════════════════════════════════════════
+let documents = [];
+
+function saveDocument() {
+  const title   = document.getElementById('doc-title').value.trim();
+  const number  = document.getElementById('doc-number').value.trim();
+  const version = document.getElementById('doc-version').value.trim();
+  const issued  = document.getElementById('doc-issued').value;
+  const review  = document.getElementById('doc-review').value;
+  const owner   = document.getElementById('doc-owner').value.trim();
+  const status  = document.getElementById('doc-status').value;
+  const errEl   = document.getElementById('doc-error');
+  errEl.textContent = '';
+  if (!title)   { errEl.textContent = '⚠️ Document title is required.'; return; }
+  if (!version) { errEl.textContent = '⚠️ Version is required.'; return; }
+  const doc = { id: 'DOC-' + Date.now(), title, number, version, issued, review, owner, status, created: new Date().toISOString() };
+  documents.push(doc);
+  fbSet('sms/documents/' + doc.id, doc);
+  ['doc-title','doc-number','doc-version','doc-issued','doc-review','doc-owner'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('doc-status').value = 'Active';
+  toast('✅ Document saved.', 'success');
+  renderDocuments();
+}
+
+function renderDocuments() {
+  const container = document.getElementById('documents-list');
+  if (!container) return;
+  if (!documents.length) { container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No documents registered yet.</div>'; return; }
+  const today = new Date();
+  const sorted = [...documents].sort((a,b) => new Date(a.review||'9999') - new Date(b.review||'9999'));
+  container.innerHTML = sorted.map(d => {
+    const reviewDate  = d.review ? new Date(d.review) : null;
+    const daysToReview = reviewDate ? Math.floor((reviewDate - today) / 86400000) : null;
+    const reviewAlert = daysToReview !== null && daysToReview <= 30
+      ? `<span style="font-size:10px;background:${daysToReview < 0 ? '#FEE2E2' : '#FEF3C7'};color:${daysToReview < 0 ? '#DC2626' : '#B45309'};padding:2px 6px;border-radius:99px;font-weight:700;margin-left:6px;">${daysToReview < 0 ? '⚠️ OVERDUE REVIEW' : `📅 Review in ${daysToReview}d`}</span>` : '';
+    const statusColor = { Active:'#166534', 'Under Review':'#92400E', Superseded:'#6D28D9', Archived:'#64748B' }[d.status] || '#64748B';
+    const statusBg    = { Active:'#DCFCE7', 'Under Review':'#FEF3C7', Superseded:'#EDE9FE', Archived:'#F1F5F9' }[d.status] || '#F1F5F9';
+    return `
+    <div class="card" style="margin-bottom:10px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:var(--navy);">${d.title}
+            <span style="font-size:11px;background:${statusBg};color:${statusColor};padding:1px 7px;border-radius:99px;font-weight:600;margin-left:6px;">${d.status}</span>
+            ${reviewAlert}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${d.number || '—'} · ${d.version} · Owner: ${d.owner || '—'}</div>
+        </div>
+        <button onclick="deleteDocument('${d.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;" title="Delete">🗑</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;">
+        ${d.issued  ? `<span>📤 Issued: ${new Date(d.issued).toLocaleDateString()}</span>` : ''}
+        ${d.review  ? `<span>🔄 Next Review: ${new Date(d.review).toLocaleDateString()}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteDocument(id) {
+  documents = documents.filter(d => d.id !== id);
+  fbDelete('sms/documents', id);
+  renderDocuments();
+  toast('🗑 Document deleted.', 'error');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE 6 — SAFETY PERFORMANCE INDICATORS (SPIs)
+// ═══════════════════════════════════════════════════════════════════════════════
+let spis = [];
+
+// Calculate actual current value for auto metrics
+function calcSpiActual(metric) {
+  switch(metric) {
+    case 'overdue_zero': return getOverdueReports().length;
+    case 'cap_completion': {
+      let total = 0, done = 0;
+      reports.forEach(r => (r.caps||[]).forEach(c => { total++; if(c.status==='Done') done++; }));
+      return total ? Math.round(done/total*100) : 100;
+    }
+    case 'closure_rate': {
+      if (!reports.length) return 100;
+      return Math.round(reports.filter(r => r.status === 'Closed').length / reports.length * 100);
+    }
+    case 'recurring_zero': return getRecurringGroups().length;
+    case 'reports_month': {
+      const now = new Date(), month = now.getMonth(), year = now.getFullYear();
+      return reports.filter(r => { const d = new Date(r.submitted||0); return d.getMonth()===month && d.getFullYear()===year; }).length;
+    }
+    default: return null;
+  }
+}
+
+function saveSpi() {
+  const name   = document.getElementById('spi-name').value.trim();
+  const metric = document.getElementById('spi-metric').value;
+  const target = parseFloat(document.getElementById('spi-target').value);
+  const unit   = document.getElementById('spi-unit').value.trim();
+  const errEl  = document.getElementById('spi-error');
+  errEl.textContent = '';
+  if (!name)         { errEl.textContent = '⚠️ SPI name is required.'; return; }
+  if (isNaN(target)) { errEl.textContent = '⚠️ Please enter a target value.'; return; }
+  const spi = { id: 'SPI-' + Date.now(), name, metric, target, unit, created: new Date().toISOString() };
+  spis.push(spi);
+  fbSet('sms/spis/' + spi.id, spi);
+  ['spi-name','spi-target','spi-unit'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  toast('✅ SPI saved.', 'success');
+  renderSpiDashboard();
+}
+
+function renderSpiDashboard() {
+  const container = document.getElementById('spi-dashboard');
+  if (!container) return;
+  if (!spis.length) { container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No SPIs defined yet. Add one using the form above.</div>'; return; }
+
+  container.innerHTML = spis.map(s => {
+    const actual   = calcSpiActual(s.metric);
+    const isAuto   = actual !== null;
+    // Determine if meeting target
+    // For "zero" metrics (overdue, recurring), lower = better. For rates, higher = better.
+    const lowerIsBetter = ['overdue_zero','recurring_zero'].includes(s.metric);
+    let met = false;
+    if (isAuto) {
+      met = lowerIsBetter ? actual <= s.target : actual >= s.target;
+    }
+    const pct = isAuto && s.target > 0 && !lowerIsBetter ? Math.min(Math.round(actual / s.target * 100), 100) : null;
+    const color = isAuto ? (met ? '#16A34A' : '#DC2626') : '#2563A8';
+    const bg    = isAuto ? (met ? '#F0FDF4' : '#FFF1F1') : '#EFF6FF';
+    const border= isAuto ? (met ? '#86EFAC' : '#FECACA') : '#BFDBFE';
+    const statusIcon = isAuto ? (met ? '🟢' : '🔴') : '🔵';
+    return `
+    <div style="background:${bg};border:1.5px solid ${border};border-radius:12px;padding:18px;position:relative;">
+      <button onclick="deleteSpi('${s.id}')" style="position:absolute;top:10px;right:12px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;" title="Delete SPI">🗑</button>
+      <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px;padding-right:24px;">${statusIcon} ${s.name}</div>
+      <div style="font-size:28px;font-weight:800;color:${color};margin-bottom:2px;">
+        ${isAuto ? actual : '—'}<span style="font-size:14px;font-weight:400;color:var(--muted);margin-left:4px;">${s.unit || ''}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Target: ${s.target} ${s.unit || ''}</div>
+      ${pct !== null ? `
+      <div style="height:6px;background:var(--light);border-radius:99px;overflow:hidden;margin-bottom:6px;">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:99px;transition:width .4s;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);">${pct}% of target</div>` : ''}
+      ${isAuto ? '' : '<div style="font-size:11px;color:var(--muted);">Manual metric — update actual value in settings</div>'}
+    </div>`;
+  }).join('');
+}
+
+function deleteSpi(id) {
+  spis = spis.filter(s => s.id !== id);
+  fbDelete('sms/spis', id);
+  renderSpiDashboard();
+  toast('🗑 SPI removed.', 'error');
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
@@ -1512,6 +2039,163 @@ function caapRiskLabel(v) {
   if (v <= 14)  return 'Medium';
   return 'HIGH';
 }
+
+// ─── RECURRENCE, AGE TRACKING & INTERVENTION SYSTEM ──────────────────────────
+
+// How many days a hazard is tolerated before flagging, by urgency
+const TOLERANCE_DAYS = { immediate: 1, high: 7, medium: 30, low: 90 };
+
+// How many times same hazard+location appears before escalating
+const RECURRENCE_THRESHOLD = 3;
+
+// Group key: primary hazard type + location
+function recurrenceKey(r) {
+  const ht = (r.hazardTypes && r.hazardTypes.length) ? r.hazardTypes[0] : (r.type || 'Unknown');
+  const loc = (r.location || '').trim().toLowerCase();
+  return `${ht}||${loc}`;
+}
+
+// Days a report has been open
+function daysOpen(r) {
+  const start = r.submitted ? new Date(r.submitted) : new Date();
+  return Math.floor((Date.now() - start.getTime()) / 86400000);
+}
+
+// Returns map of key → { reports[], count, escalatedProb, escalatedRiskIndex }
+function getRecurrenceGroups() {
+  const groups = {};
+  reports.forEach(r => {
+    const k = recurrenceKey(r);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(r);
+  });
+  // Build enriched groups with escalated risk
+  const result = {};
+  Object.entries(groups).forEach(([k, arr]) => {
+    const count = arr.length;
+    // Escalated probability based on recurrence count
+    const maxOrigProb = Math.max(...arr.map(r => r.probability || 0));
+    let escalatedProb = maxOrigProb;
+    if (count >= RECURRENCE_THRESHOLD) escalatedProb = 5; // Frequent
+    else if (count === 2)              escalatedProb = Math.min(maxOrigProb + 1, 5);
+    // Use worst severity in the group
+    const sevOrder = ['A','B','C','D','E','0'];
+    const worstSev = arr.map(r => r.severity || '0').sort((a,b) => sevOrder.indexOf(a) - sevOrder.indexOf(b))[0];
+    const escalatedRiskIndex = escalatedProb * (SEV_MAP[worstSev] || 0);
+    result[k] = { reports: arr, count, escalatedProb, escalatedRiskIndex, worstSev };
+  });
+  return result;
+}
+
+// Returns only open reports that are overdue based on tolerance window
+function getOverdueReports() {
+  return reports.filter(r => {
+    if (r.status === 'Closed') return false;
+    const tol = TOLERANCE_DAYS[r.urgency] ?? 90;
+    return daysOpen(r) > tol;
+  });
+}
+
+// Returns recurring groups where count >= threshold AND has open reports
+function getRecurringGroups() {
+  const groups = getRecurrenceGroups();
+  return Object.entries(groups).filter(([k, g]) =>
+    g.count >= RECURRENCE_THRESHOLD && g.reports.some(r => r.status !== 'Closed')
+  );
+}
+
+// Render the Recurring Hazards + Overdue panel on the dashboard
+function renderRecurringAlerts() {
+  const container = document.getElementById('recurring-alerts');
+  if (!container) return;
+
+  const recurringGroups = getRecurringGroups();
+  const overdueReports  = getOverdueReports();
+
+  // Update badge on stat card
+  const badge = document.getElementById('stat-recurring');
+  if (badge) badge.textContent = recurringGroups.length;
+  const badgeOD = document.getElementById('stat-overdue');
+  if (badgeOD) badgeOD.textContent = overdueReports.length;
+
+  let html = '';
+
+  // ── Recurring Hazards ──
+  html += `<div class="card-title" style="margin-bottom:12px;"><span class="icon">🔁</span> Recurring Hazards <span style="font-size:12px;font-weight:400;color:var(--muted);">(same type + location reported ${RECURRENCE_THRESHOLD}+ times)</span></div>`;
+
+  if (recurringGroups.length === 0) {
+    html += `<div style="color:var(--muted);font-size:13px;padding:8px 0;">✅ No recurring hazards detected.</div>`;
+  } else {
+    recurringGroups.forEach(([k, g]) => {
+      const [hazType, loc] = k.split('||');
+      const openCount   = g.reports.filter(r => r.status !== 'Closed').length;
+      const rClass      = riskClass(g.escalatedRiskIndex);
+      const rLabel      = riskLabel(g.escalatedRiskIndex);
+      const intervention = g.escalatedRiskIndex > 14 ? '🔴 Intervention Required — Stop operation until mitigated'
+                         : g.escalatedRiskIndex > 5  ? '🟡 Management Review Required'
+                         :                             '🟢 Monitor closely';
+      const probLabel   = PROB_LABELS[g.escalatedProb] || g.escalatedProb;
+      const oldest      = g.reports.map(r => new Date(r.submitted||0)).sort((a,b)=>a-b)[0];
+      const totalDays   = Math.floor((Date.now() - oldest.getTime()) / 86400000);
+
+      html += `
+      <div style="border:1.5px solid ${rClass==='crit'?'#FCA5A5':rClass==='med'?'#FCD34D':'#86EFAC'};
+                  background:${rClass==='crit'?'#FFF1F1':rClass==='med'?'#FFFBEB':'#F0FDF4'};
+                  border-radius:10px;padding:14px 16px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--navy);">${hazType}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">📍 ${loc || '—'}</div>
+          </div>
+          <span class="risk-pill risk-${rClass}" style="font-size:12px;">${rLabel} Risk</span>
+        </div>
+        <div style="display:flex;gap:16px;margin:10px 0 8px;flex-wrap:wrap;font-size:12px;color:var(--text);">
+          <span>📋 <strong>${g.count}</strong> total reports</span>
+          <span>🔓 <strong>${openCount}</strong> still open</span>
+          <span>📅 Spanning <strong>${totalDays}</strong> days</span>
+          <span>📈 Escalated probability: <strong>${probLabel}</strong></span>
+        </div>
+        <div style="font-size:12px;font-weight:600;padding:6px 10px;border-radius:6px;
+          background:${rClass==='crit'?'#FEE2E2':rClass==='med'?'#FEF3C7':'#DCFCE7'};
+          color:${rClass==='crit'?'#B91C1C':rClass==='med'?'#92400E':'#166534'};">
+          ${intervention}
+        </div>
+      </div>`;
+    });
+  }
+
+  html += `<div style="border-top:1px solid var(--light);margin:16px 0 12px;"></div>`;
+
+  // ── Overdue Reports ──
+  html += `<div class="card-title" style="margin-bottom:12px;"><span class="icon">⏱️</span> Overdue Open Reports <span style="font-size:12px;font-weight:400;color:var(--muted);">(open past tolerance window)</span></div>`;
+
+  if (overdueReports.length === 0) {
+    html += `<div style="color:var(--muted);font-size:13px;padding:8px 0;">✅ No overdue reports.</div>`;
+  } else {
+    overdueReports.forEach(r => {
+      const days   = daysOpen(r);
+      const tol    = TOLERANCE_DAYS[r.urgency] ?? 90;
+      const over   = days - tol;
+      const rClass = riskClass(r.riskIndex);
+      html += `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;
+                  padding:10px 12px;border-radius:8px;margin-bottom:6px;
+                  background:#FFF1F1;border:1px solid #FECACA;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--navy);">${r.type||'Report'} — ${(r.hazardTypes||[]).join(', ')||'—'}</div>
+          <div style="font-size:11px;color:var(--muted);">📍 ${r.location||'—'} · ID: ${r.id}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;">
+          <div style="color:#DC2626;font-weight:700;">⏰ ${days} days open</div>
+          <div style="color:#94A3B8;">${over} day${over!==1?'s':''} over ${r.urgency} limit (${tol}d)</div>
+        </div>
+      </div>`;
+    });
+  }
+
+  container.innerHTML = html;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function buildRiskMatrix() {
   const m = document.getElementById('risk-matrix-display');
@@ -1791,11 +2475,38 @@ function renderRegister() {
   if (!filtered.length) { tbody.innerHTML = ''; empty.style.display='block'; return; }
   empty.style.display = 'none';
 
-  tbody.innerHTML = filtered.map(r => `
+  const groups = getRecurrenceGroups();
+
+  tbody.innerHTML = filtered.map(r => {
+    const days    = daysOpen(r);
+    const tol     = TOLERANCE_DAYS[r.urgency] ?? 90;
+    const overdue = r.status !== 'Closed' && days > tol;
+    const key     = recurrenceKey(r);
+    const grp     = groups[key];
+    const recCount = grp ? grp.count : 1;
+    const isRecurring = recCount >= RECURRENCE_THRESHOLD;
+
+    const ageBadge = r.status === 'Closed'
+      ? `<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:99px;">✅ Closed</span>`
+      : overdue
+        ? `<span style="font-size:10px;background:#FEE2E2;color:#DC2626;padding:2px 7px;border-radius:99px;font-weight:700;">⏰ ${days}d OVERDUE</span>`
+        : `<span style="font-size:10px;background:#F1F5F9;color:#64748B;padding:2px 7px;border-radius:99px;">${days}d open</span>`;
+
+    const recBadge = isRecurring
+      ? `<span style="font-size:10px;background:#FEF3C7;color:#B45309;padding:2px 7px;border-radius:99px;font-weight:700;">🔁 ×${recCount}</span>`
+      : recCount === 2
+        ? `<span style="font-size:10px;background:#FFFBEB;color:#D97706;padding:2px 7px;border-radius:99px;">🔁 ×2</span>`
+        : '';
+
+    const studentBadge = r.submittedBy === 'student'
+      ? '<br><span style="font-size:9px;background:#EDE9FE;color:#6D28D9;padding:1px 6px;border-radius:99px;font-weight:700;">🎓 STUDENT</span>'
+      : '';
+
+    return `
     <tr>
       <td>
         <code style="font-size:11px;color:var(--blue);">${r.id}</code>
-        ${r.submittedBy === 'student' ? '<br><span style=\"font-size:9px;background:#EDE9FE;color:#6D28D9;padding:1px 6px;border-radius:99px;font-weight:700;\">🎓 STUDENT</span>' : ''}
+        ${studentBadge}
       </td>
       <td style="white-space:nowrap;font-size:12px;">${r.submitted ? new Date(r.submitted).toLocaleDateString() : '—'}</td>
       <td>${r.type || '—'}</td>
@@ -1803,6 +2514,12 @@ function renderRegister() {
       <td style="max-width:200px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.description || '—'}</td>
       <td><span class="badge ${r.urgency}">${r.urgency || '—'}</span></td>
       <td><span class="risk-pill risk-${riskClass(r.riskIndex)}">${r.caapCode || r.riskIndex} — ${riskLabel(r.riskIndex)}</span></td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          ${ageBadge}
+          ${recBadge}
+        </div>
+      </td>
       <td>
         <select style="font-size:11px;padding:4px 6px;" onchange="updateStatus('${r.id}',this.value)">
           <option ${r.status==='Open'?'selected':''}>Open</option>
@@ -1812,11 +2529,13 @@ function renderRegister() {
       </td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="viewReport('${r.id}')">👁 View</button>
-        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" onclick="confirmDelete('report','${r.id}','${(r.type||'Report').replace(/'/g,"\\'")} — ${(r.id).replace(/'/g,"\\'")}','')">🗑 Delete</button>
-      </td>
-    </tr>
-  `).join('');
+        <button class="btn btn-sm" style="background:${r.acknowledgment?'#F0FDF4':'#EFF6FF'};color:${r.acknowledgment?'#16A34A':'#2563A8'};border:1.5px solid ${r.acknowledgment?'#86EFAC':'#BFDBFE'};" onclick="openAckModal('${r.id}')" title="Acknowledge">${r.acknowledgment ? '✅ Ack' : '📬 Ack'}</button>
+        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" onclick="confirmDelete('report','${r.id}','${(r.type||'Report').replace(/'/g,"\\'")} — ${r.id}','')">🗑 Delete</button>
+      </td>    </tr>`;
+  }).join('');
 }
+
+
 
 // ─── UNIFIED DELETE SYSTEM ────────────────────────────────────────────────────
 let _deleteTarget = null;  // { type, id, label }
@@ -1855,6 +2574,7 @@ function executeDelete() {
     toast('🗑 Report deleted.', 'error');
     if (document.getElementById('modal').classList.contains('open')) closeModal();
   } else if (type === 'all-reports') {
+    reports = [];
     if (db()) db().ref('sms/reports').remove();
     toast('🗑 All hazard reports deleted.', 'error');
   } else if (type === 'audit') {
@@ -2120,6 +2840,9 @@ function updateDashboard() {
   document.getElementById('stat-high').textContent   = high;
   document.getElementById('stat-closed').textContent = closed;
   document.getElementById('stat-audits').textContent = audits.length + auditA.length;
+
+  // Render recurring hazards & overdue panel
+  renderRecurringAlerts();
 
   // Hazard type chart
   const typeCounts = {};
@@ -2972,39 +3695,31 @@ function changeAdminPassword() {
   const errEl    = document.getElementById('cp-error');
   errEl.textContent = '';
 
-  // Validate current password (always re-fetch from Firebase for accuracy)
-  db().ref('sms/config/adminPin').once('value', snap => {
-    const livePin = snap.exists() ? snap.val() : ADMIN_PIN;
+  // Validate current password
 
-    if (!current) { errEl.textContent = '⚠️ Please enter your current password.'; return; }
-    if (current !== livePin) {
-      const el = document.getElementById('cp-current');
-      el.value = '';
-      el.focus();
-      errEl.textContent = '❌ Current password is incorrect.';
-      return;
-    }
-    if (!newPin) { errEl.textContent = '⚠️ New password cannot be empty.'; return; }
-    if (newPin.length < 4) { errEl.textContent = '⚠️ New password must be at least 4 characters.'; return; }
-    if (newPin !== confirm) { errEl.textContent = '❌ New passwords do not match.'; return; }
-    if (newPin === livePin) { errEl.textContent = '⚠️ New password must be different from current password.'; return; }
+  if (!current) { errEl.textContent = '⚠️ Please enter your current password.'; return; }
+  if (current !== livePin) {
+    const el = document.getElementById('cp-current');
+    el.value = ''; el.focus();
+    errEl.textContent = '❌ Current password is incorrect.';
+    return;
+  }
+  if (!newPin) { errEl.textContent = '⚠️ New password cannot be empty.'; return; }
+  if (newPin.length < 4) { errEl.textContent = '⚠️ New password must be at least 4 characters.'; return; }
+  if (newPin !== confirm) { errEl.textContent = '❌ New passwords do not match.'; return; }
+  if (newPin === livePin) { errEl.textContent = '⚠️ New password must be different from current password.'; return; }
 
-    // All good — save to Firebase
-    db().ref('sms/config/adminPin').set(newPin).then(() => {
-      ADMIN_PIN = newPin;
-      ['cp-current','cp-new','cp-confirm'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.value = ''; el.type = 'password'; }
-      });
-      document.getElementById('pw-strength-fill').style.width = '0%';
-      document.getElementById('pw-strength-label').textContent = '';
-      // Reset eye icons
-      document.querySelectorAll('#page-settings span[onclick^="togglePwVis"]').forEach(s => s.textContent = '👁');
-      toast('✅ Admin password updated successfully!', 'success');
-    }).catch(err => {
-      errEl.textContent = '❌ Firebase error: ' + err.message;
-    });
+  // Save to Firebase
+  db().ref('sms/config/adminPin').set(newPin);
+  ADMIN_PIN = newPin;
+  ['cp-current','cp-new','cp-confirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.type = 'password'; }
   });
+  document.getElementById('pw-strength-fill').style.width = '0%';
+  document.getElementById('pw-strength-label').textContent = '';
+  document.querySelectorAll('#page-settings span[onclick^="togglePwVis"]').forEach(s => s.textContent = '👁');
+  toast('✅ Admin password updated successfully!', 'success');
 }
 
 
@@ -3012,7 +3727,7 @@ function changeAdminPassword() {
 //  AUTH  —  Login / Role management
 // ═══════════════════════════════════════════════════════════════════
 
-// ⚙️  Admin PIN — loaded from Firebase (default '1234' on first run)
+// ⚙️  Admin PIN — loaded from localStorage (default '1234' on first run)
 let ADMIN_PIN = '1234';  // overwritten once Firebase loads
 
 let currentRole = null; // 'student' | 'admin'
