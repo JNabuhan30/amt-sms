@@ -542,6 +542,7 @@
     <button class="nav-tab admin-only" onclick="showPage('audit')">✅ Audit G.1</button>
     <button class="nav-tab admin-only" onclick="showPage('audit-a')">🏢 Audit G.1-A</button>
     <button class="nav-tab admin-only" onclick="showPage('statistics')">📈 Statistics</button>
+    <button class="nav-tab admin-only" onclick="showPage('settings')">⚙️ Settings</button>
   </div>
   <div class="user-badge" id="user-badge">
     <div class="user-info">
@@ -1215,7 +1216,67 @@
   </div>
 </div>
 
-<script>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SETTINGS PAGE
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-settings" class="page">
+  <div class="section-title">⚙️ Admin Settings</div>
+  <div class="section-sub">Manage system configuration and security</div>
+
+  <!-- Change Admin Password Card -->
+  <div class="card" style="max-width:480px;">
+    <div class="card-title"><span class="icon">🔐</span> Change Admin Password</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
+      The password is stored securely in Firebase and applies across all devices.
+    </p>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Current Password</label>
+      <div style="position:relative;">
+        <input type="password" id="cp-current" placeholder="Enter current password" autocomplete="new-password"/>
+        <span onclick="togglePwVis('cp-current',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;">👁</span>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>New Password</label>
+      <div style="position:relative;">
+        <input type="password" id="cp-new" placeholder="Enter new password (min 4 characters)" autocomplete="new-password" oninput="checkPwStrength(this.value)"/>
+        <span onclick="togglePwVis('cp-new',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;">👁</span>
+      </div>
+      <!-- Strength bar -->
+      <div id="pw-strength-bar" style="margin-top:6px;height:5px;border-radius:99px;background:var(--light);overflow:hidden;">
+        <div id="pw-strength-fill" style="height:100%;border-radius:99px;width:0%;transition:width .3s,background .3s;"></div>
+      </div>
+      <div id="pw-strength-label" style="font-size:11px;color:var(--muted);margin-top:3px;"></div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>Confirm New Password</label>
+      <div style="position:relative;">
+        <input type="password" id="cp-confirm" placeholder="Re-enter new password" autocomplete="new-password"/>
+        <span onclick="togglePwVis('cp-confirm',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;">👁</span>
+      </div>
+    </div>
+
+    <div id="cp-error" style="font-size:13px;color:var(--red);margin-bottom:12px;min-height:18px;font-weight:600;"></div>
+
+    <button class="btn btn-primary" onclick="changeAdminPassword()" style="width:100%;justify-content:center;">
+      🔒 Update Password
+    </button>
+  </div>
+
+  <!-- Current Password Info -->
+  <div class="card" style="max-width:480px;background:#EFF6FF;border:1.5px solid #BFDBFE;">
+    <div class="card-title" style="color:var(--blue);"><span class="icon">ℹ️</span> How it works</div>
+    <ul style="font-size:13px;color:var(--text);line-height:2;list-style:none;padding:0;">
+      <li>🔥 Password is stored in <strong>Firebase Realtime Database</strong></li>
+      <li>🌐 Changes apply instantly on <strong>all devices</strong></li>
+      <li>🔑 Default password is <strong>1234</strong> (change it after first login)</li>
+      <li>⚠️ If you forget your password, reset it directly in the Firebase Console under <code style="background:#DBEAFE;padding:1px 5px;border-radius:4px;">sms/config/adminPin</code></li>
+    </ul>
+  </div>
+</div>
 // ─── DATA STORE (Firebase Realtime Database) ──────────────────────────────────
 let reports = [];
 let audits  = [];
@@ -1278,8 +1339,15 @@ window.addEventListener('load', function() {
     if (loadedCount >= TOTAL) { setLoading(false); }
   }
 
-  // Reports
-  db().ref('sms/reports').on('value', snap => {
+  // Admin PIN — load from Firebase, seed default if not set
+  db().ref('sms/config/adminPin').once('value', snap => {
+    if (snap.exists()) {
+      ADMIN_PIN = snap.val();
+    } else {
+      // First time: seed the default PIN into Firebase
+      db().ref('sms/config/adminPin').set('1234');
+    }
+  });
     reports = snap.exists() ? Object.values(snap.val()) : [];
     updateDashboard();
     renderRegister();
@@ -1314,6 +1382,7 @@ function showPage(id) {
   if (id === 'statistics') initStatistics();
   if (id === 'audit')     renderSavedAudits();
   if (id === 'audit-a')   renderSavedInspections();
+  if (id === 'settings')  initSettingsPage();
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
@@ -2827,13 +2896,106 @@ function selectYear(year, btn) {
   renderStatistics(year);
 }
 
-// ─── SMS INSPECTION CHECKLIST DATA ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+//  SETTINGS — Change Admin Password
+// ═══════════════════════════════════════════════════════════════════
+
+function initSettingsPage() {
+  // Clear fields when entering settings
+  ['cp-current','cp-new','cp-confirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('cp-error').textContent = '';
+  document.getElementById('pw-strength-fill').style.width = '0%';
+  document.getElementById('pw-strength-label').textContent = '';
+}
+
+function togglePwVis(inputId, eyeBtn) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  if (el.type === 'password') {
+    el.type = 'text';
+    eyeBtn.textContent = '🙈';
+  } else {
+    el.type = 'password';
+    eyeBtn.textContent = '👁';
+  }
+}
+
+function checkPwStrength(val) {
+  const fill  = document.getElementById('pw-strength-fill');
+  const label = document.getElementById('pw-strength-label');
+  if (!val) { fill.style.width='0%'; label.textContent=''; return; }
+  let score = 0;
+  if (val.length >= 4)  score++;
+  if (val.length >= 8)  score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { w:'20%', bg:'#DC2626', txt:'Very weak' },
+    { w:'40%', bg:'#EA580C', txt:'Weak' },
+    { w:'60%', bg:'#D97706', txt:'Fair' },
+    { w:'80%', bg:'#16A34A', txt:'Strong' },
+    { w:'100%',bg:'#0F766E', txt:'Very strong' },
+  ];
+  const lvl = levels[Math.min(score-1, 4)] || levels[0];
+  fill.style.width      = lvl.w;
+  fill.style.background = lvl.bg;
+  label.style.color     = lvl.bg;
+  label.textContent     = lvl.txt;
+}
+
+function changeAdminPassword() {
+  const current  = document.getElementById('cp-current').value;
+  const newPin   = document.getElementById('cp-new').value.trim();
+  const confirm  = document.getElementById('cp-confirm').value;
+  const errEl    = document.getElementById('cp-error');
+  errEl.textContent = '';
+
+  // Validate current password (always re-fetch from Firebase for accuracy)
+  db().ref('sms/config/adminPin').once('value', snap => {
+    const livePin = snap.exists() ? snap.val() : ADMIN_PIN;
+
+    if (!current) { errEl.textContent = '⚠️ Please enter your current password.'; return; }
+    if (current !== livePin) {
+      const el = document.getElementById('cp-current');
+      el.value = '';
+      el.focus();
+      errEl.textContent = '❌ Current password is incorrect.';
+      return;
+    }
+    if (!newPin) { errEl.textContent = '⚠️ New password cannot be empty.'; return; }
+    if (newPin.length < 4) { errEl.textContent = '⚠️ New password must be at least 4 characters.'; return; }
+    if (newPin !== confirm) { errEl.textContent = '❌ New passwords do not match.'; return; }
+    if (newPin === livePin) { errEl.textContent = '⚠️ New password must be different from current password.'; return; }
+
+    // All good — save to Firebase
+    db().ref('sms/config/adminPin').set(newPin).then(() => {
+      ADMIN_PIN = newPin;
+      ['cp-current','cp-new','cp-confirm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.value = ''; el.type = 'password'; }
+      });
+      document.getElementById('pw-strength-fill').style.width = '0%';
+      document.getElementById('pw-strength-label').textContent = '';
+      // Reset eye icons
+      document.querySelectorAll('#page-settings span[onclick^="togglePwVis"]').forEach(s => s.textContent = '👁');
+      toast('✅ Admin password updated successfully!', 'success');
+    }).catch(err => {
+      errEl.textContent = '❌ Firebase error: ' + err.message;
+    });
+  });
+}
+
+
 // ═══════════════════════════════════════════════════════════════════
 //  AUTH  —  Login / Role management
 // ═══════════════════════════════════════════════════════════════════
 
-// ⚙️  CHANGE THIS PIN to whatever you want your admin password to be
-const ADMIN_PIN = '1234';
+// ⚙️  Admin PIN — loaded from Firebase (default '1234' on first run)
+let ADMIN_PIN = '1234';  // overwritten once Firebase loads
 
 let currentRole = null; // 'student' | 'admin'
 let selectedRole = null;
