@@ -475,8 +475,8 @@
     projectId:         "safety-7748b",
     storageBucket:     "safety-7748b.firebasestorage.app",
     messagingSenderId: "48044514525",
-    appId:             "1:48044514525:web:e3e13d2d75f34c70a58f34",
-    measurementId:     "G-X255FL7K20"
+    appId:             "1:48044514525:web:0a15970d057fa435a58f34",
+    measurementId:     "G-82N7G2GEQ7"
   });
   window._db = firebase.database();
 </script>
@@ -1245,11 +1245,21 @@ window.addEventListener('load', function() {
     return;
   }
 
+  // Safety timeout — if Firebase takes too long, show the app anyway
+  const loadingTimeout = setTimeout(() => {
+    console.warn('Firebase timeout — showing app without data');
+    setLoading(false);
+    toast('⚠️ Could not connect to Firebase. Check your internet or database rules.', 'error');
+  }, 8000);
+
   let loadedCount = 0;
   const TOTAL = 3;
   function onLoaded() {
     loadedCount++;
-    if (loadedCount >= TOTAL) { setLoading(false); }
+    if (loadedCount >= TOTAL) {
+      clearTimeout(loadingTimeout);
+      setLoading(false);
+    }
   }
 
   // Admin PIN — load from Firebase, seed default if not set
