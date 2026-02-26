@@ -449,20 +449,26 @@
 </style>
 
 <!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script>
-  firebase.initializeApp({
-    apiKey:            "AIzaSyDm1VR4pilII6gf0Wik9083kaEho5OkhA8",
-    authDomain:        "sm-system-6b8c9.firebaseapp.com",
-    databaseURL:       "https://sm-system-6b8c9-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId:         "sm-system-6b8c9",
-    storageBucket:     "sm-system-6b8c9.firebasestorage.app",
-    messagingSenderId: "971616876967",
-    appId:             "1:971616876967:web:51119b817cc03b7cbd9e82",
-    measurementId:     "G-HBP36G9WSG"
-  });
-  window._db = firebase.database();
+  try {
+    firebase.initializeApp({
+      apiKey:            "AIzaSyDm1VR4pilII6gf0Wik9083kaEho5OkhA8",
+      authDomain:        "sm-system-6b8c9.firebaseapp.com",
+      databaseURL:       "https://sm-system-6b8c9-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:         "sm-system-6b8c9",
+      storageBucket:     "sm-system-6b8c9.firebasestorage.app",
+      messagingSenderId: "971616876967",
+      appId:             "1:971616876967:web:51119b817cc03b7cbd9e82",
+      measurementId:     "G-HBP36G9WSG"
+    });
+    window._db = firebase.database();
+    console.log("✅ Firebase connected");
+  } catch(e) {
+    console.error("❌ Firebase init failed:", e);
+    window._db = null;
+  }
 </script>
 </head>
 <body>
@@ -1448,16 +1454,35 @@ function lsSet(key, val) {
 }
 function db() { return window._db; }
 
-// Write a record to Firebase
+// Write a record to Firebase (with localStorage fallback)
 function fbSet(path, data) {
-  if (!db()) { console.warn('Firebase not ready'); return; }
-  db().ref(path).set(data);
+  if (db()) {
+    db().ref(path).set(data);
+  } else {
+    // localStorage fallback
+    const parts = path.split('/');
+    if (parts[1]==='reports')           { const i=reports.findIndex(r=>r.id===parts[2]); if(i>=0)reports[i]=data;else reports.push(data); lsSet('sms_reports',reports); }
+    else if (parts[1]==='audits')       { const i=audits.findIndex(r=>r.id===parts[2]);  if(i>=0)audits[i]=data; else audits.push(data);   lsSet('sms_audits',audits); }
+    else if (parts[1]==='auditA')       { const i=auditA.findIndex(r=>r.id===parts[2]);  if(i>=0)auditA[i]=data; else auditA.push(data);   lsSet('sms_auditA',auditA); }
+    else if (parts[1]==='meetings')     { const i=meetings.findIndex(r=>r.id===parts[2]);if(i>=0)meetings[i]=data;else meetings.push(data); lsSet('sms_meetings',meetings); }
+    else if (parts[1]==='documents')    { const i=documents.findIndex(r=>r.id===parts[2]);if(i>=0)documents[i]=data;else documents.push(data);lsSet('sms_documents',documents); }
+    else if (parts[1]==='spis')         { const i=spis.findIndex(r=>r.id===parts[2]);    if(i>=0)spis[i]=data;   else spis.push(data);     lsSet('sms_spis',spis); }
+    else if (parts[1]==='config' && parts[2]==='adminPin') { lsSet('sms_adminPin', data); }
+  }
 }
 
-// Delete a record from Firebase
+// Delete a record from Firebase (with localStorage fallback)
 function fbDelete(path, id) {
-  if (!db()) { console.warn('Firebase not ready'); return; }
-  db().ref(path + '/' + id).remove();
+  if (db()) {
+    db().ref(path + '/' + id).remove();
+  } else {
+    if (path.includes('reports'))       { reports   = reports.filter(r=>r.id!==id);   lsSet('sms_reports',reports); }
+    else if (path.includes('audits'))   { audits    = audits.filter(r=>r.id!==id);    lsSet('sms_audits',audits); }
+    else if (path.includes('auditA'))   { auditA    = auditA.filter(r=>r.id!==id);    lsSet('sms_auditA',auditA); }
+    else if (path.includes('meetings')) { meetings  = meetings.filter(r=>r.id!==id);  lsSet('sms_meetings',meetings); }
+    else if (path.includes('documents')){ documents = documents.filter(r=>r.id!==id); lsSet('sms_documents',documents); }
+    else if (path.includes('spis'))     { spis      = spis.filter(r=>r.id!==id);      lsSet('sms_spis',spis); }
+  }
 }
 
 // Legacy full-save
@@ -1478,7 +1503,19 @@ function setLoading(on) {
 
 // ─── FIREBASE REAL-TIME LISTENERS ─────────────────────────────────────────────
 window.addEventListener('load', function() {
-  if (!db()) { setLoading(false); return; }
+  if (!db()) {
+    console.warn('Firebase unavailable — running in offline mode');
+    // Load from localStorage as fallback
+    reports   = lsGet('sms_reports',   []);
+    audits    = lsGet('sms_audits',    []);
+    auditA    = lsGet('sms_auditA',    []);
+    meetings  = lsGet('sms_meetings',  []);
+    documents = lsGet('sms_documents', []);
+    spis      = lsGet('sms_spis',      []);
+    ADMIN_PIN = lsGet('sms_adminPin',  '1234');
+    setLoading(false);
+    return;
+  }
 
   let loadedCount = 0, loadingDone = false;
   const TOTAL = 4;
@@ -1721,8 +1758,6 @@ function trackReport() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEATURE 4 — SAFETY MEETING MINUTES
 // ═══════════════════════════════════════════════════════════════════════════════
-let meetings = [];
-
 function saveMeeting() {
   const date      = document.getElementById('mtg-date').value;
   const type      = document.getElementById('mtg-type').value;
@@ -1778,8 +1813,6 @@ function deleteMeeting(id) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEATURE 5 — DOCUMENT CONTROL
 // ═══════════════════════════════════════════════════════════════════════════════
-let documents = [];
-
 function saveDocument() {
   const title   = document.getElementById('doc-title').value.trim();
   const number  = document.getElementById('doc-number').value.trim();
@@ -1844,8 +1877,6 @@ function deleteDocument(id) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEATURE 6 — SAFETY PERFORMANCE INDICATORS (SPIs)
 // ═══════════════════════════════════════════════════════════════════════════════
-let spis = [];
-
 // Calculate actual current value for auto metrics
 function calcSpiActual(metric) {
   switch(metric) {
