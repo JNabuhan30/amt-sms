@@ -459,12 +459,26 @@
     projectId:         "safety-7748b",
     storageBucket:     "safety-7748b.firebasestorage.app",
     messagingSenderId: "48044514525",
-    appId:             "1:48044514525:web:e3e13d2d75f34c70a58f34"
+    appId:             "1:48044514525:web:0a15970d057fa435a58f34",
+    measurementId:     "G-82N7G2GEQ7"
   });
   window._db = firebase.database();
 </script>
 </head>
 <body>
+
+<!-- FIREBASE LOADING OVERLAY -->
+<div id="fb-loading" style="position:fixed;inset:0;background:rgba(15,23,42,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;gap:16px;">
+  <div style="font-size:40px;">✈️</div>
+  <div style="color:white;font-size:18px;font-weight:700;letter-spacing:.5px;">AMTS SMS Portal</div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+    <div style="width:10px;height:10px;background:#D97706;border-radius:50%;animation:fbpulse 1s ease-in-out infinite;"></div>
+    <div style="width:10px;height:10px;background:#D97706;border-radius:50%;animation:fbpulse 1s ease-in-out .2s infinite;"></div>
+    <div style="width:10px;height:10px;background:#D97706;border-radius:50%;animation:fbpulse 1s ease-in-out .4s infinite;"></div>
+  </div>
+  <div style="color:#94A3B8;font-size:13px;">Connecting to Firebase…</div>
+</div>
+<style>@keyframes fbpulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}</style>
 
 <!-- SITE HEADER -->
 
@@ -1211,39 +1225,81 @@ let auditA  = [];
 let auditState  = {};
 let auditAState = {};
 
-// ─── SAVE TO FIREBASE ─────────────────────────────────────────────────────────
-function toObj(arr) {
-  const obj = {};
-  arr.forEach(item => { if (item && item.id) obj[item.id] = item; });
-  return obj;
+// ─── FIREBASE HELPERS ─────────────────────────────────────────────────────────
+function db() {
+  return window._db;
 }
 
+// Save a single record to Firebase (upsert by id)
+function fbSet(path, data) {
+  if (!db()) { console.warn('Firebase not ready'); return; }
+  db().ref(path).set(data);
+}
+
+// Save a full collection (array → keyed object)
+function fbSetAll(path, arr) {
+  if (!db()) { console.warn('Firebase not ready'); return; }
+  const obj = {};
+  arr.forEach(item => { if (item && item.id) obj[item.id] = item; });
+  db().ref(path).set(obj);
+}
+
+// Delete a single record by id
+function fbDelete(path, id) {
+  if (!db()) { console.warn('Firebase not ready'); return; }
+  db().ref(`${path}/${id}`).remove();
+}
+
+// Legacy save() — still called throughout the app
 function save() {
-  const db = window._db;
-  if (!db) { console.warn('Firebase not ready'); return; }
-  db.ref('sms/reports').set(toObj(reports));
-  db.ref('sms/audits').set(toObj(audits));
-  db.ref('sms/auditA').set(toObj(auditA));
+  fbSetAll('sms/reports', reports);
+  fbSetAll('sms/audits',  audits);
+  fbSetAll('sms/auditA',  auditA);
+}
+
+// Show/hide a loading overlay while Firebase connects
+function setLoading(on) {
+  const el = document.getElementById('fb-loading');
+  if (el) el.style.display = on ? 'flex' : 'none';
 }
 
 // ─── REAL-TIME LISTENERS (sync across all devices) ────────────────────────────
 window.addEventListener('load', function() {
-  const db = window._db;
-  if (!db) return;
+  if (!db()) {
+    console.error('Firebase db not initialised');
+    setLoading(false);
+    return;
+  }
 
-  db.ref('sms/reports').on('value', snap => {
+  let loadedCount = 0;
+  const TOTAL = 3;
+  function onLoaded() {
+    loadedCount++;
+    if (loadedCount >= TOTAL) { setLoading(false); }
+  }
+
+  // Reports
+  db().ref('sms/reports').on('value', snap => {
     reports = snap.exists() ? Object.values(snap.val()) : [];
-    if (document.getElementById('page-dashboard')) { updateDashboard(); renderRegister(); }
+    updateDashboard();
+    renderRegister();
+    onLoaded();
   });
 
-  db.ref('sms/audits').on('value', snap => {
+  // Audits G.1
+  db().ref('sms/audits').on('value', snap => {
     audits = snap.exists() ? Object.values(snap.val()) : [];
-    if (document.getElementById('page-dashboard')) { renderSavedAudits(); updateDashboard(); }
+    renderSavedAudits();
+    updateDashboard();
+    onLoaded();
   });
 
-  db.ref('sms/auditA').on('value', snap => {
+  // Audits G.1-A
+  db().ref('sms/auditA').on('value', snap => {
     auditA = snap.exists() ? Object.values(snap.val()) : [];
-    if (document.getElementById('page-dashboard')) { renderSavedInspections(); updateDashboard(); }
+    renderSavedInspections();
+    updateDashboard();
+    onLoaded();
   });
 });
 
@@ -1296,7 +1352,30 @@ function initHazardChecks() {
   const c = document.getElementById('hazard-checks');
   c.innerHTML = HAZARD_TYPES.map(h =>
     `<label class="cb-item"><input type="checkbox" class="f-hazard-type" value="${h}"> ${h}</label>`
-  ).join('');
+  ).join('') + `
+    <div style="grid-column:1/-1;margin-top:10px;border-top:1.5px dashed var(--border);padding-top:12px;">
+      <label class="cb-item" style="margin-bottom:8px;">
+        <input type="checkbox" id="f-hazard-other-chk" onchange="toggleOtherHazard(this)">
+        <span style="font-weight:600;color:var(--navy);">&#9999; Others (please specify)</span>
+      </label>
+      <div id="f-hazard-other-wrap" style="display:none;margin-top:8px;padding:12px;background:#EFF6FF;border-radius:8px;border:1.5px solid #BFDBFE;">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Specify Hazard Type</label>
+        <input type="text" id="f-hazard-other-text"
+          placeholder="e.g. Structural damage, Flooding, Pandemic risk..."
+          style="width:100%;border:1.5px solid #93C5FD;border-radius:8px;padding:9px 12px;font-family:inherit;font-size:14px;background:white;"
+          oninput="this.style.borderColor=this.value?'var(--blue)':\'#93C5FD'"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;">Type the specific hazard type not covered by the list above.</div>
+      </div>
+    </div>`;
+}
+
+function toggleOtherHazard(chk) {
+  const wrap = document.getElementById('f-hazard-other-wrap');
+  wrap.style.display = chk.checked ? '' : 'none';
+  if (!chk.checked) {
+    const txt = document.getElementById('f-hazard-other-text');
+    if (txt) txt.value = '';
+  }
 }
 
 // ─── CAAP RISK MATRIX ────────────────────────────────────────────────────────
@@ -1407,33 +1486,51 @@ function updateRiskResult(prob, sev, val, code) {
 }
 
 // ─── CAP ROWS ────────────────────────────────────────────────────────────────
-let capCount = 0;
+// capUid: unique ID per element (never resets — avoids DOM collisions)
+// Display numbers are always recalculated from DOM order
+let capUid = 0;
+
 function addCapRow() {
-  capCount++;
-  const id = capCount;
+  capUid++;
+  const uid = capUid;
   const div = document.createElement('div');
-  div.id = `cap-${id}`;
+  div.className = 'cap-row-item';
   div.style = 'border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;';
   div.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <strong style="font-size:13px;">Action #${id}</strong>
-      <button class="btn btn-sm" style="background:#fee2e2;color:var(--red);border:none;" onclick="this.closest('div[id]').remove()">✕ Remove</button>
+      <strong class="cap-row-label" style="font-size:13px;">Action #1</strong>
+      <button class="btn btn-sm" style="background:#fee2e2;color:var(--red);border:none;"
+        onclick="removeCapRow(this)">✕ Remove</button>
     </div>
     <div class="form-grid">
-      <div class="form-group full"><label>Corrective Action</label><input type="text" id="cap-action-${id}" placeholder="Describe the action…"/></div>
+      <div class="form-group full"><label>Corrective Action</label><input type="text" id="cap-action-${uid}" placeholder="Describe the action…"/></div>
       <div class="form-group"><label>Control Type</label>
-        <select id="cap-type-${id}">
+        <select id="cap-type-${uid}">
           <option>Eliminate</option><option>Substitute</option><option>Engineering</option>
           <option>Administrative</option><option>PPE</option>
         </select>
       </div>
-      <div class="form-group"><label>Owner</label><input type="text" id="cap-owner-${id}" placeholder="Responsible person"/></div>
-      <div class="form-group"><label>Target Date</label><input type="date" id="cap-date-${id}"/></div>
+      <div class="form-group"><label>Owner</label><input type="text" id="cap-owner-${uid}" placeholder="Responsible person"/></div>
+      <div class="form-group"><label>Target Date</label><input type="date" id="cap-date-${uid}"/></div>
       <div class="form-group"><label>Status</label>
-        <select id="cap-status-${id}"><option>Open</option><option>In Progress</option><option>Done</option></select>
+        <select id="cap-status-${uid}"><option>Open</option><option>In Progress</option><option>Done</option></select>
       </div>
     </div>`;
   document.getElementById('cap-rows').appendChild(div);
+  refreshCapNumbers();
+}
+
+function removeCapRow(btn) {
+  btn.closest('.cap-row-item').remove();
+  refreshCapNumbers();
+}
+
+// Renumber all visible action rows sequentially from #1
+function refreshCapNumbers() {
+  document.querySelectorAll('#cap-rows .cap-row-item').forEach((row, idx) => {
+    const label = row.querySelector('.cap-row-label');
+    if (label) label.textContent = `Action #${idx + 1}`;
+  });
 }
 
 // ─── SUBMIT REPORT ────────────────────────────────────────────────────────────
@@ -1445,19 +1542,30 @@ function submitReport() {
 
   const isAnon = document.querySelector('input[name=anon]:checked').value === 'yes';
   const hazardTypes = [...document.querySelectorAll('.f-hazard-type:checked')].map(c => c.value);
+  // Add "Others" if checked and filled in
+  const otherChk = document.getElementById('f-hazard-other-chk');
+  const otherTxt = document.getElementById('f-hazard-other-text');
+  if (otherChk && otherChk.checked && otherTxt && otherTxt.value.trim()) {
+    hazardTypes.push('Others: ' + otherTxt.value.trim());
+  }
   const exposed = [...document.querySelectorAll('.f-exposed:checked')].map(c => c.value);
 
+  // Collect CAP rows from DOM (works regardless of numbering/removals)
   const caps = [];
-  for (let i = 1; i <= capCount; i++) {
-    const el = document.getElementById(`cap-action-${i}`);
-    if (el) caps.push({
-      action: el.value,
-      type: document.getElementById(`cap-type-${i}`).value,
-      owner: document.getElementById(`cap-owner-${i}`).value,
-      date: document.getElementById(`cap-date-${i}`).value,
-      status: document.getElementById(`cap-status-${i}`).value,
+  document.querySelectorAll('#cap-rows .cap-row-item').forEach(row => {
+    const actionEl = row.querySelector('[id^="cap-action-"]');
+    const typeEl   = row.querySelector('[id^="cap-type-"]');
+    const ownerEl  = row.querySelector('[id^="cap-owner-"]');
+    const dateEl   = row.querySelector('[id^="cap-date-"]');
+    const statusEl = row.querySelector('[id^="cap-status-"]');
+    if (actionEl) caps.push({
+      action: actionEl.value,
+      type:   typeEl   ? typeEl.value   : '',
+      owner:  ownerEl  ? ownerEl.value  : '',
+      date:   dateEl   ? dateEl.value   : '',
+      status: statusEl ? statusEl.value : 'Open',
     });
-  }
+  });
 
   const L = parseInt(document.getElementById('f-probability').value);
   const S = document.getElementById('f-severity-caap').value;
@@ -1497,8 +1605,7 @@ function submitReport() {
     submittedBy: currentRole || 'admin',
   };
 
-  reports.unshift(report);
-  save();
+  fbSet('sms/reports/' + report.id, report);  // Firebase listener auto-refreshes
 
   if (currentRole === 'student') {
     showStudentSuccess(report.id);
@@ -1563,12 +1670,19 @@ function clearForm() {
     if (el) el.value = '';
   });
   document.querySelectorAll('.f-hazard-type, .f-exposed').forEach(c => c.checked = false);
+  // Reset Others hazard field
+  const otherChk = document.getElementById('f-hazard-other-chk');
+  const otherTxt = document.getElementById('f-hazard-other-text');
+  const otherWrap = document.getElementById('f-hazard-other-wrap');
+  if (otherChk)  otherChk.checked = false;
+  if (otherTxt)  otherTxt.value   = '';
+  if (otherWrap) otherWrap.style.display = 'none';
   document.getElementById('f-anon-no').checked = true;
   document.getElementById('reporter-fields').style.display = 'grid';
   document.getElementById('f-probability').value = '0';
   document.getElementById('f-severity-caap').value = '0';
   document.getElementById('cap-rows').innerHTML = '';
-  capCount = 0;
+  capUid = 0;  // reset uid counter on clear so numbering starts fresh
   calcRisk();
 }
 
@@ -1650,21 +1764,17 @@ function executeDelete() {
   closeDelModal();
 
   if (type === 'report') {
-    reports = reports.filter(r => r.id !== id);
-    save(); renderRegister(); updateDashboard();
+    fbDelete('sms/reports', id);   // Firebase removes it; listener re-renders automatically
     toast('🗑 Report deleted.', 'error');
     if (document.getElementById('modal').classList.contains('open')) closeModal();
   } else if (type === 'all-reports') {
-    reports = [];
-    save(); renderRegister(); updateDashboard();
+    if (db()) db().ref('sms/reports').remove();
     toast('🗑 All hazard reports deleted.', 'error');
   } else if (type === 'audit') {
-    audits = audits.filter(a => a.id !== id);
-    save(); renderSavedAudits(); updateDashboard();
+    fbDelete('sms/audits', id);
     toast('🗑 Audit deleted.', 'error');
   } else if (type === 'inspection') {
-    auditA = auditA.filter(a => a.id !== id);
-    save(); renderSavedInspections(); updateDashboard();
+    fbDelete('sms/auditA', id);
     toast('🗑 Inspection deleted.', 'error');
   }
 }
@@ -1685,7 +1795,10 @@ function deleteReport(id) {
 
 function updateStatus(id, status) {
   const r = reports.find(x => x.id === id);
-  if (r) { r.status = status; save(); }
+  if (r) {
+    r.status = status;
+    fbSet('sms/reports/' + id, r);  // Update just this record in Firebase
+  }
 }
 
 // ─── SAVED AUDITS / INSPECTIONS LISTS ─────────────────────────────────────────
@@ -2335,9 +2448,7 @@ function saveAudit() {
     state: {...auditState},
     saved: new Date().toISOString(),
   };
-  audits.push(record);
-  save();
-  renderSavedAudits();
+  fbSet('sms/audits/' + record.id, record);  // Firebase listener auto-refreshes the list
   toast('✅ Audit saved!', 'success');
 }
 
@@ -2393,9 +2504,7 @@ function saveAuditA() {
     nextDate: document.getElementById('ga-next').value,
     saved: new Date().toISOString(),
   };
-  auditA.push(record);
-  save();
-  renderSavedInspections();
+  fbSet('sms/auditA/' + record.id, record);  // Firebase listener auto-refreshes the list
   toast('✅ Inspection saved!', 'success');
 }
 
