@@ -612,6 +612,48 @@
   .modal-tab-panel { display:none; }
   .modal-tab-panel.active { display:block; }
 
+  /* ── PHOTO UPLOAD ── */
+  #photo-drop-zone.drag-over, #photo-drop-zone.dz-hover { border-color: var(--blue); background: #EFF6FF; transform: scale(1.01); }
+  #photo-drop-zone:hover { border-color: var(--blue); background: #F0F6FF; }
+  .photo-thumb-wrap {
+    position: relative; border-radius: 8px; overflow: hidden;
+    aspect-ratio: 1; background: var(--light);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1); cursor: pointer;
+    transition: transform .15s;
+  }
+  .photo-thumb-wrap:hover { transform: scale(1.03); }
+  .photo-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-thumb-remove {
+    position: absolute; top: 4px; right: 4px;
+    background: rgba(0,0,0,0.6); color: white; border: none;
+    border-radius: 50%; width: 20px; height: 20px; font-size: 11px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .15s;
+  }
+  .photo-thumb-wrap:hover .photo-thumb-remove { opacity: 1; }
+  .photo-thumb-name {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.5); color: white; font-size: 9px;
+    padding: 3px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #photo-lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    z-index: 9999; align-items: center; justify-content: center; flex-direction: column;
+  }
+  #photo-lightbox.open { display: flex; }
+  #photo-lightbox img { max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+  #photo-lightbox-caption { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 12px; }
+  #photo-lightbox-close { position: absolute; top: 20px; right: 24px; color: white; font-size: 28px; cursor: pointer; background: none; border: none; line-height: 1; }
+  #photo-lightbox-prev, #photo-lightbox-next {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    color: white; font-size: 32px; cursor: pointer; background: rgba(255,255,255,0.1);
+    border: none; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+  }
+  #photo-lightbox-prev:hover, #photo-lightbox-next:hover { background: rgba(255,255,255,0.25); }
+  #photo-lightbox-prev { left: 20px; }
+  #photo-lightbox-next { right: 20px; }
+
   /* ── AUDIT LOG PAGE ── */
   .al-filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
   .al-row {
@@ -638,6 +680,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 
 <script>
   try {
@@ -747,6 +791,7 @@
     <button class="nav-tab admin-only" onclick="showPage('spi')">🎯 SPIs</button>
     <button class="nav-tab" onclick="showPage('track-report')">🔎 Track Report</button>
     <button class="nav-tab admin-only" onclick="showPage('auditlog')">📜 Audit Log</button>
+    <button class="nav-tab admin-only" onclick="showPage('archive')">🗄️ Archive</button>
     <button class="nav-tab admin-only" onclick="showPage('settings')">⚙️ Settings</button>
   </div>
   <div class="user-badge" id="user-badge">
@@ -854,6 +899,60 @@
       <div id="pending-signoffs" style="font-size:13px;color:var(--muted);">Loading…</div>
     </div>
   </div>
+
+  <!-- ── HAZARD TRENDS ─────────────────────────────────────────────────── -->
+  <div style="margin-top:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div class="section-title" style="margin-bottom:2px;">📊 Hazard Trends</div>
+        <div class="section-sub" style="margin:0;">Historical analysis of reports, risk levels, and locations</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Period</label>
+        <select id="trend-period" onchange="updateTrends()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:#fff;width:auto;">
+          <option value="6">Last 6 months</option>
+          <option value="12" selected>Last 12 months</option>
+          <option value="24">Last 24 months</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Row 1: Monthly volume line + Urgency stacked -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="card" style="border-top:3px solid var(--blue);">
+        <div class="card-title"><span class="icon">📈</span> Monthly Report Volume</div>
+        <div style="position:relative;height:220px;"><canvas id="chart-monthly"></canvas></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--orange);">
+        <div class="card-title"><span class="icon">🎯</span> Monthly Urgency Breakdown</div>
+        <div style="position:relative;height:220px;"><canvas id="chart-urgency-trend"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 2: Top locations + Open vs Closed over time -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="card" style="border-top:3px solid var(--teal);">
+        <div class="card-title"><span class="icon">📍</span> Top Hazard Locations</div>
+        <div style="position:relative;height:220px;"><canvas id="chart-locations"></canvas></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div class="card-title"><span class="icon">✅</span> Open vs Closed Over Time</div>
+        <div style="position:relative;height:220px;"><canvas id="chart-status-trend"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 3: Heatmap summary + Report type mix -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card" style="border-top:3px solid var(--gold);">
+        <div class="card-title"><span class="icon">🌡️</span> Risk Heatmap (by Month)</div>
+        <div id="risk-heatmap" style="overflow-x:auto;"></div>
+      </div>
+      <div class="card" style="border-top:3px solid #8B5CF6;">
+        <div class="card-title"><span class="icon">📋</span> Report Type Mix</div>
+        <div style="position:relative;height:220px;"><canvas id="chart-type-mix"></canvas></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
@@ -862,6 +961,24 @@
 <div id="page-report" class="page">
   <div class="section-title">B.3 Hazard Report Form</div>
   <div class="section-sub">Report hazards, unsafe conditions, and near-misses</div>
+
+  <!-- Draft restore banner -->
+  <div id="draft-restore-banner" style="display:none;background:linear-gradient(90deg,#1B3A6B,#2563A8);color:white;border-radius:10px;padding:12px 18px;margin-bottom:14px;display:none;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">💾</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;">Unsaved draft found</div>
+        <div id="draft-restore-time" style="font-size:11px;opacity:.75;margin-top:1px;"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="restoreDraft()" style="background:white;color:#1B3A6B;font-weight:700;border:none;">↩ Restore Draft</button>
+      <button class="btn btn-sm" onclick="discardDraft()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);">🗑 Discard</button>
+    </div>
+  </div>
+
+  <!-- Auto-save status indicator -->
+  <div id="autosave-status" style="text-align:right;font-size:11px;color:var(--muted);margin-bottom:8px;min-height:16px;"></div>
 
   <!-- A. Report Control -->
   <div class="form-section">
@@ -1051,6 +1168,47 @@
         <div class="form-group"><label>Witness Name / Contact</label><input type="text" id="f-witness" placeholder="Name and contact"/></div>
         <div class="form-group"><label>Evidence Notes</label><textarea id="f-evidence" placeholder="Describe or reference evidence…"></textarea></div>
       </div>
+
+      <!-- Photo Evidence — Auto Upload to Google Drive -->
+      <div style="margin-top:16px;">
+        <label style="display:block;margin-bottom:6px;">📸 Photo Evidence</label>
+
+        <!-- Upload status banner -->
+        <div id="photo-upload-banner" style="display:none;background:linear-gradient(90deg,#1B3A6B,#2563A8);color:white;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:600;display:none;align-items:center;gap:10px;">
+          <span id="photo-upload-banner-icon">⏳</span>
+          <span id="photo-upload-banner-text">Uploading photo to Google Drive…</span>
+        </div>
+
+        <!-- Drop zone -->
+        <div id="photo-drop-zone"
+          ondragover="event.preventDefault();this.classList.add('dz-hover')"
+          ondragleave="this.classList.remove('dz-hover')"
+          ondrop="handlePhotoDrop(event)"
+          onclick="document.getElementById('photo-file-input').click()"
+          style="border:2px dashed var(--border);border-radius:10px;padding:22px;text-align:center;cursor:pointer;background:#FAFBFC;transition:all .15s;">
+          <div style="font-size:30px;margin-bottom:6px;">📷</div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">Click to upload or drag & drop photos</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, GIF, WEBP — max 5 MB each — up to 10 photos</div>
+          <div id="photo-no-script-hint" style="display:none;margin-top:8px;font-size:10px;color:#D97706;background:#FEF3C7;border-radius:6px;padding:5px 10px;">
+            ⚠️ Google Apps Script URL not configured — photos will be saved as links only. Set it up in ⚙️ Settings.
+          </div>
+        </div>
+        <input type="file" id="photo-file-input" accept="image/*" multiple style="display:none" onchange="handlePhotoFileSelect(event)"/>
+
+        <!-- Photo cards grid -->
+        <div id="photo-links-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:12px;"></div>
+
+        <!-- Manual fallback -->
+        <details style="margin-top:12px;">
+          <summary style="font-size:11px;color:var(--muted);cursor:pointer;user-select:none;">📎 Or manually paste a Google Drive link</summary>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <input type="text" id="photo-link-input" placeholder="Paste Google Drive share link…" style="flex:1;font-size:12px;"/>
+            <input type="text" id="photo-link-caption" placeholder="Caption (optional)" style="max-width:150px;font-size:12px;"/>
+            <button class="btn btn-sm" onclick="addPhotoLink()" style="background:#DBEAFE;color:#1D4ED8;border:1.5px solid #93C5FD;font-weight:600;white-space:nowrap;">+ Add</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:5px;">Upload to Drive → Right-click → Share → "Anyone with the link" → Copy link → Paste above.</div>
+        </details>
+      </div>
     </div>
   </div>
 
@@ -1076,26 +1234,95 @@
   <div class="section-title">Hazard Register</div>
   <div class="section-sub">All submitted hazard reports and their status</div>
 
-  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-    <input type="text" id="reg-search" placeholder="🔍 Search reports…" style="max-width:260px;" oninput="renderRegister()"/>
-    <select id="reg-filter-status" onchange="renderRegister()" style="max-width:160px;">
-      <option value="">All Statuses</option>
-      <option value="Open">Open</option>
-      <option value="In Progress">In Progress</option>
-      <option value="Closed">Closed</option>
-    </select>
-    <select id="reg-filter-urgency" onchange="renderRegister()" style="max-width:160px;">
-      <option value="">All Urgency</option>
-      <option value="immediate">Immediate</option>
-      <option value="high">High</option>
-      <option value="medium">Medium</option>
-      <option value="low">Low</option>
-    </select>
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+    <input type="text" id="reg-search" placeholder="🔍 Search ID, type, location, description, reporter…" style="flex:1;min-width:220px;" oninput="renderRegister()"/>
+    <button class="btn btn-sm" id="adv-search-toggle" onclick="toggleAdvSearch()" style="background:#EFF6FF;color:#2563A8;border:1.5px solid #BFDBFE;font-weight:600;">⚙️ Filters <span id="adv-filter-count"></span></button>
     <div style="margin-left:auto;display:flex;gap:8px;">
-      <button class="btn btn-outline btn-sm" onclick="printRegister()">🖨️ Print Register</button>
-      <button class="btn btn-sm" style="background:#FEF9C3;color:#92400E;border:1.5px solid #D97706;" onclick="clearAllHazards()">🗑 Clear All Hazards</button>
+      <button class="btn btn-outline btn-sm" onclick="printRegister()">🖨️ Print</button>
+      <button class="btn btn-sm" style="background:#DBEAFE;color:#1D4ED8;border:1.5px solid #93C5FD;font-weight:600;" onclick="exportRegisterPDF()">📄 Export PDF</button>
+      <button class="btn btn-sm" style="background:#FEF9C3;color:#92400E;border:1.5px solid #D97706;" onclick="clearAllHazards()">🗑 Clear All</button>
     </div>
   </div>
+
+  <!-- Advanced Search Panel -->
+  <div id="adv-search-panel" style="display:none;background:#F8FAFC;border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Status</label>
+        <select id="reg-filter-status" onchange="renderRegister()" style="width:100%;">
+          <option value="">All Statuses</option>
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Urgency</label>
+        <select id="reg-filter-urgency" onchange="renderRegister()" style="width:100%;">
+          <option value="">All Urgency</option>
+          <option value="immediate">🔴 Immediate</option>
+          <option value="high">🟠 High</option>
+          <option value="medium">🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Report Type</label>
+        <select id="reg-filter-type" onchange="renderRegister()" style="width:100%;">
+          <option value="">All Types</option>
+          <option>Hazard</option>
+          <option>Near-miss</option>
+          <option>Safety Concern / Observation</option>
+          <option>Unsafe Act</option>
+          <option>Unsafe Condition</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Reporter</label>
+        <select id="reg-filter-reporter" onchange="renderRegister()" style="width:100%;">
+          <option value="">All Reporters</option>
+          <option value="admin">Admin</option>
+          <option value="student">🎓 Student</option>
+          <option value="anonymous">🔒 Anonymous</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Date From</label>
+        <input type="date" id="reg-filter-date-from" onchange="renderRegister()" style="width:100%;"/>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Date To</label>
+        <input type="date" id="reg-filter-date-to" onchange="renderRegister()" style="width:100%;"/>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Special</label>
+        <select id="reg-filter-special" onchange="renderRegister()" style="width:100%;">
+          <option value="">No Special Filter</option>
+          <option value="overdue">⏰ Overdue Only</option>
+          <option value="recurring">🔁 Recurring Only</option>
+          <option value="photos">📸 Has Photos</option>
+          <option value="no-cap">⚠️ No CAP Actions</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Sort By</label>
+        <select id="reg-sort" onchange="renderRegister()" style="width:100%;">
+          <option value="date-desc">Newest First</option>
+          <option value="date-asc">Oldest First</option>
+          <option value="urgency">Urgency (Highest)</option>
+          <option value="risk-desc">Risk (Highest)</option>
+          <option value="risk-asc">Risk (Lowest)</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
+      <button class="btn btn-sm btn-outline" onclick="clearAdvFilters()">✕ Clear All Filters</button>
+    </div>
+  </div>
+
+  <!-- Active filter chips -->
+  <div id="reg-filter-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
 
   <div class="tbl-wrap">
     <table>
@@ -1354,6 +1581,7 @@
       <h3 id="modal-title">Report Detail</h3>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.1);" onclick="printReport()">🖨️ Print</button>
+        <button class="btn btn-sm" style="background:#DBEAFE;color:#1D4ED8;border:none;font-weight:600;" onclick="exportSingleReportPDF()">📄 PDF</button>
         <button class="btn btn-sm" style="background:#DC2626;color:white;border:none;" onclick="confirmDeleteFromModal()">🗑 Delete</button>
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
@@ -1361,16 +1589,27 @@
     <div class="modal-body" id="modal-body">
       <div class="modal-tabs">
         <button class="modal-tab active" onclick="switchModalTab(this,'tab-details')">📋 Details</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'tab-photos')">📸 Photos</button>
         <button class="modal-tab" onclick="switchModalTab(this,'tab-regulatory')">📖 Regulations</button>
         <button class="modal-tab" onclick="switchModalTab(this,'tab-signoff')">✍️ Sign-offs</button>
         <button class="modal-tab" onclick="switchModalTab(this,'tab-trail')">📜 Audit Trail</button>
       </div>
       <div id="tab-details" class="modal-tab-panel active"></div>
+      <div id="tab-photos" class="modal-tab-panel"></div>
       <div id="tab-regulatory" class="modal-tab-panel"></div>
       <div id="tab-signoff" class="modal-tab-panel"></div>
       <div id="tab-trail" class="modal-tab-panel"></div>
     </div>
   </div>
+</div>
+
+<!-- PHOTO LIGHTBOX -->
+<div id="photo-lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button id="photo-lightbox-close" onclick="closeLightbox()">✕</button>
+  <button id="photo-lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+  <img id="photo-lightbox-img" src="" alt=""/>
+  <div id="photo-lightbox-caption"></div>
+  <button id="photo-lightbox-next" onclick="lightboxNav(1)">›</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
@@ -1457,9 +1696,96 @@
 <!-- ═══════════════════════════════════════════════════════════════════════════
      SETTINGS PAGE
 ════════════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     ARCHIVE PAGE
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-archive" class="page">
+  <div class="section-title">🗄️ Semester Archive</div>
+  <div class="section-sub">Archive all current data per semester — data is preserved in Firebase and can be exported anytime</div>
+
+  <!-- Create New Archive -->
+  <div class="card" style="border-top:3px solid var(--blue);margin-bottom:20px;">
+    <div class="card-title"><span class="icon">📦</span> Create New Archive</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+      This will copy all current reports, audits, audit log, and CAP data into a permanent archive snapshot in Firebase. Your live data stays untouched unless you choose to clear it after archiving.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div class="form-group">
+        <label>Semester</label>
+        <select id="arc-semester">
+          <option value="1st Semester">1st Semester</option>
+          <option value="2nd Semester">2nd Semester</option>
+          <option value="Summer">Summer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Academic Year</label>
+        <input type="text" id="arc-year" placeholder="e.g. 2024-2025"/>
+      </div>
+      <div class="form-group">
+        <label>Label / Notes (optional)</label>
+        <input type="text" id="arc-label" placeholder="e.g. BSAVT 3A"/>
+      </div>
+    </div>
+    <div style="background:#FEF9C3;border:1.5px solid #FCD34D;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#92400E;">
+      ⚠️ <strong>After archiving</strong>, you will be asked if you want to <strong>clear the live data</strong> to start fresh for the new semester. You can also keep the live data running — your choice.
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn btn-primary" onclick="createArchive()">📦 Archive Current Semester</button>
+      <div id="arc-status" style="font-size:13px;color:var(--muted);"></div>
+    </div>
+  </div>
+
+  <!-- Summary of current live data -->
+  <div class="card" style="border-top:3px solid var(--teal);margin-bottom:20px;">
+    <div class="card-title"><span class="icon">📊</span> Current Live Data Summary</div>
+    <div id="arc-live-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;"></div>
+  </div>
+
+  <!-- Past Archives -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="background:var(--navy);color:white;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;">📁 Past Archives</div>
+      <span id="arc-count" style="font-size:12px;opacity:.7;"></span>
+    </div>
+    <div id="arc-list">
+      <div style="padding:40px;text-align:center;color:var(--muted);font-size:14px;">No archives yet. Create your first archive above.</div>
+    </div>
+  </div>
+</div>
+
 <div id="page-settings" class="page">
   <div class="section-title">⚙️ Admin Settings</div>
   <div class="section-sub">Manage system configuration and security</div>
+
+  <!-- Google Apps Script URL Card -->
+  <div class="card" style="max-width:600px;border-top:3px solid var(--blue);">
+    <div class="card-title"><span class="icon">📸</span> Google Drive Photo Upload</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+      Paste your Google Apps Script Web App URL here to enable automatic photo uploads directly to your Google Drive folder. Once set, reporters can drag and drop photos — no manual sharing required.
+    </p>
+
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>Apps Script Web App URL</label>
+      <input type="text" id="apps-script-url" placeholder="https://script.google.com/macros/s/XXXXXXXXXX/exec"
+        style="font-family:monospace;font-size:12px;"
+        oninput="saveAppsScriptUrl()"/>
+    </div>
+    <div id="apps-script-status" style="font-size:12px;min-height:18px;margin-bottom:12px;"></div>
+    <button class="btn btn-sm" style="background:#DBEAFE;color:#1D4ED8;border:1.5px solid #93C5FD;font-weight:600;" onclick="testAppsScriptUrl()">🔌 Test Connection</button>
+
+    <div style="margin-top:16px;background:#F0FDF4;border-radius:8px;padding:12px 14px;border-left:3px solid var(--green);">
+      <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px;">📋 Setup Steps (one time only):</div>
+      <ol style="font-size:12px;color:#166534;line-height:2;margin:0;padding-left:18px;">
+        <li>Go to <a href="https://script.google.com" target="_blank" style="color:var(--blue);">script.google.com</a> → New Project</li>
+        <li>Paste the contents of <strong>GoogleAppsScript_DriveUpload.js</strong> into the editor</li>
+        <li>Click <strong>Deploy → New Deployment → Web App</strong></li>
+        <li>Set <em>Execute as:</em> <strong>Me</strong> · <em>Who has access:</em> <strong>Anyone</strong></li>
+        <li>Click Deploy → Authorize → Copy the Web App URL</li>
+        <li>Paste the URL in the field above and click <strong>Test Connection</strong></li>
+      </ol>
+    </div>
+  </div>
 
   <!-- Change Admin Password Card -->
   <div class="card" style="max-width:480px;">
@@ -1833,6 +2159,7 @@ function showPage(id, tabEl) {
   if (id === 'audit')        renderSavedAudits();
   if (id === 'audit-a')      renderSavedInspections();
   if (id === 'settings')     initSettingsPage();
+  if (id === 'archive')      initArchivePage();
   if (id === 'cap-tracker')  renderCapTracker();
   if (id === 'meetings')     renderMeetings();
   if (id === 'documents')    renderDocuments();
@@ -2790,6 +3117,7 @@ function submitReport() {
     caps,
     witness: document.getElementById('f-witness').value,
     evidence: document.getElementById('f-evidence').value,
+    photos: window._formPhotoLinks || [],
     status: 'Open',
     submittedBy: currentRole || 'admin',
     regRefs: getRegRefs(hazardTypes),
@@ -2875,28 +3203,83 @@ function clearForm() {
   document.getElementById('f-severity-caap').value = '0';
   document.getElementById('cap-rows').innerHTML = '';
   capUid = 0;  // reset uid counter on clear so numbering starts fresh
+  // Clear photo links
+  window._formPhotoLinks = [];
+  const photoList = document.getElementById('photo-links-list');
+  if (photoList) photoList.innerHTML = '';
+  const linkInput = document.getElementById('photo-link-input');
+  if (linkInput) linkInput.value = '';
+  const capInput = document.getElementById('photo-link-caption');
+  if (capInput) capInput.value = '';
   calcRisk();
 }
 
 // ─── REGISTER ─────────────────────────────────────────────────────────────────
 function renderRegister() {
-  const search  = (document.getElementById('reg-search').value || '').toLowerCase();
-  const fStatus = document.getElementById('reg-filter-status').value;
-  const fUrg    = document.getElementById('reg-filter-urgency').value;
+  const search     = (document.getElementById('reg-search')?.value || '').toLowerCase();
+  const fStatus    = document.getElementById('reg-filter-status')?.value || '';
+  const fUrg       = document.getElementById('reg-filter-urgency')?.value || '';
+  const fType      = document.getElementById('reg-filter-type')?.value || '';
+  const fReporter  = document.getElementById('reg-filter-reporter')?.value || '';
+  const fDateFrom  = document.getElementById('reg-filter-date-from')?.value || '';
+  const fDateTo    = document.getElementById('reg-filter-date-to')?.value || '';
+  const fSpecial   = document.getElementById('reg-filter-special')?.value || '';
+  const fSort      = document.getElementById('reg-sort')?.value || 'date-desc';
+
+  const groups = getRecurrenceGroups();
 
   let filtered = reports.filter(r => {
-    const txt = [r.id,r.type,r.location,r.description,r.name].join(' ').toLowerCase();
-    return (!search || txt.includes(search))
-      && (!fStatus || r.status === fStatus)
-      && (!fUrg    || r.urgency === fUrg);
+    // Text search across more fields
+    const txt = [r.id,r.type,r.location,r.description,r.name,r.org,r.activity,r.supervisor,(r.hazardTypes||[]).join(' ')].join(' ').toLowerCase();
+    if (search && !txt.includes(search)) return false;
+    if (fStatus && r.status !== fStatus) return false;
+    if (fUrg    && r.urgency !== fUrg) return false;
+    if (fType   && r.type !== fType) return false;
+    if (fReporter === 'student'   && r.submittedBy !== 'student') return false;
+    if (fReporter === 'admin'     && r.submittedBy !== 'admin') return false;
+    if (fReporter === 'anonymous' && !r.anonymous) return false;
+    if (fDateFrom && new Date(r.submitted) < new Date(fDateFrom)) return false;
+    if (fDateTo   && new Date(r.submitted) > new Date(fDateTo + 'T23:59:59')) return false;
+    // Special filters
+    if (fSpecial === 'overdue') {
+      const tol = TOLERANCE_DAYS[r.urgency] ?? 90;
+      if (r.status === 'Closed' || daysOpen(r) <= tol) return false;
+    }
+    if (fSpecial === 'recurring') {
+      const key = recurrenceKey(r);
+      const grp = groups[key];
+      if (!grp || grp.count < RECURRENCE_THRESHOLD) return false;
+    }
+    if (fSpecial === 'photos'  && !(r.photos?.length)) return false;
+    if (fSpecial === 'no-cap'  && r.caps?.length > 0) return false;
+    return true;
   });
+
+  // Sort
+  const urgOrder = { immediate:0, high:1, medium:2, low:3 };
+  filtered.sort((a,b) => {
+    switch(fSort) {
+      case 'date-asc':   return new Date(a.submitted||0) - new Date(b.submitted||0);
+      case 'urgency':    return (urgOrder[a.urgency]??9) - (urgOrder[b.urgency]??9);
+      case 'risk-desc':  return (b.riskIndex||0) - (a.riskIndex||0);
+      case 'risk-asc':   return (a.riskIndex||0) - (b.riskIndex||0);
+      case 'status':     return (a.status||'').localeCompare(b.status||'');
+      default:           return new Date(b.submitted||0) - new Date(a.submitted||0);
+    }
+  });
+
+  // Active filter chips
+  renderFilterChips({ search, fStatus, fUrg, fType, fReporter, fDateFrom, fDateTo, fSpecial, fSort });
+
+  // Update filter button badge
+  const activeCount = [fStatus,fUrg,fType,fReporter,fDateFrom,fDateTo,fSpecial].filter(Boolean).length + (search ? 1 : 0);
+  const countEl = document.getElementById('adv-filter-count');
+  if (countEl) countEl.textContent = activeCount ? ` (${activeCount})` : '';
 
   const tbody = document.getElementById('register-tbody');
   const empty = document.getElementById('reg-empty');
   if (!filtered.length) { tbody.innerHTML = ''; empty.style.display='block'; return; }
   empty.style.display = 'none';
-
-  const groups = getRecurrenceGroups();
 
   tbody.innerHTML = filtered.map(r => {
     const days    = daysOpen(r);
@@ -2928,6 +3311,7 @@ function renderRegister() {
       <td>
         <code style="font-size:11px;color:var(--blue);">${r.id}</code>
         ${studentBadge}
+        ${r.photos?.length ? `<br><span style="font-size:9px;background:#EFF6FF;color:#2563A8;padding:1px 6px;border-radius:99px;font-weight:600;">📸 ${r.photos.length}</span>` : ''}
       </td>
       <td style="white-space:nowrap;font-size:12px;">${r.submitted ? new Date(r.submitted).toLocaleDateString() : '—'}</td>
       <td>${r.type || '—'}</td>
@@ -2952,8 +3336,51 @@ function renderRegister() {
         <button class="btn btn-outline btn-sm" onclick="viewReport('${r.id}')">👁 View</button>
         <button class="btn btn-sm" style="background:${r.acknowledgment?'#F0FDF4':'#EFF6FF'};color:${r.acknowledgment?'#16A34A':'#2563A8'};border:1.5px solid ${r.acknowledgment?'#86EFAC':'#BFDBFE'};" onclick="openAckModal('${r.id}')" title="Acknowledge">${r.acknowledgment ? '✅ Ack' : '📬 Ack'}</button>
         <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" onclick="confirmDelete('report','${r.id}','${(r.type||'Report').replace(/'/g,"\\'")} — ${r.id}','')">🗑 Delete</button>
-      </td>    </tr>`;
+      </td>
+    </tr>`;
   }).join('');
+}
+
+function toggleAdvSearch() {
+  const panel = document.getElementById('adv-search-panel');
+  const btn   = document.getElementById('adv-search-toggle');
+  const open  = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = open ? 'block' : 'none';
+  btn.style.background = open ? '#DBEAFE' : '#EFF6FF';
+}
+
+function clearAdvFilters() {
+  ['reg-filter-status','reg-filter-urgency','reg-filter-type','reg-filter-reporter','reg-filter-date-from','reg-filter-date-to','reg-filter-special'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const sort = document.getElementById('reg-sort');
+  if (sort) sort.value = 'date-desc';
+  const search = document.getElementById('reg-search');
+  if (search) search.value = '';
+  renderRegister();
+}
+
+function renderFilterChips({ search, fStatus, fUrg, fType, fReporter, fDateFrom, fDateTo, fSpecial, fSort }) {
+  const chips = [];
+  if (search)     chips.push({ label:`🔍 "${search}"`,         clear:()=>{ document.getElementById('reg-search').value=''; renderRegister(); } });
+  if (fStatus)    chips.push({ label:`Status: ${fStatus}`,      clear:()=>{ document.getElementById('reg-filter-status').value=''; renderRegister(); } });
+  if (fUrg)       chips.push({ label:`Urgency: ${fUrg}`,        clear:()=>{ document.getElementById('reg-filter-urgency').value=''; renderRegister(); } });
+  if (fType)      chips.push({ label:`Type: ${fType}`,          clear:()=>{ document.getElementById('reg-filter-type').value=''; renderRegister(); } });
+  if (fReporter)  chips.push({ label:`Reporter: ${fReporter}`,  clear:()=>{ document.getElementById('reg-filter-reporter').value=''; renderRegister(); } });
+  if (fDateFrom)  chips.push({ label:`From: ${fDateFrom}`,      clear:()=>{ document.getElementById('reg-filter-date-from').value=''; renderRegister(); } });
+  if (fDateTo)    chips.push({ label:`To: ${fDateTo}`,          clear:()=>{ document.getElementById('reg-filter-date-to').value=''; renderRegister(); } });
+  if (fSpecial)   chips.push({ label:`✦ ${fSpecial}`,           clear:()=>{ document.getElementById('reg-filter-special').value=''; renderRegister(); } });
+  if (fSort && fSort !== 'date-desc') chips.push({ label:`Sort: ${fSort}`, clear:()=>{ document.getElementById('reg-sort').value='date-desc'; renderRegister(); } });
+
+  const container = document.getElementById('reg-filter-chips');
+  if (!container) return;
+  container.innerHTML = chips.map((c,i) => `
+    <span style="display:inline-flex;align-items:center;gap:5px;background:#DBEAFE;color:#1D4ED8;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600;">
+      ${c.label}
+      <button onclick="window._filterChipClears[${i}]()" style="background:none;border:none;color:#1D4ED8;cursor:pointer;font-size:13px;line-height:1;padding:0;margin:0;">✕</button>
+    </span>`).join('');
+  window._filterChipClears = chips.map(c => c.clear);
 }
 
 
@@ -3268,7 +3695,47 @@ function viewReport(id) {
       ${field('Sign-off Status', signoffSummary)}
     </div>`;
 
-  // ── Tab 2: Regulatory References ──
+  // ── Tab 2: Photos ──
+  const photos = r.photos || [];
+  document.getElementById('tab-photos').innerHTML = photos.length ? `
+    <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:13px;color:var(--muted);">${photos.length} photo link${photos.length!==1?'s':''} attached</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+      ${photos.map((p,i) => {
+        const thumb = getDriveThumbUrl(p.url);
+        return `<div style="background:white;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.1);overflow:hidden;border:1.5px solid var(--border);">
+          <a href="${p.url}" target="_blank" rel="noopener" style="display:block;">
+            ${thumb
+              ? `<img src="${thumb}" alt="${p.caption||'Photo '+(i+1)}" style="width:100%;height:120px;object-fit:cover;display:block;background:#F1F5F9;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+                 <div style="display:none;height:120px;align-items:center;justify-content:center;background:#F0F6FF;flex-direction:column;gap:6px;">
+                   <span style="font-size:32px;">🖼️</span>
+                   <span style="font-size:11px;color:var(--blue);">Click to open</span>
+                 </div>`
+              : `<div style="height:120px;display:flex;align-items:center;justify-content:center;background:#F0F6FF;flex-direction:column;gap:6px;">
+                   <span style="font-size:32px;">🔗</span>
+                   <span style="font-size:11px;color:var(--blue);">Open Link</span>
+                 </div>`}
+          </a>
+          <div style="padding:8px 10px;">
+            <div style="font-size:11px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.caption || 'Photo ' + (i+1)}</div>
+            <a href="${p.url}" target="_blank" rel="noopener" style="font-size:10px;color:var(--blue);text-decoration:none;display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🔗 Open in Google Drive</a>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` :
+    `<div style="text-align:center;padding:40px 20px;color:var(--muted);">
+      <div style="font-size:40px;margin-bottom:10px;">📷</div>
+      <div style="font-size:14px;font-weight:600;">No photos attached</div>
+      <div style="font-size:12px;margin-top:4px;">Paste Google Drive links when submitting a hazard report.</div>
+    </div>`;
+
+  // Update photos tab label with count
+  document.querySelectorAll('.modal-tab').forEach(t => {
+    if (t.textContent.startsWith('📸')) t.textContent = `📸 Photos${photos.length ? ' ('+photos.length+')' : ''}`;
+  });
+
+  // ── Tab 3: Regulatory References ──
   const refs = r.regRefs && r.regRefs.length ? r.regRefs : getRegRefs(r.hazardTypes||[]);
   document.getElementById('tab-regulatory').innerHTML = refs.length ? `
     <div style="margin-bottom:12px;font-size:12px;color:var(--muted);">
@@ -3873,6 +4340,248 @@ function updateDashboard() {
         </div>
       </div>`).join('')
     : '<div style="color:var(--muted);">No recent activity</div>';
+
+  // Hazard trends section
+  try { updateTrends(); } catch(e) {}
+}
+
+// ─── HAZARD TRENDS ────────────────────────────────────────────────────────────
+function updateTrends() {
+  const months = parseInt(document.getElementById('trend-period')?.value || '12');
+
+  // Build month labels (last N months)
+  const now = new Date();
+  const labels = [];
+  const monthKeys = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(d.toLocaleDateString('en-US', { month: 'short', year: months > 12 ? '2-digit' : undefined }));
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+
+  // Helper: get month key from date string
+  function mKey(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  // Filter reports to the period
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+  const inPeriod = reports.filter(r => {
+    const d = new Date(r.submitted||0);
+    return d >= cutoff;
+  });
+
+  // ── 1. Monthly volume line chart ──────────────────────────────────────────
+  const volByMonth = {};
+  monthKeys.forEach(k => volByMonth[k] = 0);
+  inPeriod.forEach(r => { const k = mKey(r.submitted); if (k && volByMonth[k] !== undefined) volByMonth[k]++; });
+
+  destroyChart('chart-monthly');
+  const ctxM = document.getElementById('chart-monthly');
+  if (ctxM) {
+    _charts['chart-monthly'] = new Chart(ctxM, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Reports',
+          data: monthKeys.map(k => volByMonth[k]),
+          borderColor: '#2563A8', backgroundColor: 'rgba(37,99,168,0.08)',
+          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#2563A8',
+          fill: true, tension: 0.35
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' report' + (ctx.parsed.y !== 1 ? 's' : '') } } },
+        scales: {
+          x: { ticks: { color: '#64748B', font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+          y: { ticks: { color: '#64748B', precision: 0 }, grid: { color: '#E2E8F0' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ── 2. Monthly urgency stacked bar ────────────────────────────────────────
+  const urgKeys = ['immediate', 'high', 'medium', 'low'];
+  const urgColors = { immediate: '#DC2626', high: '#EA580C', medium: '#D97706', low: '#16A34A' };
+  const urgByMonth = {};
+  urgKeys.forEach(u => { urgByMonth[u] = {}; monthKeys.forEach(k => urgByMonth[u][k] = 0); });
+  inPeriod.forEach(r => {
+    const k = mKey(r.submitted);
+    if (k && r.urgency && urgByMonth[r.urgency]) urgByMonth[r.urgency][k] = (urgByMonth[r.urgency][k]||0) + 1;
+  });
+
+  destroyChart('chart-urgency-trend');
+  const ctxUT = document.getElementById('chart-urgency-trend');
+  if (ctxUT) {
+    _charts['chart-urgency-trend'] = new Chart(ctxUT, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: urgKeys.map(u => ({
+          label: u.charAt(0).toUpperCase() + u.slice(1),
+          data: monthKeys.map(k => urgByMonth[u][k]),
+          backgroundColor: urgColors[u] + 'CC',
+          borderRadius: 4, borderSkipped: false
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } } },
+        scales: {
+          x: { stacked: true, ticks: { color: '#64748B', font: { size: 10 } }, grid: { display: false } },
+          y: { stacked: true, ticks: { color: '#64748B', precision: 0 }, grid: { color: '#E2E8F0' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ── 3. Top locations horizontal bar ──────────────────────────────────────
+  const locCounts = {};
+  inPeriod.forEach(r => { const l = (r.location || '—').trim(); locCounts[l] = (locCounts[l]||0)+1; });
+  const topLocs = Object.entries(locCounts).sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+  destroyChart('chart-locations');
+  const ctxL = document.getElementById('chart-locations');
+  if (ctxL) {
+    if (!topLocs.length) {
+      const c = ctxL.getContext('2d'); c.clearRect(0,0,ctxL.width,ctxL.height);
+      c.fillStyle='#94A3B8'; c.font='13px Inter,sans-serif'; c.textAlign='center';
+      c.fillText('No location data yet', ctxL.offsetWidth/2, 80);
+    } else {
+      _charts['chart-locations'] = new Chart(ctxL, {
+        type: 'bar',
+        data: {
+          labels: topLocs.map(([l]) => l.length > 26 ? l.slice(0,24)+'…' : l),
+          datasets: [{
+            data: topLocs.map(([,n]) => n),
+            backgroundColor: topLocs.map((_,i) => `hsl(${210 + i*12},70%,${55 - i*3}%)`),
+            borderRadius: 6, borderWidth: 0
+          }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x + ' report' + (ctx.parsed.x !== 1 ? 's' : '') } } },
+          scales: {
+            x: { ticks: { color: '#64748B', precision: 0 }, grid: { color: '#E2E8F0' } },
+            y: { ticks: { color: '#1E293B', font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+  }
+
+  // ── 4. Open vs Closed over time (line) ───────────────────────────────────
+  const openByMonth  = {};
+  const closedByMonth = {};
+  monthKeys.forEach(k => { openByMonth[k] = 0; closedByMonth[k] = 0; });
+  inPeriod.forEach(r => {
+    const k = mKey(r.submitted);
+    if (!k) return;
+    if (r.status === 'Closed') { if (closedByMonth[k] !== undefined) closedByMonth[k]++; }
+    else                        { if (openByMonth[k]   !== undefined) openByMonth[k]++; }
+  });
+
+  destroyChart('chart-status-trend');
+  const ctxST = document.getElementById('chart-status-trend');
+  if (ctxST) {
+    _charts['chart-status-trend'] = new Chart(ctxST, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Open', data: monthKeys.map(k => openByMonth[k]), borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.07)', borderWidth: 2.5, pointRadius: 3, fill: true, tension: 0.35 },
+          { label: 'Closed', data: monthKeys.map(k => closedByMonth[k]), borderColor: '#16A34A', backgroundColor: 'rgba(22,163,74,0.07)', borderWidth: 2.5, pointRadius: 3, fill: true, tension: 0.35 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } } },
+        scales: {
+          x: { ticks: { color: '#64748B', font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+          y: { ticks: { color: '#64748B', precision: 0 }, grid: { color: '#E2E8F0' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ── 5. Risk heatmap ───────────────────────────────────────────────────────
+  const heatmapEl = document.getElementById('risk-heatmap');
+  if (heatmapEl) {
+    const heatMonths = monthKeys.slice(-Math.min(months, 12)); // max 12 cols in heatmap
+    const heatLabels = labels.slice(-heatMonths.length);
+    const urgOrder = ['immediate','high','medium','low'];
+    const cellColor = { immediate:'#FEE2E2', high:'#FFEDD5', medium:'#FEF9C3', low:'#DCFCE7' };
+    const cellText  = { immediate:'#991B1B', high:'#9A3412', medium:'#854D0E', low:'#166534' };
+
+    let heatCounts = {};
+    urgOrder.forEach(u => { heatCounts[u] = {}; heatMonths.forEach(k => heatCounts[u][k] = 0); });
+    inPeriod.forEach(r => {
+      const k = mKey(r.submitted);
+      if (k && r.urgency && heatCounts[r.urgency] && heatCounts[r.urgency][k] !== undefined) heatCounts[r.urgency][k]++;
+    });
+
+    // Find max for intensity scaling
+    const allVals = urgOrder.flatMap(u => heatMonths.map(k => heatCounts[u][k]));
+    const maxVal = Math.max(...allVals, 1);
+
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:10px;min-width:300px;">
+      <thead><tr>
+        <th style="text-align:left;padding:4px 6px;color:var(--muted);font-weight:600;white-space:nowrap;">Level</th>
+        ${heatLabels.map(l => `<th style="text-align:center;padding:4px 3px;color:var(--muted);font-weight:600;white-space:nowrap;">${l}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    urgOrder.forEach(u => {
+      html += `<tr><td style="padding:4px 6px;font-weight:700;color:${cellText[u]};white-space:nowrap;text-transform:capitalize;">${u}</td>`;
+      heatMonths.forEach(k => {
+        const v = heatCounts[u][k];
+        const intensity = v === 0 ? 0 : 0.15 + 0.85 * (v / maxVal);
+        const bg = v === 0 ? '#F8FAFC' : cellColor[u];
+        html += `<td style="text-align:center;padding:5px 3px;">
+          <div style="background:${bg};opacity:${v===0?0.4:0.4+intensity*0.6};border-radius:5px;padding:4px 2px;font-weight:700;color:${v===0?'#CBD5E1':cellText[u]};">
+            ${v === 0 ? '·' : v}
+          </div></td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    heatmapEl.innerHTML = html;
+  }
+
+  // ── 6. Report type mix (polar/pie) ────────────────────────────────────────
+  const typeMix = {};
+  inPeriod.forEach(r => { const t = r.type || 'Unspecified'; typeMix[t] = (typeMix[t]||0)+1; });
+  const typeEntries = Object.entries(typeMix).sort((a,b) => b[1]-a[1]);
+  const mixColors = ['#2563A8','#0F766E','#D97706','#DC2626','#8B5CF6','#EA580C','#16A34A','#64748B'];
+
+  destroyChart('chart-type-mix');
+  const ctxTM = document.getElementById('chart-type-mix');
+  if (ctxTM) {
+    if (!typeEntries.length) {
+      const c = ctxTM.getContext('2d'); c.clearRect(0,0,ctxTM.width,ctxTM.height);
+      c.fillStyle='#94A3B8'; c.font='13px Inter,sans-serif'; c.textAlign='center';
+      c.fillText('No reports yet', ctxTM.offsetWidth/2, 100);
+    } else {
+      _charts['chart-type-mix'] = new Chart(ctxTM, {
+        type: 'doughnut',
+        data: {
+          labels: typeEntries.map(([t]) => t),
+          datasets: [{ data: typeEntries.map(([,n]) => n), backgroundColor: mixColors, borderWidth: 0, hoverOffset: 8 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '55%',
+          plugins: {
+            legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12, padding: 8, color: '#1E293B' } },
+            tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed } }
+          }
+        }
+      });
+    }
+  }
 }
 
 // ─── AUDIT G.1 ────────────────────────────────────────────────────────────────
@@ -4536,6 +5245,250 @@ function printStatistics() {
   window.print();
 }
 
+// ─── PDF EXPORT: SINGLE REPORT ────────────────────────────────────────────────
+function exportSingleReportPDF() {
+  const id = document.getElementById('modal-title').textContent.replace('Report: ','');
+  const r = reports.find(x => x.id === id);
+  if (!r) { toast('⚠️ Report not found.', 'error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { toast('⚠️ PDF library not loaded yet. Try again.', 'error'); return; }
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+
+  const navy  = [27, 58, 107];
+  const blue  = [37, 99, 168];
+  const white = [255, 255, 255];
+  const light = [240, 244, 248];
+  const muted = [100, 116, 139];
+
+  const W = 210, M = 14;
+  let y = 0;
+
+  function addPage() { doc.addPage(); y = 14; }
+  function checkY(needed) { if (y + needed > 280) addPage(); }
+
+  // ── Header banner ──────────────────────────────────────────────────────────
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, W, 38, 'F');
+
+  doc.setTextColor(...white);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text('AIRCRAFT MAINTENANCE TECHNOLOGY — SAFETY MANAGEMENT SYSTEM', M, 10);
+
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('Hazard Report', M, 20);
+
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.setFillColor(...blue);
+  doc.roundedRect(M, 24, 40, 8, 2, 2, 'F');
+  doc.setTextColor(...white);
+  doc.text(r.id, M + 2, 29.5);
+
+  doc.setTextColor(200, 220, 255);
+  doc.setFontSize(8);
+  doc.text(`Submitted: ${r.submitted ? new Date(r.submitted).toLocaleString() : '—'}   Via: ${r.via||'—'}`, M, 35);
+
+  // Urgency & status badges (top right)
+  const urgColors = { immediate:[220,38,38], high:[234,88,12], medium:[217,119,6], low:[22,163,74] };
+  const urgBg = urgColors[r.urgency] || [100,116,139];
+  doc.setFillColor(...urgBg);
+  doc.roundedRect(W - M - 36, 8, 36, 8, 2, 2, 'F');
+  doc.setTextColor(...white); doc.setFontSize(8); doc.setFont('helvetica','bold');
+  doc.text((r.urgency||'—').toUpperCase(), W - M - 34, 13.5);
+
+  const statColors = { 'Open':[37,99,168], 'Closed':[22,163,74], 'In Progress':[109,40,217] };
+  const statBg = statColors[r.status] || [100,116,139];
+  doc.setFillColor(...statBg);
+  doc.roundedRect(W - M - 36, 19, 36, 8, 2, 2, 'F');
+  doc.text((r.status||'—').toUpperCase(), W - M - 34, 24.5);
+
+  y = 46;
+
+  // ── Section helper ─────────────────────────────────────────────────────────
+  function section(title) {
+    checkY(14);
+    doc.setFillColor(...navy);
+    doc.rect(M, y, W - M*2, 7, 'F');
+    doc.setTextColor(...white); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+    doc.text(title, M + 3, y + 5);
+    y += 10;
+  }
+
+  function field(label, value, x, w, inline) {
+    checkY(10);
+    doc.setTextColor(...muted); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(label.toUpperCase(), x, y);
+    doc.setTextColor(30,41,59); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    const lines = doc.splitTextToSize(String(value||'—'), w - 4);
+    doc.text(lines, x, y + 4);
+    return y + 4 + lines.length * 4.5;
+  }
+
+  function twoCol(l1, v1, l2, v2) {
+    checkY(16);
+    const half = (W - M*2 - 6) / 2;
+    const yLeft  = field(l1, v1, M, half);
+    const yRight = field(l2, v2, M + half + 6, half);
+    y = Math.max(yLeft, yRight) + 4;
+  }
+
+  function oneCol(label, value) {
+    checkY(12);
+    field(label, value, M, W - M*2);
+    const lines = doc.splitTextToSize(String(value||'—'), W - M*2 - 4);
+    y += 4 + lines.length * 4.5 + 3;
+  }
+
+  // ── A. Report Control ──────────────────────────────────────────────────────
+  section('A. Report Control & Reporter');
+  twoCol('Report Type', r.type, 'Date Observed', r.observed||'—');
+  twoCol('Reporter', r.anonymous ? 'Anonymous' : `${r.name||'—'} (${r.role||'—'})`, 'Contact', r.anonymous ? '—' : (r.contact||'—'));
+
+  // ── B. Location ────────────────────────────────────────────────────────────
+  section('B. Location & Activity');
+  twoCol('Organization / Unit', r.org, 'Exact Location', r.location);
+  twoCol('Supervisor', r.supervisor, 'Frequency', r.frequency);
+  oneCol('Activity / Task', r.activity);
+
+  // ── C. Hazard ──────────────────────────────────────────────────────────────
+  section('C. Hazard Classification & Description');
+  oneCol('Hazard Types', (r.hazardTypes||[]).join(' · '));
+  oneCol('Who / What Is Exposed', (r.exposed||[]).join(', '));
+  oneCol('Description', r.description);
+  oneCol('Worst Credible Consequence', r.consequence);
+
+  // ── D. Risk ────────────────────────────────────────────────────────────────
+  section('D. Risk Assessment (CAAP)');
+  twoCol('Probability', String(r.probability??'—'), 'Severity', String(r.severity??'—'));
+  twoCol('Risk Index / Code', `${r.caapCode||r.riskIndex||'—'} — ${caapRiskLabel(r.riskIndex)}`, 'Existing Controls', r.existing);
+
+  // ── E. Immediate Controls ──────────────────────────────────────────────────
+  section('E. Immediate Controls');
+  twoCol('Work Stopped / Area Secured', r.stopped, 'Action Taken By', r.actionPerson);
+  oneCol('Immediate Action', r.immediate);
+
+  // ── F. CAP ─────────────────────────────────────────────────────────────────
+  section('F. Corrective Action Plan');
+  checkY(20);
+  const capRows = (r.caps||[]).map((c,i) => [i+1, c.action||'—', c.type||'—', c.owner||'—', c.date||'—', c.status||'—']);
+  doc.autoTable({
+    startY: y,
+    head: [['#','Action','Control Type','Owner','Target Date','Status']],
+    body: capRows.length ? capRows : [['—','No CAP actions defined','','','','']],
+    theme: 'striped',
+    headStyles: { fillColor: navy, fontSize: 8, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 8 },
+    margin: { left: M, right: M },
+    columnStyles: { 0:{cellWidth:8}, 1:{cellWidth:60}, 2:{cellWidth:28}, 3:{cellWidth:28}, 4:{cellWidth:22}, 5:{cellWidth:20} }
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // ── G. Evidence ────────────────────────────────────────────────────────────
+  section('G. Evidence & Witness');
+  twoCol('Witness', r.witness, 'Evidence Notes', r.evidence);
+
+  // ── Sign-off lines ─────────────────────────────────────────────────────────
+  checkY(30);
+  y += 6;
+  doc.setDrawColor(200,200,200);
+  const sigW = (W - M*2 - 20) / 3;
+  const sigLabels = ['Reporter Signature & Date', 'SMS Coordinator Signature & Date', 'Dept. Head Signature & Date'];
+  sigLabels.forEach((lbl, i) => {
+    const sx = M + i * (sigW + 10);
+    doc.line(sx, y + 18, sx + sigW, y + 18);
+    doc.setFontSize(7); doc.setTextColor(...muted); doc.setFont('helvetica','normal');
+    const wrapped = doc.splitTextToSize(lbl, sigW);
+    doc.text(wrapped, sx, y + 22);
+  });
+
+  // ── Footer on every page ───────────────────────────────────────────────────
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFillColor(248,250,252);
+    doc.rect(0, 287, W, 10, 'F');
+    doc.setFontSize(7); doc.setTextColor(...muted);
+    doc.text(`AMTS SMS — ${r.id} — Generated: ${new Date().toLocaleString()}`, M, 293);
+    doc.text(`Page ${p} of ${totalPages}`, W - M, 293, { align: 'right' });
+  }
+
+  doc.save(`AMTS_Report_${r.id}.pdf`);
+  toast('📄 PDF downloaded!', 'success');
+}
+
+// ─── PDF EXPORT: FULL REGISTER ────────────────────────────────────────────────
+function exportRegisterPDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { toast('⚠️ PDF library not loaded yet. Try again.', 'error'); return; }
+
+  const search  = (document.getElementById('reg-search')?.value || '').toLowerCase();
+  const fStatus = document.getElementById('reg-filter-status')?.value || '';
+  const fUrg    = document.getElementById('reg-filter-urgency')?.value || '';
+
+  let filtered = reports.filter(r => {
+    const txt = [r.id,r.type,r.location,r.description,r.name].join(' ').toLowerCase();
+    return (!search || txt.includes(search)) && (!fStatus || r.status === fStatus) && (!fUrg || r.urgency === fUrg);
+  }).sort((a,b) => new Date(b.submitted||0) - new Date(a.submitted||0));
+
+  if (!filtered.length) { toast('⚠️ No reports to export.', 'error'); return; }
+
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+  const navy = [27, 58, 107];
+  const W = 297, M = 12;
+
+  // Header
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, W, 24, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text('AIRCRAFT MAINTENANCE TECHNOLOGY — SAFETY MANAGEMENT SYSTEM', M, 9);
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('Hazard Register', M, 18);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(`Generated: ${new Date().toLocaleString()}   |   Total records: ${filtered.length}`, W - M, 18, { align: 'right' });
+
+  // Table
+  const urgEmoji = { immediate:'🔴', high:'🟠', medium:'🟡', low:'🟢' };
+  const tableData = filtered.map((r, i) => [
+    i + 1,
+    r.id,
+    r.submitted ? new Date(r.submitted).toLocaleDateString() : '—',
+    r.type || '—',
+    r.location || '—',
+    (r.description || '—').slice(0, 80) + ((r.description||'').length > 80 ? '…' : ''),
+    (urgEmoji[r.urgency]||'') + ' ' + (r.urgency||'—'),
+    `${r.caapCode||r.riskIndex||'—'} ${caapRiskLabel(r.riskIndex)}`,
+    r.status || '—',
+    r.caps ? `${r.caps.filter(c=>c.status==='Done').length}/${r.caps.length}` : '0/0'
+  ]);
+
+  doc.autoTable({
+    startY: 28,
+    head: [['#','Report ID','Date','Type','Location','Description','Urgency','Risk','Status','CAP']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: navy, fontSize: 8, fontStyle: 'bold', textColor: [255,255,255] },
+    bodyStyles: { fontSize: 7.5, valign: 'top' },
+    alternateRowStyles: { fillColor: [248,250,252] },
+    margin: { left: M, right: M },
+    columnStyles: {
+      0: { cellWidth: 8 }, 1: { cellWidth: 28 }, 2: { cellWidth: 20 },
+      3: { cellWidth: 24 }, 4: { cellWidth: 28 }, 5: { cellWidth: 68 },
+      6: { cellWidth: 20 }, 7: { cellWidth: 24 }, 8: { cellWidth: 18 }, 9: { cellWidth: 14 }
+    },
+    didDrawPage: (data) => {
+      const p = doc.internal.getCurrentPageInfo().pageNumber;
+      const total = '{total}'; // filled after
+      doc.setFontSize(7); doc.setTextColor(100,116,139);
+      doc.text(`AMTS SMS Hazard Register — Page ${p}`, M, doc.internal.pageSize.height - 5);
+      doc.text(new Date().toLocaleDateString(), W - M, doc.internal.pageSize.height - 5, { align: 'right' });
+    }
+  });
+
+  doc.save(`AMTS_HazardRegister_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast(`📄 Register PDF downloaded! (${filtered.length} records)`, 'success');
+}
+
 // ─── EXPORT STATS CSV ─────────────────────────────────────────────────────────
 function exportStatsCSV() {
   const yr = window._statsYear;
@@ -4720,6 +5673,8 @@ function initSettingsPage() {
   document.getElementById('cp-error').textContent = '';
   document.getElementById('pw-strength-fill').style.width = '0%';
   document.getElementById('pw-strength-label').textContent = '';
+  // Load saved Apps Script URL
+  try { loadAppsScriptUrl(); } catch(e) {}
 }
 
 function togglePwVis(inputId, eyeBtn) {
@@ -4868,12 +5823,14 @@ function enterApp(role) {
     document.getElementById('user-role-label').textContent = 'Report Hazard Only';
     // Add a student welcome banner
     showStudentBanner();
+    setTimeout(initDraftSystem, 600);
   } else {
     document.body.classList.remove('student-mode');
     document.getElementById('user-name').textContent = '🔐 Admin';
     document.getElementById('user-role-label').textContent = 'Full SMS Access';
     init(); // full app init for admin
     updateDashboard();
+    setTimeout(initDraftSystem, 600);
   }
 }
 
@@ -4995,4 +5952,788 @@ function logout() {
   }
   // Always keep login screen shown until role chosen (no auto-hide)
 })();
+
+// ═══════════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE PHOTO UPLOAD (via Google Apps Script)
+// ═══════════════════════════════════════════════════════════════════
+
+window._formPhotoLinks = [];  // { id, url, thumbUrl, caption, fileName }
+const PHOTO_MAX_MB    = 5;
+const PHOTO_MAX_PX    = 1200;  // compress before upload
+const PHOTO_QUALITY   = 0.82;
+const PHOTO_MAX_COUNT = 10;
+
+// ── Apps Script URL (persisted in localStorage) ────────────────────
+function getAppsScriptUrl() {
+  return localStorage.getItem('sms_apps_script_url') || '';
+}
+function saveAppsScriptUrl() {
+  const url = (document.getElementById('apps-script-url')?.value || '').trim();
+  localStorage.setItem('sms_apps_script_url', url);
+  const status = document.getElementById('apps-script-status');
+  if (status) status.innerHTML = url
+    ? `<span style="color:var(--green);">✅ URL saved.</span>`
+    : `<span style="color:var(--muted);">No URL set — manual links only.</span>`;
+  updateDropZoneHint();
+}
+function loadAppsScriptUrl() {
+  const url = getAppsScriptUrl();
+  const el = document.getElementById('apps-script-url');
+  if (el && url) el.value = url;
+  updateDropZoneHint();
+}
+function updateDropZoneHint() {
+  const hint = document.getElementById('photo-no-script-hint');
+  if (!hint) return;
+  hint.style.display = getAppsScriptUrl() ? 'none' : 'block';
+}
+async function testAppsScriptUrl() {
+  const url = getAppsScriptUrl();
+  const status = document.getElementById('apps-script-status');
+  if (!url) { if (status) status.innerHTML = `<span style="color:var(--red);">⚠️ No URL saved yet.</span>`; return; }
+  if (status) status.innerHTML = `<span style="color:var(--muted);">⏳ Testing…</span>`;
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    const json = await res.json();
+    if (json.success) {
+      if (status) status.innerHTML = `<span style="color:var(--green);">✅ Connected! Apps Script is running.</span>`;
+      toast('✅ Google Apps Script connected!', 'success');
+    } else {
+      if (status) status.innerHTML = `<span style="color:var(--red);">⚠️ Script responded but returned error: ${json.error||'unknown'}</span>`;
+    }
+  } catch(e) {
+    if (status) status.innerHTML = `<span style="color:var(--red);">❌ Could not reach the URL. Check it's deployed as "Anyone" access. Error: ${e.message}</span>`;
+  }
+}
+
+// ── Image compression ──────────────────────────────────────────────
+function compressImageForUpload(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > PHOTO_MAX_PX || h > PHOTO_MAX_PX) {
+          if (w > h) { h = Math.round(h * PHOTO_MAX_PX / w); w = PHOTO_MAX_PX; }
+          else       { w = Math.round(w * PHOTO_MAX_PX / h); h = PHOTO_MAX_PX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Upload to Google Drive via Apps Script ─────────────────────────
+async function uploadPhotoToDrive(file, reportIdHint) {
+  const scriptUrl = getAppsScriptUrl();
+  if (!scriptUrl) return null; // no script configured
+
+  const dataUrl  = await compressImageForUpload(file);
+  const payload  = JSON.stringify({
+    data:      dataUrl,
+    mimeType:  'image/jpeg',
+    fileName:  file.name,
+    reportId:  reportIdHint || 'DRAFT'
+  });
+
+  const res  = await fetch(scriptUrl, { method: 'POST', body: payload });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Upload failed');
+  return json; // { fileId, fileName, viewUrl, thumbUrl }
+}
+
+// ── Handle file selection / drop ───────────────────────────────────
+function handlePhotoFileSelect(e) {
+  processPhotoFiles([...e.target.files]);
+  e.target.value = '';
+}
+function handlePhotoDrop(e) {
+  e.preventDefault();
+  document.getElementById('photo-drop-zone')?.classList.remove('dz-hover');
+  const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+  processPhotoFiles(files);
+}
+
+async function processPhotoFiles(files) {
+  const remaining = PHOTO_MAX_COUNT - window._formPhotoLinks.length;
+  if (remaining <= 0) { toast(`⚠️ Max ${PHOTO_MAX_COUNT} photos per report.`, 'error'); return; }
+  const toProcess = files.slice(0, remaining);
+  if (files.length > remaining) toast(`⚠️ Only ${remaining} more photo(s) can be added. Others skipped.`, 'error');
+
+  const scriptUrl = getAppsScriptUrl();
+  const banner    = document.getElementById('photo-upload-banner');
+  const bannerIcon = document.getElementById('photo-upload-banner-icon');
+  const bannerText = document.getElementById('photo-upload-banner-text');
+
+  for (let i = 0; i < toProcess.length; i++) {
+    const file = toProcess[i];
+    if (!file.type.startsWith('image/')) { toast(`⚠️ ${file.name} is not an image.`, 'error'); continue; }
+    if (file.size > PHOTO_MAX_MB * 1024 * 1024) { toast(`⚠️ ${file.name} is over ${PHOTO_MAX_MB} MB.`, 'error'); continue; }
+
+    if (scriptUrl && banner) {
+      // Show upload progress banner
+      banner.style.display = 'flex';
+      if (bannerIcon) bannerIcon.textContent = '⏳';
+      if (bannerText) bannerText.textContent = `Uploading ${file.name} (${i+1} of ${toProcess.length}) to Google Drive…`;
+    }
+
+    try {
+      if (scriptUrl) {
+        // Auto-upload to Drive
+        const result = await uploadPhotoToDrive(file, null);
+        const link = {
+          id:       'ph-' + Date.now() + '-' + Math.random().toString(36).slice(2,5),
+          url:      result.viewUrl,
+          thumbUrl: result.thumbUrl,
+          caption:  file.name.replace(/\.[^.]+$/, ''),
+          fileName: result.fileName,
+          fileId:   result.fileId,
+          uploaded: true
+        };
+        window._formPhotoLinks.push(link);
+        renderPhotoLinkCard(link);
+        markDraftDirty();
+      } else {
+        // No script — compress and store a data URL preview locally (warn user)
+        const dataUrl = await compressImageForUpload(file);
+        const link = {
+          id:       'ph-' + Date.now() + '-' + Math.random().toString(36).slice(2,5),
+          url:      dataUrl,
+          thumbUrl: dataUrl,
+          caption:  file.name.replace(/\.[^.]+$/, ''),
+          fileName: file.name,
+          uploaded: false
+        };
+        window._formPhotoLinks.push(link);
+        renderPhotoLinkCard(link);
+        markDraftDirty();
+        toast('⚠️ No Drive script configured. Photo stored locally only — set up Apps Script in Settings for Drive uploads.', 'error');
+      }
+    } catch(err) {
+      toast(`❌ Failed to upload ${file.name}: ${err.message}`, 'error');
+    }
+  }
+
+  // Hide banner
+  if (banner) banner.style.display = 'none';
+  if (toProcess.length) toast(`✅ ${toProcess.length} photo(s) ${scriptUrl ? 'uploaded to Google Drive' : 'added locally'}!`, 'success');
+  updateDropZoneCount();
+}
+
+// ── Render a photo card ────────────────────────────────────────────
+function renderPhotoLinkCard(link) {
+  const list = document.getElementById('photo-links-list');
+  if (!list) return;
+  const card = document.createElement('div');
+  card.dataset.id = link.id;
+  card.style.cssText = 'background:white;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.09);overflow:hidden;border:1.5px solid var(--border);position:relative;transition:transform .15s;';
+  card.onmouseenter = () => card.style.transform = 'translateY(-2px)';
+  card.onmouseleave = () => card.style.transform = '';
+
+  const isDrive = link.uploaded;
+  const thumb = link.thumbUrl || link.url;
+
+  card.innerHTML = `
+    <button onclick="removePhotoLink('${link.id}')" title="Remove"
+      style="position:absolute;top:5px;right:5px;z-index:2;background:rgba(0,0,0,0.65);color:white;border:none;
+      border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    ${isDrive ? `<span title="Uploaded to Google Drive" style="position:absolute;top:5px;left:5px;z-index:2;background:rgba(22,163,74,0.9);color:white;border-radius:4px;font-size:9px;padding:2px 5px;font-weight:700;">☁️ Drive</span>` : `<span style="position:absolute;top:5px;left:5px;z-index:2;background:rgba(217,119,6,0.9);color:white;border-radius:4px;font-size:9px;padding:2px 5px;font-weight:700;">⚠️ Local</span>`}
+    <div style="height:105px;overflow:hidden;background:#F1F5F9;cursor:pointer;" onclick="openLightboxFromLinks(window._formPhotoLinks,'${link.id}')">
+      <img src="${thumb}" alt="${link.caption||'Photo'}" loading="lazy"
+        style="width:100%;height:100%;object-fit:cover;display:block;"
+        onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;\\'>🖼️</div>'"/>
+    </div>
+    <div style="padding:6px 8px;">
+      <div style="font-size:11px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${link.caption||link.fileName||''}">${link.caption||link.fileName||'Photo'}</div>
+      ${isDrive ? `<a href="${link.url}" target="_blank" rel="noopener" style="font-size:10px;color:var(--blue);text-decoration:none;">↗ Open in Drive</a>` : `<span style="font-size:10px;color:var(--muted);">Local only</span>`}
+    </div>`;
+  list.appendChild(card);
+}
+
+function removePhotoLink(id) {
+  window._formPhotoLinks = window._formPhotoLinks.filter(p => p.id !== id);
+  const el = document.querySelector(`#photo-links-list [data-id="${id}"]`);
+  if (el) el.remove();
+  updateDropZoneCount();
+  markDraftDirty();
+}
+
+function updateDropZoneCount() {
+  const n  = window._formPhotoLinks.length;
+  const dz = document.getElementById('photo-drop-zone');
+  if (!dz) return;
+  const label = dz.querySelector('div:nth-child(2)');
+  if (label) label.textContent = n === 0
+    ? 'Click to upload or drag & drop photos'
+    : `${n} photo${n!==1?'s':''} added — click to upload more`;
+}
+
+// ── Manual link paste (fallback) ──────────────────────────────────
+function extractDriveId(url) {
+  const patterns = [/\/file\/d\/([a-zA-Z0-9_-]{25,})/, /id=([a-zA-Z0-9_-]{25,})/, /\/open\?id=([a-zA-Z0-9_-]{25,})/];
+  for (const p of patterns) { const m = url.match(p); if (m) return m[1]; }
+  return null;
+}
+function getDriveThumbUrl(url) {
+  const id = extractDriveId(url);
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w400` : null;
+}
+
+function addPhotoLink() {
+  const urlInput = document.getElementById('photo-link-input');
+  const capInput = document.getElementById('photo-link-caption');
+  const url = (urlInput?.value || '').trim();
+  if (!url) { toast('⚠️ Please paste a Google Drive link first.', 'error'); return; }
+  if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) {
+    toast('⚠️ Please use a Google Drive share link.', 'error'); return;
+  }
+  if (window._formPhotoLinks.length >= PHOTO_MAX_COUNT) { toast(`⚠️ Max ${PHOTO_MAX_COUNT} photos per report.`, 'error'); return; }
+  const link = {
+    id: 'pl-' + Date.now(),
+    url,
+    thumbUrl: getDriveThumbUrl(url),
+    caption: capInput?.value?.trim() || '',
+    fileName: 'Drive link',
+    uploaded: true
+  };
+  window._formPhotoLinks.push(link);
+  renderPhotoLinkCard(link);
+  if (urlInput) urlInput.value = '';
+  if (capInput) capInput.value = '';
+  updateDropZoneCount();
+  markDraftDirty();
+  toast('📸 Photo link added!', 'success');
+}
+
+// ── Lightbox for form photos ───────────────────────────────────────
+function openLightboxFromLinks(photos, activeId) {
+  const idx = photos.findIndex(p => p.id === activeId);
+  const lightboxPhotos = photos.map(p => ({
+    dataUrl: p.thumbUrl || p.url,
+    name: p.caption || p.fileName || 'Photo'
+  }));
+  openLightbox(lightboxPhotos, idx >= 0 ? idx : 0);
+}
+
+// ── Load saved URL on settings page open ─────────────────────────
+document.addEventListener('DOMContentLoaded', loadAppsScriptUrl);
+// Also load when settings tab is shown
+const _origShowPage = typeof showPage === 'function' ? showPage : null;
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  SEMESTER ARCHIVE SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+
+let archives = [];  // loaded from Firebase / localStorage
+
+function initArchivePage() {
+  // Set default year
+  const yearEl = document.getElementById('arc-year');
+  if (yearEl && !yearEl.value) {
+    const now = new Date();
+    const y = now.getFullYear();
+    yearEl.value = `${y}-${y+1}`;
+  }
+  renderLiveSummary();
+  loadAndRenderArchives();
+}
+
+function renderLiveSummary() {
+  const el = document.getElementById('arc-live-summary');
+  if (!el) return;
+  const items = [
+    { label: 'Hazard Reports', value: reports.length, color: 'var(--blue)' },
+    { label: 'Open Reports',   value: reports.filter(r=>r.status==='Open').length, color: 'var(--red)' },
+    { label: 'Closed Reports', value: reports.filter(r=>r.status==='Closed').length, color: 'var(--green)' },
+    { label: 'Audits (G.1)',   value: audits.length, color: 'var(--teal)' },
+    { label: 'Inspections',    value: auditA.length, color: 'var(--navy)' },
+    { label: 'Audit Log Entries', value: auditLog.length, color: '#8B5CF6' },
+  ];
+  el.innerHTML = items.map(i => `
+    <div style="background:var(--bg);border-radius:10px;padding:14px 16px;border-left:3px solid ${i.color};">
+      <div style="font-size:26px;font-weight:800;color:var(--navy);">${i.value}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">${i.label}</div>
+    </div>`).join('');
+}
+
+async function createArchive() {
+  const semester = document.getElementById('arc-semester')?.value || '1st Semester';
+  const year     = (document.getElementById('arc-year')?.value || '').trim();
+  const label    = (document.getElementById('arc-label')?.value || '').trim();
+
+  if (!year) { toast('⚠️ Please enter an academic year.', 'error'); return; }
+
+  const statusEl = document.getElementById('arc-status');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--blue);">⏳ Archiving…</span>';
+
+  const archiveId  = 'ARC-' + Date.now();
+  const archiveName = `${semester} AY ${year}${label ? ' — ' + label : ''}`;
+
+  const snapshot = {
+    id: archiveId,
+    name: archiveName,
+    semester, year, label,
+    createdAt: new Date().toISOString(),
+    stats: {
+      reports:  reports.length,
+      audits:   audits.length,
+      auditA:   auditA.length,
+      auditLog: auditLog.length,
+      meetings: (window.meetings||[]).length,
+    },
+    data: {
+      reports:  JSON.parse(JSON.stringify(reports)),
+      audits:   JSON.parse(JSON.stringify(audits)),
+      auditA:   JSON.parse(JSON.stringify(auditA)),
+      auditLog: JSON.parse(JSON.stringify(auditLog)),
+    }
+  };
+
+  // Save to Firebase
+  try {
+    if (db()) {
+      await db().ref(`sms/archives/${archiveId}`).set(snapshot);
+    }
+    lsSet('sms_archives', [...lsGet('sms_archives', []).filter(a=>a.id!==archiveId), snapshot]);
+    archives.push(snapshot);
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">✅ Archive saved!</span>';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 4000);
+
+    toast(`✅ "${archiveName}" archived successfully!`, 'success');
+    renderArchiveList();
+
+    // Offer to clear live data
+    setTimeout(() => {
+      const doClear = confirm(
+        `✅ Archive "${archiveName}" saved!\n\nDo you want to CLEAR the live data now to start fresh for the next semester?\n\nThis will delete all current reports, audits, and audit log from the live database.\n(Your archive is permanently saved and cannot be affected.)\n\nClick OK to clear, Cancel to keep live data.`
+      );
+      if (doClear) clearLiveDataAfterArchive();
+    }, 500);
+
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red);">⚠️ Error: ${e.message}</span>`;
+    toast('⚠️ Archive failed. Check Firebase connection.', 'error');
+  }
+}
+
+function clearLiveDataAfterArchive() {
+  // Clear in-memory
+  reports.length  = 0;
+  audits.length   = 0;
+  auditA.length   = 0;
+  auditLog.length = 0;
+
+  // Clear localStorage
+  lsSet('sms_reports',  []);
+  lsSet('sms_audits',   []);
+  lsSet('sms_auditA',   []);
+  lsSet('sms_auditlog', []);
+
+  // Clear Firebase
+  if (db()) {
+    db().ref('sms/reports').remove();
+    db().ref('sms/audits').remove();
+    db().ref('sms/auditA').remove();
+    db().ref('sms/auditlog').remove();
+  }
+
+  try { updateDashboard(); } catch(e) {}
+  renderLiveSummary();
+  toast('🗑 Live data cleared. Ready for new semester!', 'success');
+}
+
+function loadAndRenderArchives() {
+  // Load from localStorage first (fast)
+  archives = lsGet('sms_archives', []);
+  renderArchiveList();
+
+  // Then sync from Firebase
+  if (db()) {
+    db().ref('sms/archives').once('value', snap => {
+      if (snap.exists()) {
+        archives = Object.values(snap.val()).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        lsSet('sms_archives', archives);
+        renderArchiveList();
+      }
+    });
+  }
+}
+
+function renderArchiveList() {
+  const el = document.getElementById('arc-list');
+  const countEl = document.getElementById('arc-count');
+  if (!el) return;
+
+  const sorted = [...archives].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  if (countEl) countEl.textContent = `${sorted.length} archive${sorted.length !== 1 ? 's' : ''}`;
+
+  if (!sorted.length) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:14px;">No archives yet. Create your first archive above.</div>';
+    return;
+  }
+
+  el.innerHTML = sorted.map(a => `
+    <div style="padding:16px 20px;border-bottom:1px solid var(--light);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-weight:700;font-size:14px;color:var(--navy);">📦 ${a.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+          Created ${new Date(a.createdAt).toLocaleString()}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <span style="font-size:11px;background:#DBEAFE;color:#1D4ED8;padding:2px 8px;border-radius:99px;font-weight:600;">📋 ${a.stats?.reports||0} reports</span>
+          <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:99px;font-weight:600;">🔍 ${a.stats?.audits||0} audits</span>
+          <span style="font-size:11px;background:#EDE9FE;color:#5B21B6;padding:2px 8px;border-radius:99px;font-weight:600;">📜 ${a.stats?.auditLog||0} log entries</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="exportArchiveCSV('${a.id}')" style="background:#DCFCE7;color:#166534;border:1.5px solid #86EFAC;font-weight:600;">📥 Export CSV</button>
+        <button class="btn btn-sm" onclick="exportArchiveJSON('${a.id}')" style="background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;font-weight:600;">📥 Export JSON</button>
+        <button class="btn btn-sm" onclick="viewArchive('${a.id}')" style="background:#F8FAFC;color:var(--navy);border:1.5px solid var(--border);font-weight:600;">👁 View</button>
+        <button class="btn btn-sm" onclick="deleteArchive('${a.id}')" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;">🗑 Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function exportArchiveCSV(id) {
+  const arc = archives.find(a => a.id === id);
+  if (!arc) return;
+  const rpts = arc.data?.reports || [];
+  if (!rpts.length) { toast('⚠️ No reports in this archive.', 'error'); return; }
+
+  let csv = 'Report ID,Submitted,Type,Urgency,Location,Description,Risk,Status,Reporter,CAP Count\n';
+  rpts.forEach(r => {
+    const esc = v => '"' + String(v||'').replace(/"/g,'""') + '"';
+    csv += [r.id, r.submitted?new Date(r.submitted).toLocaleString():'', r.type, r.urgency, r.location,
+            r.description, `${r.caapCode||r.riskIndex} ${riskLabel(r.riskIndex)}`, r.status,
+            r.anonymous?'Anonymous':(r.name||''), (r.caps||[]).length].map(esc).join(',') + '\n';
+  });
+
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `AMTS_Archive_${arc.name.replace(/[^a-z0-9]/gi,'_')}.csv`;
+  a.click();
+  toast(`📥 CSV exported for "${arc.name}"`, 'success');
+}
+
+function exportArchiveJSON(id) {
+  const arc = archives.find(a => a.id === id);
+  if (!arc) return;
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(arc, null, 2));
+  a.download = `AMTS_Archive_${arc.name.replace(/[^a-z0-9]/gi,'_')}.json`;
+  a.click();
+  toast(`📥 JSON exported for "${arc.name}"`, 'success');
+}
+
+function viewArchive(id) {
+  const arc = archives.find(a => a.id === id);
+  if (!arc) return;
+  const rpts = arc.data?.reports || [];
+  const rows = rpts.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><code style="font-size:11px;">${r.id}</code></td>
+      <td style="font-size:11px;">${r.submitted?new Date(r.submitted).toLocaleDateString():''}</td>
+      <td>${r.type||'—'}</td>
+      <td>${r.location||'—'}</td>
+      <td><span style="font-size:11px;padding:2px 7px;border-radius:99px;background:${r.urgency==='immediate'?'#FEE2E2':r.urgency==='high'?'#FFEDD5':r.urgency==='medium'?'#FEF9C3':'#DCFCE7'};font-weight:600;">${r.urgency||'—'}</span></td>
+      <td>${r.status||'—'}</td>
+    </tr>`).join('');
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Archive: ${arc.name}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;margin:24px;background:#F8FAFC;color:#1E293B;}
+    h2{color:#1B3A6B;margin-bottom:4px;}
+    .meta{color:#64748B;margin-bottom:16px;font-size:11px;}
+    .stats{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+    .stat{background:white;border-radius:8px;padding:12px 16px;border-left:3px solid #2563A8;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    .stat strong{display:block;font-size:22px;color:#1B3A6B;}
+    table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    th{background:#1B3A6B;color:white;padding:8px 10px;text-align:left;font-size:11px;}
+    td{padding:6px 10px;border-bottom:1px solid #E2E8F0;vertical-align:top;}
+    tr:nth-child(even) td{background:#F8FAFC;}
+    @media print{button{display:none;}}
+  </style></head><body>
+  <h2>📦 Archive: ${arc.name}</h2>
+  <div class="meta">Created: ${new Date(arc.createdAt).toLocaleString()} &nbsp;|&nbsp; Exported: ${new Date().toLocaleString()}</div>
+  <div class="stats">
+    <div class="stat"><strong>${arc.stats?.reports||0}</strong>Hazard Reports</div>
+    <div class="stat"><strong>${arc.stats?.audits||0}</strong>Audits</div>
+    <div class="stat"><strong>${arc.stats?.auditLog||0}</strong>Audit Log Entries</div>
+  </div>
+  <button onclick="window.print()" style="margin-bottom:16px;padding:7px 16px;background:#1B3A6B;color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ Print</button>
+  <table>
+    <thead><tr><th>#</th><th>ID</th><th>Date</th><th>Type</th><th>Location</th><th>Urgency</th><th>Status</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#94A3B8;">No reports in this archive</td></tr>'}</tbody>
+  </table></body></html>`);
+  win.document.close();
+}
+
+function deleteArchive(id) {
+  const arc = archives.find(a => a.id === id);
+  if (!arc) return;
+  if (!confirm(`Delete archive "${arc.name}"?\n\nThis permanently removes it from Firebase and cannot be undone.`)) return;
+
+  archives = archives.filter(a => a.id !== id);
+  lsSet('sms_archives', archives);
+  if (db()) db().ref(`sms/archives/${id}`).remove();
+  renderArchiveList();
+  toast('🗑 Archive deleted.', 'success');
+}
+
+// Load archives on init
+(function loadArchivesOnBoot() {
+  archives = lsGet('sms_archives', []);
+  if (db()) {
+    db().ref('sms/archives').on('value', snap => {
+      if (snap.exists()) {
+        archives = Object.values(snap.val()).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        lsSet('sms_archives', archives);
+      }
+    });
+  }
+})();
+
+function showLightboxSlide() {
+  const p = _lbPhotos[_lbIndex];
+  document.getElementById('photo-lightbox-img').src = p.dataUrl;
+  document.getElementById('photo-lightbox-caption').textContent =
+    `${p.name||'Photo'} — ${_lbIndex+1} of ${_lbPhotos.length}`;
+  document.getElementById('photo-lightbox-prev').style.display = _lbPhotos.length > 1 ? 'flex' : 'none';
+  document.getElementById('photo-lightbox-next').style.display = _lbPhotos.length > 1 ? 'flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUTO-SAVE DRAFTS
+// ═══════════════════════════════════════════════════════════════════
+
+const DRAFT_KEY      = 'sms_form_draft';
+const DRAFT_INTERVAL = 30000; // save every 30 seconds
+let   _draftTimer    = null;
+let   _draftDirty    = false;
+
+// Fields to capture in the draft
+const DRAFT_TEXT_FIELDS = [
+  'f-type','f-urgency','f-via','f-datetime','f-name','f-role','f-contact',
+  'f-org','f-location','f-activity','f-observed','f-supervisor','f-description',
+  'f-consequence','f-frequency','f-stopped','f-action-person','f-immediate',
+  'f-further','f-existing','f-witness','f-evidence'
+];
+
+function captureDraft() {
+  const data = { savedAt: new Date().toISOString(), fields: {}, checkboxes: {}, anon: null, probability: null, severity: null, caps: [], photos: [] };
+
+  DRAFT_TEXT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data.fields[id] = el.value;
+  });
+
+  // Checkboxes
+  document.querySelectorAll('.f-hazard-type:checked').forEach(c => { data.checkboxes[c.value] = true; });
+  document.querySelectorAll('.f-exposed:checked').forEach(c => { data.checkboxes['exp_'+c.value] = true; });
+
+  // Other hazard text
+  const otherChk = document.getElementById('f-hazard-other-chk');
+  const otherTxt = document.getElementById('f-hazard-other-text');
+  if (otherChk?.checked) data.checkboxes['_other'] = otherTxt?.value || '';
+
+  // Anon
+  const anonEl = document.querySelector('input[name=anon]:checked');
+  data.anon = anonEl ? anonEl.value : 'no';
+
+  // Risk
+  data.probability = document.getElementById('f-probability')?.value;
+  data.severity    = document.getElementById('f-severity-caap')?.value;
+
+  // CAP rows
+  document.querySelectorAll('#cap-rows .cap-row-item').forEach(row => {
+    const a = row.querySelector('[id^="cap-action-"]')?.value || '';
+    const t = row.querySelector('[id^="cap-type-"]')?.value || '';
+    const o = row.querySelector('[id^="cap-owner-"]')?.value || '';
+    const d = row.querySelector('[id^="cap-date-"]')?.value || '';
+    const s = row.querySelector('[id^="cap-status-"]')?.value || '';
+    data.caps.push({ action:a, type:t, owner:o, date:d, status:s });
+  });
+
+  // Photos (links only — no base64)
+  data.photos = window._formPhotoLinks || [];
+
+  return data;
+}
+
+function hasDraftContent(data) {
+  // Don't save an empty form
+  const anyText = Object.values(data.fields).some(v => v && v.trim());
+  const anyChecked = Object.keys(data.checkboxes).length > 0;
+  const anyCap  = data.caps.some(c => c.action);
+  const anyPhoto = data.photos.length > 0;
+  return anyText || anyChecked || anyCap || anyPhoto;
+}
+
+function saveDraft(silent) {
+  const data = captureDraft();
+  if (!hasDraftContent(data)) return;
+  lsSet(DRAFT_KEY, data);
+  _draftDirty = false;
+  const statusEl = document.getElementById('autosave-status');
+  if (statusEl && !silent) {
+    statusEl.innerHTML = `<span style="color:#16A34A;">💾 Draft saved · ${new Date().toLocaleTimeString()}</span>`;
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+  }
+}
+
+function markDraftDirty() {
+  _draftDirty = true;
+  const statusEl = document.getElementById('autosave-status');
+  if (statusEl && !statusEl.textContent.includes('Draft saved')) {
+    statusEl.innerHTML = `<span style="color:var(--muted);">Editing… draft will auto-save</span>`;
+  }
+}
+
+function startDraftAutosave() {
+  clearInterval(_draftTimer);
+  _draftTimer = setInterval(() => {
+    if (_draftDirty) saveDraft(false);
+  }, DRAFT_INTERVAL);
+
+  // Attach dirty listeners to all form fields
+  DRAFT_TEXT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', markDraftDirty);
+  });
+  document.querySelectorAll('.f-hazard-type, .f-exposed').forEach(c => c.addEventListener('change', markDraftDirty));
+  document.querySelectorAll('input[name=anon]').forEach(r => r.addEventListener('change', markDraftDirty));
+  ['f-probability','f-severity-caap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', markDraftDirty);
+  });
+
+  // Check for existing draft
+  checkForDraft();
+}
+
+function checkForDraft() {
+  const saved = lsGet(DRAFT_KEY, null);
+  if (!saved || !hasDraftContent(saved)) return;
+  const banner = document.getElementById('draft-restore-banner');
+  const timeEl = document.getElementById('draft-restore-time');
+  if (!banner) return;
+  banner.style.display = 'flex';
+  if (timeEl) {
+    const d = new Date(saved.savedAt);
+    timeEl.textContent = `Saved ${d.toLocaleDateString()} at ${d.toLocaleTimeString()}`;
+  }
+}
+
+function restoreDraft() {
+  const saved = lsGet(DRAFT_KEY, null);
+  if (!saved) return;
+
+  // Restore text fields
+  DRAFT_TEXT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && saved.fields?.[id] !== undefined) el.value = saved.fields[id];
+  });
+
+  // Restore checkboxes
+  document.querySelectorAll('.f-hazard-type').forEach(c => {
+    c.checked = !!(saved.checkboxes?.[c.value]);
+  });
+  document.querySelectorAll('.f-exposed').forEach(c => {
+    c.checked = !!(saved.checkboxes?.['exp_'+c.value]);
+  });
+  const otherChk = document.getElementById('f-hazard-other-chk');
+  const otherTxt = document.getElementById('f-hazard-other-text');
+  const otherWrap = document.getElementById('f-hazard-other-wrap');
+  if (otherChk && saved.checkboxes?.['_other'] !== undefined) {
+    otherChk.checked = true;
+    if (otherTxt) otherTxt.value = saved.checkboxes['_other'];
+    if (otherWrap) otherWrap.style.display = 'block';
+  }
+
+  // Restore anon
+  if (saved.anon) {
+    const anonEl = document.querySelector(`input[name=anon][value="${saved.anon}"]`);
+    if (anonEl) { anonEl.checked = true; anonEl.dispatchEvent(new Event('change')); }
+  }
+
+  // Restore risk
+  if (saved.probability) {
+    const el = document.getElementById('f-probability');
+    if (el) { el.value = saved.probability; }
+  }
+  if (saved.severity) {
+    const el = document.getElementById('f-severity-caap');
+    if (el) { el.value = saved.severity; }
+  }
+  calcRisk();
+
+  // Restore CAP rows
+  document.getElementById('cap-rows').innerHTML = '';
+  capUid = 0;
+  (saved.caps || []).forEach(c => {
+    addCapRow();
+    const rows = document.querySelectorAll('#cap-rows .cap-row-item');
+    const row  = rows[rows.length - 1];
+    if (!row) return;
+    const ae = row.querySelector('[id^="cap-action-"]'); if (ae) ae.value = c.action;
+    const te = row.querySelector('[id^="cap-type-"]');   if (te) te.value = c.type;
+    const oe = row.querySelector('[id^="cap-owner-"]');  if (oe) oe.value = c.owner;
+    const de = row.querySelector('[id^="cap-date-"]');   if (de) de.value = c.date;
+    const se = row.querySelector('[id^="cap-status-"]'); if (se) se.value = c.status;
+  });
+
+  // Restore photo links
+  window._formPhotoLinks = saved.photos || [];
+  const linksList = document.getElementById('photo-links-list');
+  if (linksList) { linksList.innerHTML = ''; window._formPhotoLinks.forEach(p => renderPhotoLinkCard(p)); }
+
+  // Hide banner
+  document.getElementById('draft-restore-banner').style.display = 'none';
+  const statusEl = document.getElementById('autosave-status');
+  if (statusEl) statusEl.innerHTML = `<span style="color:#16A34A;">✅ Draft restored!</span>`;
+  setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+  toast('✅ Draft restored!', 'success');
+}
+
+function discardDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  document.getElementById('draft-restore-banner').style.display = 'none';
+  toast('🗑 Draft discarded.', 'success');
+}
+
+// Hook into submitReport and clearForm to clear the draft
+const _origSubmitReport = submitReport;
+function submitReport() {
+  _origSubmitReport();
+  localStorage.removeItem(DRAFT_KEY);
+  const statusEl = document.getElementById('autosave-status');
+  if (statusEl) statusEl.textContent = '';
+}
+
+const _origClearForm = clearForm;
+function clearForm() {
+  _origClearForm();
+  localStorage.removeItem(DRAFT_KEY);
+  const statusEl = document.getElementById('autosave-status');
+  if (statusEl) statusEl.textContent = '';
+  document.getElementById('draft-restore-banner').style.display = 'none';
+}
+
+// Start autosave once admin enters the app — called in enterApp after init()
+function initDraftSystem() {
+  // Slight delay so all form elements are rendered
+  setTimeout(startDraftAutosave, 500);
+}
 </script>
