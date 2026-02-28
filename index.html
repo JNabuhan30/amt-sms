@@ -2277,8 +2277,9 @@ function showPage(id, tabEl) {
 function renderCapTracker() {
   const tbody   = document.getElementById('cap-tracker-tbody');
   const empty   = document.getElementById('cap-tracker-empty');
-  const fStatus = document.getElementById('cap-filter-status').value;
-  const fOver   = document.getElementById('cap-filter-overdue').value;
+  if (!tbody || !empty) return; // page not yet rendered
+  const fStatus = document.getElementById('cap-filter-status')?.value || '';
+  const fOver   = document.getElementById('cap-filter-overdue')?.value || '';
 
   // Flatten all CAPs from all reports
   const rows = [];
@@ -3090,7 +3091,7 @@ function selectCaapCell(prob, sev, val, code) {
 }
 
 function calcRisk() {
-  const prob = parseInt(document.getElementById('f-probability').value);
+  const prob = parseInt(document.getElementById('f-probability').value) || 0;
   const sevKey = document.getElementById('f-severity-caap').value;
   const val = prob * SEV_MAP[sevKey];
   const code = prob === 0 || sevKey === '0' ? (prob===0&&sevKey==='0'?'00':(prob===0?'0'+sevKey:prob+'0')) : `${prob}${sevKey}`;
@@ -3160,7 +3161,8 @@ function submitReport() {
   if (!type) { toast('Please select a Report Type', 'error'); return; }
   if (!urgency) { toast('Please select an Urgency level', 'error'); return; }
 
-  const isAnon = document.querySelector('input[name=anon]:checked').value === 'yes';
+  const _anonEl = document.querySelector('input[name=anon]:checked');
+  const isAnon = _anonEl ? _anonEl.value === 'yes' : false;
   const hazardTypes = [...document.querySelectorAll('.f-hazard-type:checked')].map(c => c.value);
   // Add "Others" if checked and filled in
   const otherChk = document.getElementById('f-hazard-other-chk');
@@ -3187,8 +3189,8 @@ function submitReport() {
     });
   });
 
-  const L = parseInt(document.getElementById('f-probability').value);
-  const S = document.getElementById('f-severity-caap').value;
+  const L = parseInt(document.getElementById('f-probability').value) || 0;
+  const S = document.getElementById('f-severity-caap')?.value || '0';
   const riskVal = L * SEV_MAP[S];
   const caapCode = L === 0 || S === '0' ? (L===0&&S==='0'?'00':(L===0?'0'+S:L+'0')) : `${L}${S}`;
 
@@ -6330,6 +6332,39 @@ function addPhotoLink() {
 }
 
 // ── Lightbox for form photos ───────────────────────────────────────
+let _lbPhotos = [];
+let _lbIndex  = 0;
+
+function openLightbox(photos, startIndex) {
+  _lbPhotos = photos || [];
+  _lbIndex  = startIndex || 0;
+  const lb = document.getElementById('photo-lightbox');
+  if (!lb || !_lbPhotos.length) return;
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  showLightboxSlide();
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('photo-lightbox');
+  if (lb) lb.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function lightboxNav(dir) {
+  _lbIndex = (_lbIndex + dir + _lbPhotos.length) % _lbPhotos.length;
+  showLightboxSlide();
+}
+
+// Keyboard support: Escape to close, arrow keys to navigate
+document.addEventListener('keydown', function(e) {
+  const lb = document.getElementById('photo-lightbox');
+  if (!lb || lb.style.display === 'none') return;
+  if (e.key === 'Escape')     closeLightbox();
+  if (e.key === 'ArrowLeft')  lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
+
 function openLightboxFromLinks(photos, activeId) {
   const idx = photos.findIndex(p => p.id === activeId);
   const lightboxPhotos = photos.map(p => ({
@@ -6341,8 +6376,6 @@ function openLightboxFromLinks(photos, activeId) {
 
 // ── Load saved URL on settings page open ─────────────────────────
 document.addEventListener('DOMContentLoaded', loadAppsScriptUrl);
-// Also load when settings tab is shown
-const _origShowPage = typeof showPage === 'function' ? showPage : null;
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -6816,7 +6849,8 @@ function restoreDraft() {
   if (linksList) { linksList.innerHTML = ''; window._formPhotoLinks.forEach(p => renderPhotoLinkCard(p)); }
 
   // Hide banner
-  document.getElementById('draft-restore-banner').style.display = 'none';
+  const _restoreBanner = document.getElementById('draft-restore-banner');
+  if (_restoreBanner) _restoreBanner.style.display = 'none';
   const statusEl = document.getElementById('autosave-status');
   if (statusEl) statusEl.innerHTML = `<span style="color:#16A34A;">✅ Draft restored!</span>`;
   setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
@@ -6825,7 +6859,8 @@ function restoreDraft() {
 
 function discardDraft() {
   localStorage.removeItem(DRAFT_KEY);
-  document.getElementById('draft-restore-banner').style.display = 'none';
+  const _discardBanner = document.getElementById('draft-restore-banner');
+  if (_discardBanner) _discardBanner.style.display = 'none';
   toast('🗑 Draft discarded.', 'success');
 }
 
