@@ -80,12 +80,13 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    height: 50px;
+    min-height: 50px;
     z-index: 100;
     box-shadow: 0 2px 12px rgba(0,0,0,0.35);
     border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-wrap: wrap;
   }
-  .nav-logo { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.5px; }
+  .nav-logo { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.5px; flex-shrink: 0; }
   .nav-logo span { color: #FBBF24; }
   .nav-tabs { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; }
   .nav-tab {
@@ -319,8 +320,11 @@
 
   /* mobile */
   @media(max-width: 600px) {
-    .nav-tabs { gap: 1px; }
-    .nav-tab  { padding: 6px 8px; font-size: 11px; }
+    .nav { flex-wrap: nowrap; overflow-x: auto; padding: 0 10px; gap: 8px; -webkit-overflow-scrolling: touch; }
+    .nav-logo { display: none; }
+    .nav-tabs { flex-wrap: nowrap; overflow-x: auto; margin-left: 0; gap: 2px; flex-shrink: 0; width: 100%; padding: 6px 0; -webkit-overflow-scrolling: touch; }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab  { padding: 6px 10px; font-size: 11px; white-space: nowrap; flex-shrink: 0; }
     .page     { padding: 16px 12px; }
     .risk-row { grid-template-columns: 60px repeat(5,1fr); gap: 3px; }
     .risk-cell{ padding: 5px 2px; font-size: 10px; }
@@ -5964,8 +5968,9 @@ const PHOTO_QUALITY   = 0.82;
 const PHOTO_MAX_COUNT = 10;
 
 // ── Apps Script URL (persisted in localStorage) ────────────────────
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzA0zfXkvFrfAA89elxYBC8q_W6oRq0tqMKlIFZn3uV1008-pUh_rmtyBjMhZCcxng5iQ/exec';
 function getAppsScriptUrl() {
-  return localStorage.getItem('sms_apps_script_url') || '';
+  return localStorage.getItem('sms_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
 }
 function saveAppsScriptUrl() {
   const url = (document.getElementById('apps-script-url')?.value || '').trim();
@@ -5979,7 +5984,7 @@ function saveAppsScriptUrl() {
 function loadAppsScriptUrl() {
   const url = getAppsScriptUrl();
   const el = document.getElementById('apps-script-url');
-  if (el && url) el.value = url;
+  if (el) el.value = url || DEFAULT_APPS_SCRIPT_URL;
   updateDropZoneHint();
 }
 function updateDropZoneHint() {
