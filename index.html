@@ -1295,6 +1295,7 @@
       <option value="DELETE">Deleted</option>
     </select>
     <button class="btn btn-outline btn-sm" onclick="exportAuditLogCSV()">📥 Export CSV</button>
+    <button class="btn btn-sm" onclick="confirmClearAuditLog()" style="background:#FEE2E2;color:#991B1B;border:1.5px solid #FECACA;font-weight:600;" title="Admin only — permanently clears all log entries">🗑 Clear All Log</button>
     <span id="al-count" style="font-size:12px;color:var(--muted);margin-left:auto;"></span>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
@@ -3624,6 +3625,34 @@ function exportAuditLogCSV() {
   a.download = `AMTS_SMS_AuditLog_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   toast('📥 Audit log exported.', 'success');
+}
+
+function confirmClearAuditLog() {
+  if (currentRole !== 'admin') {
+    toast('⛔ Admin access required to clear the audit log.', 'error');
+    return;
+  }
+  if (!auditLog.length) {
+    toast('ℹ️ Audit log is already empty.', 'success');
+    return;
+  }
+  const confirmed = confirm(
+    `⚠️ CLEAR ENTIRE AUDIT LOG?\n\nThis will permanently delete all ${auditLog.length} log entries from both local storage and Firebase.\n\nThis action cannot be undone.\n\nProceed?`
+  );
+  if (!confirmed) return;
+  clearAuditLog();
+}
+
+function clearAuditLog() {
+  auditLog = [];
+  // Clear localStorage
+  lsSet('sms_auditlog', []);
+  // Clear Firebase
+  if (db()) {
+    db().ref('sms/auditlog').remove();
+  }
+  renderAuditLog();
+  toast('🗑 Audit log cleared.', 'success');
 }
 
 // ─── 3. CAAP / ICAO REGULATORY REFERENCE MAPPING ─────────────────────────────
