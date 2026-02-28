@@ -909,6 +909,51 @@
 
 <div id="toast" class="toast"></div>
 
+<!-- ═══ SUBMIT SUCCESS MODAL ═══ -->
+<div id="submit-success-overlay" style="
+  display:none; position:fixed; inset:0; z-index:99998;
+  background:rgba(10,30,61,0.82); backdrop-filter:blur(6px);
+  align-items:center; justify-content:center; padding:20px;
+  animation:fadeIn .25s ease;">
+  <div style="
+    background:white; border-radius:24px; max-width:480px; width:100%;
+    box-shadow:0 32px 80px rgba(0,0,0,0.35); overflow:hidden;
+    animation:slideUp .3s cubic-bezier(0.16,1,0.3,1);">
+    <!-- Green top bar -->
+    <div style="background:linear-gradient(135deg,#16A34A,#15803D); padding:36px 28px 28px; text-align:center;">
+      <div style="font-size:64px; line-height:1; margin-bottom:12px;">✅</div>
+      <div style="font-size:24px; font-weight:800; color:white; font-family:'Outfit',sans-serif; letter-spacing:-0.4px;">Report Submitted!</div>
+      <div style="font-size:13px; color:rgba(255,255,255,0.75); margin-top:6px;">Your hazard report has been recorded successfully.</div>
+    </div>
+    <!-- Body -->
+    <div style="padding:24px 28px 28px; text-align:center;">
+      <div style="font-size:12px; color:#64748B; text-transform:uppercase; letter-spacing:1px; font-weight:600; margin-bottom:6px;">Report ID</div>
+      <div id="success-report-id" style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:#1B3A6B; background:#EFF6FF; padding:10px 20px; border-radius:10px; display:inline-block; letter-spacing:1px; margin-bottom:20px;"></div>
+      <div style="font-size:13px; color:#64748B; margin-bottom:24px; line-height:1.6;">
+        Save this ID to track your report. You will be redirected to the <strong>Dashboard</strong> automatically.
+      </div>
+      <!-- Progress bar -->
+      <div style="background:#E2E8F0; border-radius:99px; height:6px; overflow:hidden; margin-bottom:20px;">
+        <div id="success-progress-bar" style="height:100%; border-radius:99px; background:linear-gradient(90deg,#16A34A,#22C55E); width:0%; transition:width 3s linear;"></div>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button onclick="closeSuccessModal(true)" style="
+          background:#1B3A6B; color:white; border:none; border-radius:10px;
+          padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer;
+          font-family:inherit; transition:all .15s; flex:1; max-width:200px;">
+          📊 Go to Dashboard
+        </button>
+        <button onclick="closeSuccessModal(false)" style="
+          background:#F1F5F9; color:#475569; border:none; border-radius:10px;
+          padding:12px 20px; font-size:14px; font-weight:600; cursor:pointer;
+          font-family:inherit; transition:all .15s;">
+          Submit Another
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════════════════
      DASHBOARD
 ════════════════════════════════════════════════════════════════════════════ -->
@@ -2788,6 +2833,43 @@ function toast(msg, type = '') {
   setTimeout(() => t.className = 'toast', 2800);
 }
 
+let _successRedirectTimer = null;
+
+function showSubmitSuccessModal(reportId) {
+  const overlay = document.getElementById('submit-success-overlay');
+  const idEl    = document.getElementById('success-report-id');
+  const bar     = document.getElementById('success-progress-bar');
+  if (!overlay) return;
+
+  if (idEl) idEl.textContent = reportId;
+  overlay.style.display = 'flex';
+
+  // Animate progress bar over 3 seconds then redirect
+  if (bar) {
+    bar.style.width = '0%';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { bar.style.width = '100%'; });
+    });
+  }
+
+  clearTimeout(_successRedirectTimer);
+  _successRedirectTimer = setTimeout(() => closeSuccessModal(true), 3000);
+}
+
+function closeSuccessModal(goToDashboard) {
+  clearTimeout(_successRedirectTimer);
+  const overlay = document.getElementById('submit-success-overlay');
+  if (overlay) overlay.style.display = 'none';
+  clearForm();
+  if (goToDashboard) {
+    showPage('dashboard');
+    // Highlight the dashboard nav tab
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    const dashTab = document.querySelector('.nav-tab[onclick*="dashboard"]');
+    if (dashTab) dashTab.classList.add('active');
+  }
+}
+
 // ─── TOGGLE SECTION ───────────────────────────────────────────────────────────
 function toggleSection(hdr) {
   const body = hdr.nextElementSibling;
@@ -3241,8 +3323,7 @@ function submitReport() {
   if (currentRole === 'student') {
     showStudentSuccess(report.id);
   } else {
-    toast('✅ Hazard report submitted successfully!', 'success');
-    clearForm();
+    showSubmitSuccessModal(report.id);
   }
 }
 
