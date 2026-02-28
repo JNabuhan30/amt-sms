@@ -3231,6 +3231,11 @@ function submitReport() {
   fbSet('sms/reports/' + report.id, report);
   logAuditEvent('SUBMIT', report.id, `Report submitted: ${report.type || 'Hazard'} at ${report.location || 'unknown location'}. Urgency: ${urgency}. Risk: ${report.caapCode}.`, null, 'Open');
 
+  // Clear draft on submit
+  localStorage.removeItem(DRAFT_KEY);
+  const _submitStatusEl = document.getElementById('autosave-status');
+  if (_submitStatusEl) _submitStatusEl.textContent = '';
+
   if (currentRole === 'student') {
     showStudentSuccess(report.id);
   } else {
@@ -3316,6 +3321,12 @@ function clearForm() {
   const capInput = document.getElementById('photo-link-caption');
   if (capInput) capInput.value = '';
   calcRisk();
+  // Clear draft
+  localStorage.removeItem(DRAFT_KEY);
+  const _clearStatusEl = document.getElementById('autosave-status');
+  if (_clearStatusEl) _clearStatusEl.textContent = '';
+  const _draftBanner = document.getElementById('draft-restore-banner');
+  if (_draftBanner) _draftBanner.style.display = 'none';
 }
 
 // ─── REGISTER ─────────────────────────────────────────────────────────────────
@@ -6816,24 +6827,6 @@ function discardDraft() {
   localStorage.removeItem(DRAFT_KEY);
   document.getElementById('draft-restore-banner').style.display = 'none';
   toast('🗑 Draft discarded.', 'success');
-}
-
-// Hook into submitReport and clearForm to clear the draft
-const _origSubmitReport = submitReport;
-function submitReport() {
-  _origSubmitReport();
-  localStorage.removeItem(DRAFT_KEY);
-  const statusEl = document.getElementById('autosave-status');
-  if (statusEl) statusEl.textContent = '';
-}
-
-const _origClearForm = clearForm;
-function clearForm() {
-  _origClearForm();
-  localStorage.removeItem(DRAFT_KEY);
-  const statusEl = document.getElementById('autosave-status');
-  if (statusEl) statusEl.textContent = '';
-  document.getElementById('draft-restore-banner').style.display = 'none';
 }
 
 // Start autosave once admin enters the app — called in enterApp after init()
