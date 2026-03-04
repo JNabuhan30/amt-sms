@@ -4202,7 +4202,7 @@ function saveModalCap() {
   renderRegister();
   updateDashboard();
 
-  logAudit(id, 'CAP', `Admin updated CAP: ${oldCount} → ${caps.length} action${caps.length!==1?'s':''}`);
+  logAuditEvent('CAP', id, `Admin updated CAP: ${oldCount} → ${caps.length} action${caps.length!==1?'s':''}`, null, null);
 
   // Refresh the details tab CAP display
   const detailsEl = document.getElementById('tab-details');
@@ -4254,8 +4254,8 @@ function saveModalRiskAssessment(reportId) {
   updateDashboard();
 
   // Audit trail
-  logAudit(reportId, 'RISK_UPDATE',
-    `Admin updated risk assessment: P ${oldProb}→${newProb}, S ${oldSev}→${newSev}, Index → ${caapCode} (${riskVal})`);
+  logAuditEvent('RISK_UPDATE', reportId,
+    `Admin updated risk assessment: P ${oldProb}→${newProb}, S ${oldSev}→${newSev}, Index → ${caapCode} (${riskVal})`, null, null);
 
   if (statusEl) {
     statusEl.innerHTML = `✅ Saved — Risk Index: <strong>${caapCode} (${riskVal})</strong>`;
