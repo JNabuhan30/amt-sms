@@ -4197,7 +4197,8 @@ function saveModalCap() {
 
   const oldCount = (reports[idx].caps || []).length;
   reports[idx].caps = caps;
-  saveReports();
+  fbSet('sms/reports/' + id, reports[idx]);
+  lsSet('sms_reports', reports);
   renderRegister();
   updateDashboard();
 
@@ -4247,7 +4248,8 @@ function saveModalRiskAssessment(reportId) {
   reports[idx].riskIndex   = riskVal;
   reports[idx].caapCode    = caapCode;
 
-  saveReports();
+  fbSet('sms/reports/' + reportId, reports[idx]);
+  lsSet('sms_reports', reports);
   renderRegister();
   updateDashboard();
 
