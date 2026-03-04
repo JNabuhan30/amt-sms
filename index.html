@@ -446,22 +446,22 @@
   .logout-btn:hover { background: #DC2626; }
   body.student-mode .admin-only { display: none !important; }
 
-  /* ── Risk Assessment locked for reporters (student mode) ── */
-  body.student-mode .risk-admin-only select {
-    pointer-events: none;
-    background: #F1F5F9 !important;
-    color: var(--muted) !important;
-    border-color: var(--light) !important;
-    cursor: not-allowed;
+  /* ── G. Risk Assessment: fully locked for students ── */
+  body.student-mode #risk-matrix-display .risk-cell:not(.hdr) {
+    pointer-events: none !important;
+    opacity: 0.5;
+    cursor: not-allowed !important;
   }
-  body.student-mode .risk-admin-only::after {
-    content: '🔒 Set by Safety Admin';
-    display: block;
-    font-size: 10px;
-    color: var(--muted);
-    font-weight: 600;
-    margin-top: 4px;
-    letter-spacing: .3px;
+  body.student-mode #f-probability,
+  body.student-mode #f-severity-caap {
+    pointer-events: none !important;
+    background: #F1F5F9 !important;
+    color: #94A3B8 !important;
+    border-color: #E2E8F0 !important;
+    cursor: not-allowed !important;
+  }
+  body.student-mode .risk-section-lock-banner {
+    display: flex !important;
   }
 
 </style>
@@ -747,12 +747,21 @@
   <div class="form-section">
     <div class="form-section-header" onclick="toggleSection(this)">G. Risk Assessment <span>▾</span></div>
     <div class="form-section-body">
+      <!-- Lock banner shown only to students -->
+      <div class="risk-section-lock-banner" style="
+        display:none; align-items:center; gap:10px;
+        background:#FEF9C3; border:1.5px solid #D97706;
+        border-radius:9px; padding:10px 14px; margin-bottom:16px;
+        font-size:13px; font-weight:600; color:#92400E;">
+        <span style="font-size:18px;">🔒</span>
+        <div>Risk Assessment is set by the Safety Admin only. Submit your report and the admin will evaluate the risk level.</div>
+      </div>
       <div style="margin-bottom:20px;">
         <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;">RISK MATRIX (Likelihood × Severity)</div>
         <div class="risk-matrix" id="risk-matrix-display"></div>
       </div>
       <div class="form-grid">
-        <div class="form-group risk-admin-only">
+        <div class="form-group">
           <label>Probability (0–5)</label>
           <select id="f-probability" onchange="calcRisk()">
             <option value="0">0 – None</option>
@@ -763,7 +772,7 @@
             <option value="5">5 – Frequent</option>
           </select>
         </div>
-        <div class="form-group risk-admin-only">
+        <div class="form-group">
           <label>Severity (A–E / 0)</label>
           <select id="f-severity-caap" onchange="calcRisk()">
             <option value="0">0 – None</option>
@@ -2202,6 +2211,7 @@ function buildRiskMatrix() {
 }
 
 function selectCaapCell(prob, sev, val, code) {
+  if (currentRole === 'student') return; // students cannot set risk
   document.getElementById('f-probability').value = prob;
   document.getElementById('f-severity-caap').value = sev;
   // Highlight selected
@@ -2781,12 +2791,12 @@ function viewReport(id) {
 
   const isAdmin = currentRole === 'admin';
   const riskEditor = isAdmin ? `
-    <div id="risk-edit-panel" style="
+    <div style="
       background:linear-gradient(135deg,#EFF6FF,#F0FDF4);
       border:2px solid #2563A8; border-radius:12px;
       padding:16px 18px; margin-top:4px;">
       <div style="font-size:12px;font-weight:700;color:#1B3A6B;text-transform:uppercase;
-                  letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+                  letter-spacing:.6px;margin-bottom:12px;">
         🔐 Admin — Set Risk Assessment
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
@@ -2826,9 +2836,6 @@ function viewReport(id) {
           💾 Save Risk Assessment
         </button>
       </div>
-      <div style="font-size:11px;color:#64748B;margin-top:8px;">
-        💡 Tip: You can also click a cell in the risk matrix on the report form for visual selection.
-      </div>
     </div>` : '';
 
   document.getElementById('modal-body').innerHTML = `
@@ -2845,7 +2852,6 @@ function viewReport(id) {
     </div>
   `;
 
-  // Pre-fill existing values if already assessed
   if (isAdmin) {
     const probSel = document.getElementById('modal-probability');
     const sevSel  = document.getElementById('modal-severity');
@@ -2893,8 +2899,6 @@ function saveModalRisk(id) {
   renderRegister();
   updateDashboard();
   toast(`✅ Risk Assessment saved: ${code} (${caapRiskLabel(val)})`, 'success');
-  // Refresh the risk field shown in the modal
-  const riskDiv = document.querySelector('#modal-body [data-risk-display]');
   closeModal();
 }
 
@@ -3911,10 +3915,18 @@ function showStudentBanner() {
   buildRiskMatrix();
   calcRisk();
   addCapRow();
-  // Lock risk assessment fields — admin only
-  ['f-probability','f-severity-caap'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.disabled = true; }
+
+  // Fully lock Risk Assessment section for students
+  const probEl = document.getElementById('f-probability');
+  const sevEl  = document.getElementById('f-severity-caap');
+  if (probEl) { probEl.disabled = true; }
+  if (sevEl)  { sevEl.disabled  = true; }
+  // Block matrix cell clicks
+  document.querySelectorAll('#risk-matrix-display .risk-cell:not(.hdr)').forEach(cell => {
+    cell.style.pointerEvents = 'none';
+    cell.style.cursor = 'not-allowed';
+    cell.style.opacity = '0.45';
+    cell.removeAttribute('onclick');
   });
 }
 
