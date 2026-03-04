@@ -1148,8 +1148,8 @@
             <option>Unsafe Act</option><option>Unsafe Condition</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Urgency</label>
+        <div class="form-group" id="urgency-group">
+          <label>Urgency <span id="urgency-admin-badge" style="display:none;font-size:9px;background:#FEF9C3;color:#854D0E;padding:1px 7px;border-radius:99px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-left:4px;">Admin Assigned</span></label>
           <select id="f-urgency">
             <option value="">Select…</option>
             <option value="immediate">🔴 Immediate Danger – Stop Work</option>
@@ -1157,6 +1157,9 @@
             <option value="medium">🟡 Medium</option>
             <option value="low">🟢 Low</option>
           </select>
+          <div id="urgency-student-notice" style="display:none;margin-top:6px;background:#FEF9C3;border:1px solid #FDE68A;border-radius:7px;padding:7px 10px;font-size:11px;color:#92400E;font-weight:600;line-height:1.4;">
+            ⚠️ Urgency will be formally assessed and assigned by the SMS Coordinator after your submission.
+          </div>
         </div>
         <div class="form-group">
           <label>Submitted Via</label>
@@ -3924,6 +3927,57 @@ function viewReport(id) {
       ${field('Sign-off Status', signoffSummary)}
     </div>
     ${currentRole === 'admin' ? `
+    <div style="margin-top:16px;background:linear-gradient(135deg,#FFF7ED,#FFFBEB);border:1.5px solid #FDE68A;border-radius:12px;padding:16px 20px;">
+      <div style="font-size:12px;font-weight:800;color:#92400E;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:7px;">
+        <span>✏️</span> Admin — Edit Report Control
+        <span style="font-size:10px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:4px;">Admin Only</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Report Type</label>
+          <select id="modal-edit-type" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;">
+            <option value="">Select…</option>
+            <option ${r.type==='Hazard'?'selected':''}>Hazard</option>
+            <option ${r.type==='Near-miss'?'selected':''}>Near-miss</option>
+            <option ${r.type==='Safety Concern / Observation'?'selected':''}>Safety Concern / Observation</option>
+            <option ${r.type==='Unsafe Act'?'selected':''}>Unsafe Act</option>
+            <option ${r.type==='Unsafe Condition'?'selected':''}>Unsafe Condition</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Urgency</label>
+          <select id="modal-edit-urgency" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;">
+            <option value="">— Not set —</option>
+            <option value="immediate" ${r.urgency==='immediate'?'selected':''}>🔴 Immediate Danger – Stop Work</option>
+            <option value="high"      ${r.urgency==='high'?'selected':''}>🟠 High</option>
+            <option value="medium"    ${r.urgency==='medium'?'selected':''}>🟡 Medium</option>
+            <option value="low"       ${r.urgency==='low'?'selected':''}>🟢 Low</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Submitted Via</label>
+          <select id="modal-edit-via" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;">
+            <option ${r.via==='In-person'?'selected':''}>In-person</option>
+            <option ${r.via==='Email'?'selected':''}>Email</option>
+            <option ${r.via==='Phone'?'selected':''}>Phone</option>
+            <option ${r.via==='Drop box'?'selected':''}>Drop box</option>
+            <option ${r.via==='Online Form'?'selected':''}>Online Form</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Date / Time of Report</label>
+          <input type="datetime-local" id="modal-edit-datetime" value="${r.datetime||''}" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;"/>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="saveModalReportControl('${r.id}')" style="background:linear-gradient(135deg,#D97706,#B45309);color:white;box-shadow:0 2px 8px rgba(180,83,9,0.3);">💾 Save Report Control</button>
+        <div id="modal-control-save-status" style="font-size:12px;font-weight:600;color:#16A34A;"></div>
+      </div>
+      <div style="font-size:10px;color:#92400E;margin-top:8px;line-height:1.5;">
+        ⚠️ Changes to Report Type and Urgency will be reflected immediately in the register. An audit trail entry will be logged.
+      </div>
+    </div>` : ''}
+    ${currentRole === 'admin' ? `
     <div style="margin-top:16px;background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border:1.5px solid #BFDBFE;border-radius:12px;padding:16px 20px;">
       <div style="font-size:12px;font-weight:800;color:#1B3A6B;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:7px;">
         <span>🔒</span> Admin — Edit Risk Assessment
@@ -4264,6 +4318,43 @@ function saveModalRiskAssessment(reportId) {
   toast(`✅ Risk assessment updated: ${caapCode}`, 'success');
 }
 
+
+// ─── ADMIN: SAVE REPORT CONTROL (Section A) FROM REGISTER MODAL ─────────────
+function saveModalReportControl(reportId) {
+  if (currentRole !== 'admin') { toast('⛔ Admin access required.', 'error'); return; }
+  const typeEl     = document.getElementById('modal-edit-type');
+  const urgencyEl  = document.getElementById('modal-edit-urgency');
+  const viaEl      = document.getElementById('modal-edit-via');
+  const datetimeEl = document.getElementById('modal-edit-datetime');
+  const statusEl   = document.getElementById('modal-control-save-status');
+  if (!typeEl || !urgencyEl) return;
+
+  const idx = reports.findIndex(r => r.id === reportId);
+  if (idx < 0) { toast('Report not found.', 'error'); return; }
+
+  const oldType    = reports[idx].type;
+  const oldUrgency = reports[idx].urgency;
+
+  if (typeEl.value)     reports[idx].type     = typeEl.value;
+  if (urgencyEl.value)  reports[idx].urgency  = urgencyEl.value;
+  if (viaEl?.value)     reports[idx].via      = viaEl.value;
+  if (datetimeEl?.value) reports[idx].datetime = datetimeEl.value;
+
+  fbSet('sms/reports/' + reportId, reports[idx]);
+  lsSet('sms_reports', reports);
+  renderRegister();
+  updateDashboard();
+
+  logAuditEvent('EDIT', reportId,
+    `Admin updated Report Control — Type: ${oldType}→${reports[idx].type}, Urgency: ${oldUrgency}→${reports[idx].urgency}`,
+    null, null);
+
+  if (statusEl) {
+    statusEl.innerHTML = `✅ Saved`;
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+  }
+  toast(`✅ Report Control updated`, 'success');
+}
 function switchModalTab(btn, panelId) {
   document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('active'));
@@ -6326,6 +6417,14 @@ function enterApp(role) {
       capHeader.style.opacity = '';
       capHeader.onclick = function() { toggleSection(this); };
     }
+
+    // A. Urgency — always editable for admin
+    const urgencyEl = document.getElementById('f-urgency');
+    if (urgencyEl) { urgencyEl.disabled = false; urgencyEl.style.opacity = ''; urgencyEl.style.cursor = ''; urgencyEl.style.background = ''; }
+    const urgencyNotice = document.getElementById('urgency-student-notice');
+    if (urgencyNotice) urgencyNotice.style.display = 'none';
+    const urgencyBadge = document.getElementById('urgency-admin-badge');
+    if (urgencyBadge) urgencyBadge.style.display = 'none';
     // ───────────────────────────────────────────────────────────────────
 
     init(); // full app init for admin
@@ -6366,6 +6465,19 @@ function showStudentBanner() {
   buildRiskMatrix();
   calcRisk();
   addCapRow();
+
+  // 🔒 Lock Urgency field — admin assigns urgency after review
+  const urgencyEl = document.getElementById('f-urgency');
+  if (urgencyEl) {
+    urgencyEl.disabled = true;
+    urgencyEl.style.opacity = '0.55';
+    urgencyEl.style.cursor = 'not-allowed';
+    urgencyEl.style.background = '#F1F5F9';
+  }
+  const urgencyNotice = document.getElementById('urgency-student-notice');
+  if (urgencyNotice) urgencyNotice.style.display = 'block';
+  const urgencyBadge = document.getElementById('urgency-admin-badge');
+  if (urgencyBadge) urgencyBadge.style.display = 'inline';
 
   // 🔒 Lock entire G. Risk Assessment section — admin-only
   const lockNotice = document.getElementById('risk-admin-lock-notice');
