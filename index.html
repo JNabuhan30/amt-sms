@@ -889,6 +889,8 @@
   <div class="nav-logo">✈ AMTS <span>SMS</span></div>
   <div class="nav-tabs">
     <button class="nav-tab admin-only" onclick="showPage('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab" onclick="showPage('accident-report')">🚨 Accident Report</button>
+    <button class="nav-tab" onclick="showPage('incident-report')">⚡ Incident Report</button>
     <button class="nav-tab" onclick="showPage('report')">⚠️ Report Hazard</button>
     <button class="nav-tab admin-only" onclick="showPage('register')">📋 Register</button>
     <button class="nav-tab admin-only" onclick="showPage('cap-tracker')">✅ CAP Tracker</button>
@@ -1110,6 +1112,541 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
+     ACCIDENT REPORT FORM
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-accident-report" class="page">
+  <div class="section-title">🚨 Accident Report Form</div>
+  <div class="section-sub">Report accidents involving injury, illness, or significant property/equipment damage</div>
+
+  <!-- A. Report Control -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">A. Report Control <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Accident Type</label>
+          <select id="ac-type">
+            <option value="">Select…</option>
+            <option>Personal Injury</option>
+            <option>Aircraft Accident</option>
+            <option>Ground Accident</option>
+            <option>Vehicle Accident</option>
+            <option>Equipment Damage</option>
+            <option>Fire / Explosion</option>
+            <option>Occupational Illness</option>
+            <option>Environmental Spill / Release</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Severity of Outcome <span id="ac-severity-admin-badge" style="display:none;font-size:9px;background:#FEE2E2;color:#991B1B;padding:1px 7px;border-radius:99px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-left:4px;">Admin Assigned</span></label>
+          <select id="ac-severity-outcome">
+            <option value="">Select…</option>
+            <option>Fatal</option>
+            <option>Serious Injury</option>
+            <option>Minor Injury</option>
+            <option>Property Damage Only</option>
+          </select>
+          <div id="ac-severity-student-notice" style="display:none;margin-top:6px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:7px;padding:7px 10px;font-size:11px;color:#991B1B;font-weight:600;line-height:1.4;">
+            ⚠️ Severity will be formally assessed and assigned by the SMS Coordinator after your submission.
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Submitted Via</label>
+          <select id="ac-via">
+            <option>In-person</option><option>Email</option>
+            <option>Phone</option><option>Drop box</option><option>Online Form</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date / Time of Accident</label>
+          <input type="datetime-local" id="ac-datetime"/>
+        </div>
+        <div class="form-group">
+          <label>Reporting Obligation</label>
+          <select id="ac-reporting-obligation">
+            <option value="mandatory">🔴 Mandatory — required by CAAP / DOLE regulation</option>
+            <option value="voluntary">🟢 Voluntary — submitted proactively</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>CAAP Reference / Notification No.</label>
+          <input type="text" id="ac-caap-ref" placeholder="e.g. CAAP-AR-2026-001 or N/A"/>
+        </div>
+        <div class="form-group">
+          <label>Date Notified</label>
+          <input type="date" id="ac-notified-date"/>
+        </div>
+        <div class="form-group">
+          <label>Notified By (Name / Role)</label>
+          <input type="text" id="ac-notified-by" placeholder="Name and role of person who notified"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. Reporter -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">B. Reporter Information <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Full Name</label><input type="text" id="ac-name" placeholder="Your name"/></div>
+        <div class="form-group"><label>Role</label>
+          <select id="ac-role">
+            <option>Student</option><option>Instructor</option><option>Staff</option>
+            <option>Visitor</option><option>Contractor</option><option>Licensed AME</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Contact (email / phone)</label><input type="text" id="ac-contact" placeholder="contact@example.com"/></div>
+        <div class="form-group"><label>Supervisor / Person-in-Charge</label><input type="text" id="ac-supervisor" placeholder="Name"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C. Location & Circumstances -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">C. Location &amp; Circumstances <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Organization / Unit</label><input type="text" id="ac-org" placeholder="e.g. Engine Workshop"/></div>
+        <div class="form-group"><label>Exact Location</label><input type="text" id="ac-location" placeholder="Building / Room / Bay / Area"/></div>
+        <div class="form-group full"><label>Activity / Task Being Performed at Time of Accident</label><input type="text" id="ac-activity" placeholder="What was happening?"/></div>
+        <div class="form-group full"><label>Environmental / Working Conditions</label><input type="text" id="ac-conditions" placeholder="e.g. wet floor, poor lighting, high noise, night shift…"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D. Accident Description -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">D. Accident Description <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Describe What Happened (sequence of events)</label><textarea id="ac-description" placeholder="Provide a clear, factual account of the accident — what happened, in what order…"></textarea></div>
+        <div class="form-group full"><label>Immediate Cause (direct cause of the accident)</label><textarea id="ac-immediate-cause" placeholder="e.g. slipped on wet floor, tool fell from height…"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E. Sequence of Events -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">E. Sequence of Events <span>▾</span></div>
+    <div class="form-section-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Record the timeline of events leading to and following the accident. Add one row per key event.</div>
+      <div id="ac-sequence-rows"></div>
+      <button class="btn btn-outline btn-sm" onclick="addSequenceRow()" style="margin-top:6px;">+ Add Event</button>
+    </div>
+  </div>
+
+  <!-- F. Persons Involved / Injuries -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">F. Persons Involved &amp; Injuries <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Name of Injured / Involved Person(s)</label><input type="text" id="ac-injured-names" placeholder="Full name(s)"/></div>
+        <div class="form-group"><label>Role of Injured Person(s)</label><input type="text" id="ac-injured-role" placeholder="e.g. Student, Instructor, Staff…"/></div>
+        <div class="form-group full"><label>Nature of Injury / Illness</label><textarea id="ac-injury-nature" placeholder="Describe injuries — type, body part affected, severity…"></textarea></div>
+        <div class="form-group">
+          <label>Medical Treatment Required?</label>
+          <select id="ac-medical">
+            <option>No treatment required</option>
+            <option>First aid on site</option>
+            <option>Referred to clinic / hospital</option>
+            <option>Emergency services called</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Days Lost / Off Work</label><input type="text" id="ac-days-lost" placeholder="e.g. 0, 3 days, TBD"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- G. Property / Equipment Damage -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">G. Property &amp; Equipment Damage <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Describe Damage to Property / Equipment / Aircraft</label><textarea id="ac-damage" placeholder="Describe damage — item, extent, estimated cost if known…"></textarea></div>
+        <div class="form-group"><label>Estimated Damage Cost</label><input type="text" id="ac-damage-cost" placeholder="e.g. PHP 15,000 or TBD"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- H. Immediate Response -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">H. Immediate Response &amp; Actions Taken <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Work Stopped / Area Secured?</label>
+          <select id="ac-stopped"><option>Yes</option><option>No</option><option>Partial</option></select>
+        </div>
+        <div class="form-group"><label>Person Who Responded</label><input type="text" id="ac-responder" placeholder="Name"/></div>
+        <div class="form-group full"><label>Immediate Actions Taken</label><textarea id="ac-immediate-action" placeholder="First aid given, area cordoned, authorities notified…"></textarea></div>
+        <div class="form-group">
+          <label>Authorities / Regulatory Body Notified?</label>
+          <select id="ac-notified">
+            <option>No</option><option>CAAP Notified</option><option>DOLE Notified</option>
+            <option>Local Authority Notified</option><option>Multiple Agencies Notified</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- H. Root Cause Investigation -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">H. Investigation &amp; Root Cause Analysis <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Root Cause (underlying reason the accident occurred)</label><textarea id="ac-root-cause" placeholder="Systemic or organizational factors — procedures, training gaps, equipment issues…"></textarea></div>
+        <div class="form-group full"><label>Contributing Factors</label><textarea id="ac-contributing" placeholder="Environmental, human factors, equipment condition, supervision…"></textarea></div>
+        <div class="form-group"><label>Investigated By</label><input type="text" id="ac-investigator" placeholder="Name / Role"/></div>
+        <div class="form-group"><label>Investigation Date</label><input type="date" id="ac-investigation-date"/></div>
+      </div>
+
+      <!-- Human Factors -->
+      <div style="margin-top:14px;">
+        <label style="display:block;font-weight:600;margin-bottom:8px;">🧠 Human Factors Classification (HFACS)</label>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Select all that apply. Based on the Human Factors Analysis &amp; Classification System used in ICAO safety investigations.</div>
+        <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Skill-Based Error"> Skill-Based Error (slip/lapse)</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Decision Error"> Decision Error (wrong choice)</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Perceptual Error"> Perceptual Error (misread situation)</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Routine Violation"> Routine Violation (accepted shortcut)</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Exceptional Violation"> Exceptional Violation (deliberate risk)</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Crew Resource Management"> Crew / Team Resource Management</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Personal Readiness"> Personal Readiness (fatigue/illness)</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Adverse Physical State"> Adverse Physical / Mental State</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Inadequate Supervision"> Inadequate Supervision</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Organizational Influence"> Organizational / Resource Influence</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Environmental Factor"> Environmental / Workspace Factor</label>
+          <label class="cb-item"><input type="checkbox" class="ac-hf" value="Equipment / Design"> Equipment / Design Deficiency</label>
+        </div>
+        <div class="form-group" style="margin-top:8px;"><label style="font-size:11px;">Additional Human Factors Notes</label><textarea id="ac-hf-notes" placeholder="Describe how human factors contributed…" style="min-height:60px;"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- J. Corrective Action Plan -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">J. Corrective Action Plan <span>▾</span></div>
+    <div class="form-section-body">
+      <div id="ac-cap-rows"></div>
+      <button class="btn btn-outline btn-sm" onclick="addAcCapRow()" style="margin-top:8px;">+ Add Action</button>
+    </div>
+  </div>
+
+  <!-- K. Evidence / Witnesses -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">K. Evidence &amp; Witnesses <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Evidence Notes</label><textarea id="ac-evidence" placeholder="Photos, CCTV, reports, physical evidence…"></textarea></div>
+      </div>
+
+      <!-- Structured Witness Accounts -->
+      <div style="margin-top:16px;">
+        <label style="display:block;margin-bottom:8px;font-weight:600;">👤 Witness Accounts</label>
+        <div id="ac-witness-rows"></div>
+        <button class="btn btn-outline btn-sm" onclick="addWitnessRow('ac-witness-rows','ac')" style="margin-top:6px;">+ Add Witness</button>
+      </div>
+
+      <!-- Photo Evidence -->
+      <div style="margin-top:16px;">
+        <label style="display:block;margin-bottom:6px;">📸 Photo Evidence</label>
+        <div id="ac-photo-upload-banner" style="display:none;background:linear-gradient(90deg,#DC2626,#B91C1C);color:white;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:600;align-items:center;gap:10px;">
+          <span id="ac-photo-banner-icon">⏳</span>
+          <span id="ac-photo-banner-text">Uploading photo to Google Drive…</span>
+        </div>
+        <div id="ac-photo-drop-zone"
+          ondragover="event.preventDefault();this.classList.add('dz-hover')"
+          ondragleave="this.classList.remove('dz-hover')"
+          ondrop="handleAcPhotoDrop(event)"
+          onclick="document.getElementById('ac-photo-file-input').click()"
+          style="border:2px dashed var(--border);border-radius:10px;padding:22px;text-align:center;cursor:pointer;background:#FAFBFC;transition:all .15s;">
+          <div style="font-size:30px;margin-bottom:6px;">📷</div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">Click to upload or drag &amp; drop photos</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, GIF, WEBP — max 5 MB each — up to 10 photos</div>
+        </div>
+        <input type="file" id="ac-photo-file-input" accept="image/*" multiple style="display:none" onchange="handleAcPhotoFileSelect(event)"/>
+        <div id="ac-photo-links-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:12px;"></div>
+        <details style="margin-top:12px;">
+          <summary style="font-size:11px;color:var(--muted);cursor:pointer;user-select:none;">📎 Or manually paste a Google Drive link</summary>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <input type="text" id="ac-photo-link-input" placeholder="Paste Google Drive share link…" style="flex:1;font-size:12px;"/>
+            <input type="text" id="ac-photo-link-caption" placeholder="Caption (optional)" style="max-width:150px;font-size:12px;"/>
+            <button class="btn btn-sm" onclick="addAcPhotoLink()" style="background:#FEE2E2;color:#DC2626;border:1.5px solid #FCA5A5;font-weight:600;white-space:nowrap;">+ Add</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" style="background:#DC2626;" onclick="submitAccidentReport()">🚨 Submit Accident Report</button>
+    <button class="btn btn-outline" onclick="clearAccidentForm()">🗑 Clear Form</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     INCIDENT REPORT FORM
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-incident-report" class="page">
+  <div class="section-title">⚡ Incident Report Form</div>
+  <div class="section-sub">Report safety incidents, operational disruptions, security events, and near-misses requiring formal documentation</div>
+
+  <!-- A. Report Control -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">A. Report Control <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Incident Type</label>
+          <select id="ir-type">
+            <option value="">Select…</option>
+            <option>Operational Incident</option>
+            <option>Security Incident</option>
+            <option>Maintenance Incident</option>
+            <option>Training Incident</option>
+            <option>Environmental Incident</option>
+            <option>IT / Data Incident</option>
+            <option>Regulatory Non-Compliance</option>
+            <option>Near-Miss</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Urgency Level <span id="ir-urgency-admin-badge" style="display:none;font-size:9px;background:#FEF9C3;color:#854D0E;padding:1px 7px;border-radius:99px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-left:4px;">Admin Assigned</span></label>
+          <select id="ir-urgency">
+            <option value="">Select…</option>
+            <option value="critical">🔴 Critical</option>
+            <option value="high">🟠 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+          <div id="ir-urgency-student-notice" style="display:none;margin-top:6px;background:#FEF9C3;border:1px solid #FDE68A;border-radius:7px;padding:7px 10px;font-size:11px;color:#92400E;font-weight:600;line-height:1.4;">
+            ⚠️ Urgency will be formally assessed and assigned by the SMS Coordinator after your submission.
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Submitted Via</label>
+          <select id="ir-via">
+            <option>In-person</option><option>Email</option>
+            <option>Phone</option><option>Drop box</option><option>Online Form</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date / Time of Incident</label>
+          <input type="datetime-local" id="ir-datetime"/>
+        </div>
+        <div class="form-group">
+          <label>Reporting Obligation</label>
+          <select id="ir-reporting-obligation">
+            <option value="voluntary">🟢 Voluntary — submitted proactively</option>
+            <option value="mandatory">🔴 Mandatory — required by CAAP regulation</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Incident Classification</label>
+          <select id="ir-classification">
+            <option value="incident">Incident</option>
+            <option value="serious_incident">⚠️ Serious Incident (near-accident)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. Reporter -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">B. Reporter Information <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Anonymous Report?</label>
+        <div style="display:flex;gap:16px;margin-top:4px;">
+          <label class="cb-item"><input type="radio" name="ir-anon" value="yes" id="ir-anon-yes" onchange="toggleIrAnon(true)"> Yes (anonymous)</label>
+          <label class="cb-item"><input type="radio" name="ir-anon" value="no" id="ir-anon-no" onchange="toggleIrAnon(false)" checked> No</label>
+        </div>
+      </div>
+      <div id="ir-reporter-fields" class="form-grid">
+        <div class="form-group"><label>Full Name</label><input type="text" id="ir-name" placeholder="Your name"/></div>
+        <div class="form-group"><label>Role</label>
+          <select id="ir-role">
+            <option>Student</option><option>Instructor</option><option>Staff</option>
+            <option>Visitor</option><option>Contractor</option><option>Licensed AME</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Contact (email / phone)</label><input type="text" id="ir-contact" placeholder="contact@example.com"/></div>
+        <div class="form-group"><label>Supervisor / Person-in-Charge</label><input type="text" id="ir-supervisor" placeholder="Name"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C. Location & Circumstances -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">C. Location &amp; Circumstances <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Organization / Unit</label><input type="text" id="ir-org" placeholder="e.g. Engine Workshop"/></div>
+        <div class="form-group"><label>Exact Location</label><input type="text" id="ir-location" placeholder="Building / Room / Bay / Area"/></div>
+        <div class="form-group full"><label>Activity / Operation at Time of Incident</label><input type="text" id="ir-activity" placeholder="What was happening?"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D. Incident Description -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">D. Incident Description <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Describe the Incident (what happened, sequence of events)</label><textarea id="ir-description" placeholder="Provide a clear, factual account…"></textarea></div>
+        <div class="form-group full"><label>Actual or Potential Consequences</label><textarea id="ir-consequence" placeholder="What did happen or could have happened as a result?"></textarea></div>
+        <div class="form-group">
+          <label>Who / What Was Affected?</label>
+          <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));">
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Personnel"> Personnel</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Aircraft"> Aircraft</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Equipment"> Equipment</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Facility"> Facility</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Operations"> Operations</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Environment"> Environment</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Data / IT"> Data / IT</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E. Persons Involved -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">E. Persons Involved <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Name(s) of Persons Involved</label><input type="text" id="ir-persons" placeholder="Name(s) and role(s)"/></div>
+        <div class="form-group"><label>Any Injuries Sustained?</label>
+          <select id="ir-injuries">
+            <option>No injuries</option>
+            <option>Minor injuries</option>
+            <option>Serious injuries</option>
+            <option>Unknown / Under assessment</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F. Immediate Response -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">F. Immediate Response &amp; Actions Taken <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Operations / Area Stopped?</label>
+          <select id="ir-stopped"><option>Yes</option><option>No</option><option>Partial</option></select>
+        </div>
+        <div class="form-group"><label>Person Who Responded</label><input type="text" id="ir-responder" placeholder="Name"/></div>
+        <div class="form-group full"><label>Immediate Actions Taken</label><textarea id="ir-immediate-action" placeholder="Describe initial response, containment, notifications made…"></textarea></div>
+        <div class="form-group">
+          <label>Further Action Required?</label>
+          <select id="ir-further"><option>Yes</option><option>No</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- G. Root Cause Analysis -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">G. Root Cause Analysis <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Probable / Root Cause</label><textarea id="ir-root-cause" placeholder="Underlying systemic or organizational causes…"></textarea></div>
+        <div class="form-group full"><label>Contributing Factors</label><textarea id="ir-contributing" placeholder="Human factors, procedural gaps, equipment, environment…"></textarea></div>
+      </div>
+
+      <!-- Human Factors -->
+      <div style="margin-top:14px;">
+        <label style="display:block;font-weight:600;margin-bottom:8px;">🧠 Human Factors Classification (HFACS)</label>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Select all that apply.</div>
+        <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Skill-Based Error"> Skill-Based Error (slip/lapse)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Decision Error"> Decision Error (wrong choice)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Perceptual Error"> Perceptual Error (misread situation)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Routine Violation"> Routine Violation (accepted shortcut)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Exceptional Violation"> Exceptional Violation (deliberate risk)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Crew Resource Management"> Crew / Team Resource Management</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Personal Readiness"> Personal Readiness (fatigue/illness)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Adverse Physical State"> Adverse Physical / Mental State</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Inadequate Supervision"> Inadequate Supervision</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Organizational Influence"> Organizational / Resource Influence</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Environmental Factor"> Environmental / Workspace Factor</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Equipment / Design"> Equipment / Design Deficiency</label>
+        </div>
+        <div class="form-group" style="margin-top:8px;"><label style="font-size:11px;">Additional Human Factors Notes</label><textarea id="ir-hf-notes" placeholder="Describe how human factors contributed…" style="min-height:60px;"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- H. Corrective Action Plan -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">H. Corrective Action Plan <span>▾</span></div>
+    <div class="form-section-body">
+      <div id="ir-cap-rows"></div>
+      <button class="btn btn-outline btn-sm" onclick="addIrCapRow()" style="margin-top:8px;">+ Add Action</button>
+    </div>
+  </div>
+
+  <!-- I. Evidence / Witnesses -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">I. Evidence &amp; Witnesses <span>▾</span></div>
+    <div class="form-section-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Evidence Notes</label><textarea id="ir-evidence" placeholder="Photos, logs, records, physical evidence…"></textarea></div>
+      </div>
+
+      <!-- Structured Witness Accounts -->
+      <div style="margin-top:16px;">
+        <label style="display:block;margin-bottom:8px;font-weight:600;">👤 Witness Accounts</label>
+        <div id="ir-witness-rows"></div>
+        <button class="btn btn-outline btn-sm" onclick="addWitnessRow('ir-witness-rows','ir')" style="margin-top:6px;">+ Add Witness</button>
+      </div>
+
+      <!-- Photo Evidence -->
+      <div style="margin-top:16px;">
+        <label style="display:block;margin-bottom:6px;">📸 Photo Evidence</label>
+        <div id="ir-photo-upload-banner" style="display:none;background:linear-gradient(90deg,#D97706,#B45309);color:white;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:600;align-items:center;gap:10px;">
+          <span id="ir-photo-banner-icon">⏳</span>
+          <span id="ir-photo-banner-text">Uploading photo to Google Drive…</span>
+        </div>
+        <div id="ir-photo-drop-zone"
+          ondragover="event.preventDefault();this.classList.add('dz-hover')"
+          ondragleave="this.classList.remove('dz-hover')"
+          ondrop="handleIrPhotoDrop(event)"
+          onclick="document.getElementById('ir-photo-file-input').click()"
+          style="border:2px dashed var(--border);border-radius:10px;padding:22px;text-align:center;cursor:pointer;background:#FAFBFC;transition:all .15s;">
+          <div style="font-size:30px;margin-bottom:6px;">📷</div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">Click to upload or drag &amp; drop photos</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, GIF, WEBP — max 5 MB each — up to 10 photos</div>
+        </div>
+        <input type="file" id="ir-photo-file-input" accept="image/*" multiple style="display:none" onchange="handleIrPhotoFileSelect(event)"/>
+        <div id="ir-photo-links-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:12px;"></div>
+        <details style="margin-top:12px;">
+          <summary style="font-size:11px;color:var(--muted);cursor:pointer;user-select:none;">📎 Or manually paste a Google Drive link</summary>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <input type="text" id="ir-photo-link-input" placeholder="Paste Google Drive share link…" style="flex:1;font-size:12px;"/>
+            <input type="text" id="ir-photo-link-caption" placeholder="Caption (optional)" style="max-width:150px;font-size:12px;"/>
+            <button class="btn btn-sm" onclick="addIrPhotoLink()" style="background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;font-weight:600;white-space:nowrap;">+ Add</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" style="background:#D97706;" onclick="submitIncidentReport()">⚡ Submit Incident Report</button>
+    <button class="btn btn-outline" onclick="clearIncidentForm()">🗑 Clear Form</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
      HAZARD REPORT FORM  B.3
 ════════════════════════════════════════════════════════════════════════════ -->
 <div id="page-report" class="page">
@@ -1171,6 +1708,13 @@
         <div class="form-group">
           <label>Date / Time</label>
           <input type="datetime-local" id="f-datetime"/>
+        </div>
+        <div class="form-group">
+          <label>Reporting Obligation</label>
+          <select id="f-reporting-obligation">
+            <option value="voluntary">🟢 Voluntary — submitted proactively</option>
+            <option value="mandatory">🔴 Mandatory — required by CAAP regulation</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1268,9 +1812,32 @@
     </div>
   </div>
 
-  <!-- G. Risk Assessment -->
+  <!-- G. Human Factors -->
+  <div class="form-section">
+    <div class="form-section-header" onclick="toggleSection(this)">G. Human Factors Classification <span>▾</span></div>
+    <div class="form-section-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Optional — select any human factors that may have contributed to this hazard.</div>
+      <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Skill-Based Error"> Skill-Based Error (slip/lapse)</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Decision Error"> Decision Error (wrong choice)</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Perceptual Error"> Perceptual Error (misread situation)</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Routine Violation"> Routine Violation (accepted shortcut)</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Exceptional Violation"> Exceptional Violation (deliberate risk)</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Crew Resource Management"> Crew / Team Resource Management</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Personal Readiness"> Personal Readiness (fatigue/illness)</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Adverse Physical State"> Adverse Physical / Mental State</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Inadequate Supervision"> Inadequate Supervision</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Organizational Influence"> Organizational / Resource Influence</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Environmental Factor"> Environmental / Workspace Factor</label>
+        <label class="cb-item"><input type="checkbox" class="f-hf" value="Equipment / Design"> Equipment / Design Deficiency</label>
+      </div>
+      <div class="form-group" style="margin-top:8px;"><label style="font-size:11px;">Additional Human Factors Notes</label><textarea id="f-hf-notes" placeholder="Describe how human factors contributed…" style="min-height:60px;"></textarea></div>
+    </div>
+  </div>
+
+  <!-- H. Risk Assessment -->
   <div class="form-section" id="section-risk-assessment">
-    <div class="form-section-header" id="risk-section-header" onclick="toggleSection(this)">G. Risk Assessment <span>▾</span></div>
+    <div class="form-section-header" id="risk-section-header" onclick="toggleSection(this)">H. Risk Assessment <span>▾</span></div>
     <div class="form-section-body">
 
       <!-- Admin-only lock notice — shown only to students -->
@@ -1322,7 +1889,7 @@
 
   <!-- H. CAP -->
   <div class="form-section" id="section-cap">
-    <div class="form-section-header" id="cap-section-header" onclick="toggleSection(this)">H. Corrective Action Plan <span>▾</span></div>
+    <div class="form-section-header" id="cap-section-header" onclick="toggleSection(this)">I. Corrective Action Plan <span>▾</span></div>
     <div class="form-section-body">
 
       <!-- Admin-only lock notice for students -->
@@ -1346,8 +1913,14 @@
     <div class="form-section-header" onclick="toggleSection(this)">I. Evidence / Witness <span>▾</span></div>
     <div class="form-section-body">
       <div class="form-grid">
-        <div class="form-group"><label>Witness Name / Contact</label><input type="text" id="f-witness" placeholder="Name and contact"/></div>
         <div class="form-group"><label>Evidence Notes</label><textarea id="f-evidence" placeholder="Describe or reference evidence…"></textarea></div>
+      </div>
+
+      <!-- Structured Witness Accounts -->
+      <div style="margin-top:16px;">
+        <label style="display:block;margin-bottom:8px;font-weight:600;">👤 Witness Accounts</label>
+        <div id="f-witness-rows"></div>
+        <button class="btn btn-outline btn-sm" onclick="addWitnessRow('f-witness-rows','f')" style="margin-top:6px;">+ Add Witness</button>
       </div>
 
       <!-- Photo Evidence — Auto Upload to Google Drive -->
@@ -1393,9 +1966,9 @@
     </div>
   </div>
 
-  <!-- J. Regulatory Reference Mapping -->
+  <!-- K. Regulatory Reference Mapping -->
   <div class="form-section">
-    <div class="form-section-header" onclick="toggleSection(this)">J. Regulatory Reference Mapping <span>▾</span></div>
+    <div class="form-section-header" onclick="toggleSection(this)">K. Regulatory Reference Mapping <span>▾</span></div>
     <div class="form-section-body">
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Applicable CAAP, ICAO &amp; Philippine regulations automatically mapped from selected hazard types.</div>
       <div id="reg-refs-display"><div class="reg-ref-empty">Select hazard types in Section D to auto-populate applicable regulations.</div></div>
@@ -2031,7 +2604,7 @@
   <div class="section-sub">All open corrective actions across every hazard report — sorted by due date</div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
     <select id="cap-filter-status" onchange="renderCapTracker()" style="max-width:160px;">
-      <option value="">All Statuses</option><option>Open</option><option>In Progress</option><option>Done</option>
+      <option value="">All Statuses</option><option>Open</option><option>In Progress</option><option>Done</option><option>Verified</option>
     </select>
     <select id="cap-filter-overdue" onchange="renderCapTracker()" style="max-width:160px;">
       <option value="">All</option><option value="overdue">Overdue Only</option>
@@ -2174,6 +2747,8 @@ const CHART_COLORS = {
 // ─── DATA STORE ───────────────────────────────────────────────────────────────
 let reports   = [];
 let audits    = [];
+let accidentReports = [];
+let incidentReports = [];
 let auditA    = [];
 let meetings  = [];
 let documents = [];
@@ -2206,6 +2781,8 @@ function fbSet(path, data) {
     else if (parts[1]==='meetings')     { const i=meetings.findIndex(r=>r.id===parts[2]);if(i>=0)meetings[i]=data;else meetings.push(data); lsSet('sms_meetings',meetings); }
     else if (parts[1]==='documents')    { const i=documents.findIndex(r=>r.id===parts[2]);if(i>=0)documents[i]=data;else documents.push(data);lsSet('sms_documents',documents); }
     else if (parts[1]==='spis')         { const i=spis.findIndex(r=>r.id===parts[2]);    if(i>=0)spis[i]=data;   else spis.push(data);     lsSet('sms_spis',spis); }
+    else if (parts[1]==='accidents')    { const i=accidentReports.findIndex(r=>r.id===parts[2]); if(i>=0)accidentReports[i]=data; else accidentReports.push(data); lsSet('sms_accidents',accidentReports); }
+    else if (parts[1]==='incidents')    { const i=incidentReports.findIndex(r=>r.id===parts[2]); if(i>=0)incidentReports[i]=data; else incidentReports.push(data); lsSet('sms_incidents',incidentReports); }
     else if (parts[1]==='config' && parts[2]==='adminPin') { lsSet('sms_adminPin', data); }
   }
 }
@@ -2221,6 +2798,8 @@ function fbDelete(path, id) {
     else if (path.includes('meetings')) { meetings  = meetings.filter(r=>r.id!==id);  lsSet('sms_meetings',meetings); }
     else if (path.includes('documents')){ documents = documents.filter(r=>r.id!==id); lsSet('sms_documents',documents); }
     else if (path.includes('spis'))     { spis      = spis.filter(r=>r.id!==id);      lsSet('sms_spis',spis); }
+    else if (path.includes('accidents')){ accidentReports = accidentReports.filter(r=>r.id!==id); lsSet('sms_accidents',accidentReports); }
+    else if (path.includes('incidents')){ incidentReports = incidentReports.filter(r=>r.id!==id); lsSet('sms_incidents',incidentReports); }
   }
 }
 
@@ -2251,6 +2830,8 @@ window.addEventListener('load', function() {
     meetings  = lsGet('sms_meetings',  []);
     documents = lsGet('sms_documents', []);
     spis      = lsGet('sms_spis',      []);
+    accidentReports = lsGet('sms_accidents', []);
+    incidentReports = lsGet('sms_incidents', []);
     auditLog  = lsGet('sms_auditlog',  []);
     ADMIN_PIN = lsGet('sms_adminPin',  '1234');
     setLoading(false);
@@ -2327,6 +2908,18 @@ window.addEventListener('load', function() {
     spis = snap.exists() ? Object.values(snap.val()) : [];
     try { renderSpiDashboard(); } catch(e) {}
   });
+
+  // Accident Reports (non-blocking)
+  db().ref('sms/accidents').on('value', function(snap) {
+    accidentReports = snap.exists() ? Object.values(snap.val()) : [];
+    lsSet('sms_accidents', accidentReports);
+  });
+
+  // Incident Reports (non-blocking)
+  db().ref('sms/incidents').on('value', function(snap) {
+    incidentReports = snap.exists() ? Object.values(snap.val()) : [];
+    lsSet('sms_incidents', incidentReports);
+  });
 });
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
@@ -2360,13 +2953,18 @@ function renderCapTracker() {
   const fStatus = document.getElementById('cap-filter-status')?.value || '';
   const fOver   = document.getElementById('cap-filter-overdue')?.value || '';
 
-  // Flatten all CAPs from all reports
+  // Flatten all CAPs from hazard, accident, and incident reports
   const rows = [];
-  reports.forEach(r => {
+  const allReports = [
+    ...reports.map(r => ({...r, _formType: 'hazard'})),
+    ...accidentReports.map(r => ({...r, _formType: 'accident'})),
+    ...incidentReports.map(r => ({...r, _formType: 'incident'})),
+  ];
+  allReports.forEach(r => {
     (r.caps || []).forEach((c, i) => {
       if (!c.action) return;
-      const isOverdue = c.status !== 'Done' && c.date && new Date(c.date) < new Date();
-      rows.push({ ...c, reportId: r.id, reportType: r.type, location: r.location, idx: i, isOverdue });
+      const isOverdue = c.status !== 'Done' && c.status !== 'Verified' && c.date && new Date(c.date) < new Date();
+      rows.push({ ...c, reportId: r.id, reportType: r.type || r._formType, location: r.location, idx: i, isOverdue, _formType: r._formType });
     });
   });
 
@@ -2390,10 +2988,15 @@ function renderCapTracker() {
   tbody.innerHTML = filtered.map(c => {
     const overdueBadge = c.isOverdue
       ? `<span style="font-size:10px;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px;">OVERDUE</span>` : '';
-    const statusColor = c.status === 'Done' ? '#166534' : c.isOverdue ? '#DC2626' : '#92400E';
-    const statusBg    = c.status === 'Done' ? '#DCFCE7' : c.isOverdue ? '#FEE2E2' : '#FEF3C7';
+    const isVerified  = c.status === 'Verified';
+    const statusColor = isVerified ? '#1D4ED8' : c.status === 'Done' ? '#166534' : c.isOverdue ? '#DC2626' : '#92400E';
+    const statusBg    = isVerified ? '#DBEAFE' : c.status === 'Done' ? '#DCFCE7' : c.isOverdue ? '#FEE2E2' : '#FEF3C7';
+    const formBadge   = c._formType === 'accident' ? `<span style="font-size:9px;background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:99px;font-weight:700;margin-left:4px;">AR</span>`
+                      : c._formType === 'incident' ? `<span style="font-size:9px;background:#FEF3C7;color:#D97706;padding:1px 5px;border-radius:99px;font-weight:700;margin-left:4px;">IR</span>`
+                      : '';
+    const verifyInfo  = isVerified && c.verifyBy ? `<div style="font-size:10px;color:#1D4ED8;margin-top:2px;">✅ ${c.verifyBy}${c.verifyDate ? ' · '+new Date(c.verifyDate).toLocaleDateString() : ''}</div>` : '';
     return `<tr style="border-bottom:1px solid var(--light);${c.isOverdue ? 'background:#FFF8F8;' : ''}">
-      <td style="padding:10px 14px;"><code style="font-size:11px;color:var(--blue);">${c.reportId}</code></td>
+      <td style="padding:10px 14px;"><code style="font-size:11px;color:var(--blue);">${c.reportId}</code>${formBadge}</td>
       <td style="padding:10px 14px;font-size:12px;">${c.reportType || '—'}<br><span style="color:var(--muted);">📍 ${c.location || '—'}</span></td>
       <td style="padding:10px 14px;font-size:12px;max-width:220px;">${c.action}</td>
       <td style="padding:10px 14px;font-size:12px;">${c.type || '—'}</td>
@@ -2407,19 +3010,40 @@ function renderCapTracker() {
           <option ${c.status==='Open'?'selected':''}>Open</option>
           <option ${c.status==='In Progress'?'selected':''}>In Progress</option>
           <option ${c.status==='Done'?'selected':''}>Done</option>
+          <option ${c.status==='Verified'?'selected':''}>Verified</option>
         </select>
+        ${verifyInfo}
       </td>
     </tr>`;
   }).join('');
 }
 
 function updateCapStatus(reportId, capIdx, newStatus) {
-  const r = reports.find(r => r.id === reportId);
-  if (!r || !r.caps || !r.caps[capIdx]) return;
-  r.caps[capIdx].status = newStatus;
-  fbSet('sms/reports/' + reportId, r);
+  // Check hazard reports first
+  let r = reports.find(r => r.id === reportId);
+  if (r) {
+    if (!r.caps || !r.caps[capIdx]) return;
+    r.caps[capIdx].status = newStatus;
+    fbSet('sms/reports/' + reportId, r);
+  } else {
+    // Check accident reports
+    r = accidentReports.find(r => r.id === reportId);
+    if (r) {
+      if (!r.caps || !r.caps[capIdx]) return;
+      r.caps[capIdx].status = newStatus;
+      fbSet('sms/accidents/' + reportId, r);
+    } else {
+      // Check incident reports
+      r = incidentReports.find(r => r.id === reportId);
+      if (r) {
+        if (!r.caps || !r.caps[capIdx]) return;
+        r.caps[capIdx].status = newStatus;
+        fbSet('sms/incidents/' + reportId, r);
+      } else { return; }
+    }
+  }
+  renderCapTracker();
   toast('✅ Action status updated.', 'success');
-  // Refresh dashboard stats if visible
   try { updateDashboard(); } catch(e) {}
 }
 
@@ -2577,7 +3201,13 @@ function trackReport() {
   const id = (document.getElementById('track-id').value || '').trim().toUpperCase();
   const container = document.getElementById('track-result');
   if (!id) { container.innerHTML = '<div style="color:var(--red);font-size:13px;">⚠️ Please enter a Report ID.</div>'; return; }
-  const r = reports.find(x => x.id === id);
+
+  // Search across all report types
+  let r = reports.find(x => x.id === id);
+  let formType = 'hazard';
+  if (!r) { r = accidentReports.find(x => x.id === id); formType = 'accident'; }
+  if (!r) { r = incidentReports.find(x => x.id === id); formType = 'incident'; }
+
   if (!r) {
     container.innerHTML = `<div style="background:#FFF1F1;border:1.5px solid #FECACA;border-radius:10px;padding:16px;font-size:13px;color:#DC2626;">
       ❌ No report found with ID <strong>${id}</strong>. Please check and try again.</div>`;
@@ -2585,15 +3215,21 @@ function trackReport() {
   }
   const statusColor = { Open:'#2563A8', 'In Progress':'#D97706', Closed:'#16A34A' }[r.status] || '#64748B';
   const ack = r.acknowledgment;
+  const typeLabel = formType === 'accident' ? '🚨 Accident Report' : formType === 'incident' ? '⚡ Incident Report' : '⚠️ Hazard Report';
+  const urgencyField = formType === 'hazard'
+    ? `<div><strong>Urgency:</strong> <span class="badge ${r.urgency}">${r.urgency || '—'}</span></div>`
+    : formType === 'accident'
+    ? `<div><strong>Severity:</strong> ${r.severityOutcome || '—'}</div>`
+    : `<div><strong>Urgency:</strong> ${r.urgency || '—'}</div>`;
   container.innerHTML = `
     <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:20px;">
-      <div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:12px;">📋 Report Found</div>
+      <div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:12px;">📋 ${typeLabel} Found</div>
       <div style="font-size:13px;display:grid;gap:8px;">
         <div><strong>Report ID:</strong> <code>${r.id}</code></div>
         <div><strong>Submitted:</strong> ${r.submitted ? new Date(r.submitted).toLocaleDateString() : '—'}</div>
         <div><strong>Type:</strong> ${r.type || '—'}</div>
         <div><strong>Location:</strong> ${r.location || '—'}</div>
-        <div><strong>Urgency:</strong> <span class="badge ${r.urgency}">${r.urgency || '—'}</span></div>
+        ${urgencyField}
         <div><strong>Current Status:</strong> <span style="font-weight:700;color:${statusColor};">${r.status}</span></div>
       </div>
       ${ack ? `
@@ -3250,8 +3886,11 @@ function addCapRow() {
       <div class="form-group"><label>Owner</label><input type="text" id="cap-owner-${uid}" placeholder="Responsible person"/></div>
       <div class="form-group"><label>Target Date</label><input type="date" id="cap-date-${uid}"/></div>
       <div class="form-group"><label>Status</label>
-        <select id="cap-status-${uid}"><option>Open</option><option>In Progress</option><option>Done</option></select>
+        <select id="cap-status-${uid}"><option>Open</option><option>In Progress</option><option>Done</option><option>Verified</option></select>
       </div>
+      <div class="form-group"><label>Verification Date</label><input type="date" id="cap-verify-date-${uid}"/></div>
+      <div class="form-group"><label>Verified By</label><input type="text" id="cap-verify-by-${uid}" placeholder="Name / Role"/></div>
+      <div class="form-group full"><label>Effectiveness Assessment</label><input type="text" id="cap-verify-notes-${uid}" placeholder="Was the action effective? Describe outcome…"/></div>
     </div>`;
   document.getElementById('cap-rows').appendChild(div);
   refreshCapNumbers();
@@ -3296,13 +3935,21 @@ function submitReport() {
     const ownerEl  = row.querySelector('[id^="cap-owner-"]');
     const dateEl   = row.querySelector('[id^="cap-date-"]');
     const statusEl = row.querySelector('[id^="cap-status-"]');
-    if (actionEl) caps.push({
-      action: actionEl.value,
-      type:   typeEl   ? typeEl.value   : '',
-      owner:  ownerEl  ? ownerEl.value  : '',
-      date:   dateEl   ? dateEl.value   : '',
-      status: statusEl ? statusEl.value : 'Open',
-    });
+    if (actionEl) {
+      const verifyDateEl  = row.querySelector('[id^="cap-verify-date-"]');
+      const verifyByEl    = row.querySelector('[id^="cap-verify-by-"]');
+      const verifyNotesEl = row.querySelector('[id^="cap-verify-notes-"]');
+      caps.push({
+        action: actionEl.value,
+        type:       typeEl        ? typeEl.value        : '',
+        owner:      ownerEl       ? ownerEl.value       : '',
+        date:       dateEl        ? dateEl.value        : '',
+        status:     statusEl      ? statusEl.value      : 'Open',
+        verifyDate: verifyDateEl  ? verifyDateEl.value  : '',
+        verifyBy:   verifyByEl    ? verifyByEl.value    : '',
+        verifyNotes:verifyNotesEl ? verifyNotesEl.value : '',
+      });
+    }
   });
 
   const L = parseInt(document.getElementById('f-probability').value) || 0;
@@ -3337,9 +3984,12 @@ function submitReport() {
     probability: L, severity: S, riskIndex: riskVal, caapCode,
     existing: document.getElementById('f-existing').value,
     caps,
-    witness: document.getElementById('f-witness').value,
     evidence: document.getElementById('f-evidence').value,
     photos: window._formPhotoLinks || [],
+    reportingObligation: document.getElementById('f-reporting-obligation')?.value || 'voluntary',
+    humanFactors: [...document.querySelectorAll('.f-hf:checked')].map(c => c.value),
+    humanFactorsNotes: document.getElementById('f-hf-notes')?.value || '',
+    witnesses: collectWitnessRows('f-witness-rows'),
     status: 'Open',
     submittedBy: currentRole || 'admin',
     regRefs: getRegRefs(hazardTypes),
@@ -3411,11 +4061,14 @@ function clearForm() {
   ['f-type','f-urgency','f-via','f-datetime','f-name','f-role','f-contact',
    'f-org','f-location','f-activity','f-observed','f-supervisor','f-description',
    'f-consequence','f-frequency','f-stopped','f-action-person','f-immediate',
-   'f-further','f-existing','f-witness','f-evidence'].forEach(id => {
+   'f-further','f-existing','f-evidence'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.querySelectorAll('.f-hazard-type, .f-exposed').forEach(c => c.checked = false);
+  document.querySelectorAll('.f-hazard-type, .f-exposed, .f-hf').forEach(c => c.checked = false);
+  const fHfNotes = document.getElementById('f-hf-notes'); if (fHfNotes) fHfNotes.value = '';
+  const fOblig = document.getElementById('f-reporting-obligation'); if (fOblig) fOblig.value = 'voluntary';
+  const fWitRows = document.getElementById('f-witness-rows'); if (fWitRows) fWitRows.innerHTML = '';
   // Reset Others hazard field
   const otherChk = document.getElementById('f-hazard-other-chk');
   const otherTxt = document.getElementById('f-hazard-other-text');
@@ -4203,9 +4856,21 @@ function addModalCapRow(existingCap, existingIdx) {
       <div class="form-group">
         <label>Status</label>
         <select class="mc-status">
-          ${['Open','In Progress','Done'].map(s =>
+          ${['Open','In Progress','Done','Verified'].map(s =>
             `<option${cap.status===s?' selected':''}>${s}</option>`).join('')}
         </select>
+      </div>
+      <div class="form-group">
+        <label>Verification Date</label>
+        <input type="date" class="mc-verify-date" value="${cap.verifyDate||''}"/>
+      </div>
+      <div class="form-group">
+        <label>Verified By</label>
+        <input type="text" class="mc-verify-by" placeholder="Name / Role" value="${cap.verifyBy||''}"/>
+      </div>
+      <div class="form-group full">
+        <label>Effectiveness Assessment</label>
+        <input type="text" class="mc-verify-notes" placeholder="Was the action effective? Describe outcome…" value="${cap.verifyNotes||''}"/>
       </div>
     </div>`;
 
@@ -4242,10 +4907,13 @@ function saveModalCap() {
     if (!action) return; // skip blank rows
     caps.push({
       action,
-      type:   row.querySelector('.mc-type')?.value   || 'Administrative',
-      owner:  row.querySelector('.mc-owner')?.value  || '',
-      date:   row.querySelector('.mc-date')?.value   || '',
-      status: row.querySelector('.mc-status')?.value || 'Open',
+      type:       row.querySelector('.mc-type')?.value        || 'Administrative',
+      owner:      row.querySelector('.mc-owner')?.value       || '',
+      date:       row.querySelector('.mc-date')?.value        || '',
+      status:     row.querySelector('.mc-status')?.value      || 'Open',
+      verifyDate: row.querySelector('.mc-verify-date')?.value || '',
+      verifyBy:   row.querySelector('.mc-verify-by')?.value   || '',
+      verifyNotes:row.querySelector('.mc-verify-notes')?.value|| '',
     });
   });
 
@@ -4440,6 +5108,423 @@ function renderPendingSignoffs() {
 // Format: AMTS-HR-YYYY-NNNN  (e.g. AMTS-HR-2026-0001)
 // AMTS = organization, HR = Hazard Report, YYYY = year, NNNN = sequential (zero-padded 4 digits)
 // Guarantees no gaps, no duplicates, full traceability across years.
+
+// ─── WITNESS ROWS ─────────────────────────────────────────────────────────────
+let _witnessUid = 0;
+
+function addWitnessRow(containerId, prefix) {
+  const uid = ++_witnessUid;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'witness-row-item';
+  row.style.cssText = 'background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;';
+  row.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);">Witness #${uid}</span>
+      <button class="btn btn-sm" onclick="this.closest('.witness-row-item').remove()" style="background:#FEE2E2;color:#DC2626;border:none;padding:2px 8px;">✕</button>
+    </div>
+    <div class="form-grid" style="gap:8px;">
+      <div class="form-group"><label style="font-size:11px;">Full Name</label><input type="text" id="${prefix}-wit-name-${uid}" placeholder="Witness full name"/></div>
+      <div class="form-group"><label style="font-size:11px;">Role / Position</label><input type="text" id="${prefix}-wit-role-${uid}" placeholder="e.g. Student, Instructor…"/></div>
+      <div class="form-group"><label style="font-size:11px;">Contact</label><input type="text" id="${prefix}-wit-contact-${uid}" placeholder="Phone or email"/></div>
+      <div class="form-group"><label style="font-size:11px;">Statement Collected By</label><input type="text" id="${prefix}-wit-collected-by-${uid}" placeholder="Name of interviewer"/></div>
+      <div class="form-group"><label style="font-size:11px;">Date / Time of Statement</label><input type="datetime-local" id="${prefix}-wit-date-${uid}"/></div>
+      <div class="form-group full"><label style="font-size:11px;">Witness Statement</label><textarea id="${prefix}-wit-statement-${uid}" placeholder="Summarize or quote the witness account…" style="min-height:70px;"></textarea></div>
+    </div>`;
+  container.appendChild(row);
+}
+
+function collectWitnessRows(containerId) {
+  const witnesses = [];
+  const container = document.getElementById(containerId);
+  if (!container) return witnesses;
+  container.querySelectorAll('.witness-row-item').forEach(row => {
+    const nameEl      = row.querySelector('[id*="-wit-name-"]');
+    const roleEl      = row.querySelector('[id*="-wit-role-"]');
+    const contactEl   = row.querySelector('[id*="-wit-contact-"]');
+    const collByEl    = row.querySelector('[id*="-wit-collected-by-"]');
+    const dateEl      = row.querySelector('[id*="-wit-date-"]');
+    const stmtEl      = row.querySelector('[id*="-wit-statement-"]');
+    if (nameEl && nameEl.value.trim()) {
+      witnesses.push({
+        name:        nameEl.value,
+        role:        roleEl?.value || '',
+        contact:     contactEl?.value || '',
+        collectedBy: collByEl?.value || '',
+        date:        dateEl?.value || '',
+        statement:   stmtEl?.value || '',
+      });
+    }
+  });
+  return witnesses;
+}
+
+// ─── SEQUENCE OF EVENTS (Accident form) ───────────────────────────────────────
+let _seqUid = 0;
+
+function addSequenceRow() {
+  const uid = ++_seqUid;
+  const container = document.getElementById('ac-sequence-rows');
+  if (!container) return;
+  const rowNum = container.querySelectorAll('.seq-row-item').length + 1;
+  const row = document.createElement('div');
+  row.className = 'seq-row-item';
+  row.style.cssText = 'display:grid;grid-template-columns:140px 1fr 160px auto;gap:8px;align-items:start;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;';
+  row.innerHTML = `
+    <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Time</label>
+      <input type="time" id="ac-seq-time-${uid}" style="width:100%;font-size:12px;"/></div>
+    <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Event Description</label>
+      <input type="text" id="ac-seq-event-${uid}" placeholder="What happened at this point?" style="width:100%;font-size:12px;"/></div>
+    <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Person(s) Involved</label>
+      <input type="text" id="ac-seq-person-${uid}" placeholder="Name / role" style="width:100%;font-size:12px;"/></div>
+    <button class="btn btn-sm" onclick="this.closest('.seq-row-item').remove()" style="background:#FEE2E2;color:#DC2626;border:none;padding:2px 8px;margin-top:18px;">✕</button>`;
+  container.appendChild(row);
+}
+
+function collectSequenceRows() {
+  const events = [];
+  document.querySelectorAll('#ac-sequence-rows .seq-row-item').forEach(row => {
+    const timeEl   = row.querySelector('[id^="ac-seq-time-"]');
+    const eventEl  = row.querySelector('[id^="ac-seq-event-"]');
+    const personEl = row.querySelector('[id^="ac-seq-person-"]');
+    if (eventEl && eventEl.value.trim()) {
+      events.push({ time: timeEl?.value||'', event: eventEl.value, person: personEl?.value||'' });
+    }
+  });
+  return events;
+}
+
+// ─── ACCIDENT REPORT FUNCTIONS ────────────────────────────────────────────────
+let acCapUid = 0;
+
+function getNextAccidentId() {
+  const year = new Date().getFullYear();
+  const prefix = `AMTS-AR-${year}-`;
+  let maxSeq = 0;
+  accidentReports.filter(r => r.id && r.id.startsWith(prefix)).forEach(r => {
+    const seq = parseInt(r.id.replace(prefix, ''), 10);
+    if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+  });
+  const lsKey = `sms_ac_seq_${year}`;
+  const lsMax = parseInt(lsGet(lsKey, 0)) || 0;
+  const next = Math.max(maxSeq, lsMax) + 1;
+  lsSet(lsKey, next);
+  return prefix + String(next).padStart(4, '0');
+}
+
+function addAcCapRow() {
+  const uid = ++acCapUid;
+  const row = document.createElement('div');
+  row.className = 'cap-row-item';
+  row.style.cssText = 'background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;';
+  row.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);">Action #${uid}</span>
+      <button class="btn btn-sm" onclick="this.closest('.cap-row-item').remove()" style="background:#FEE2E2;color:#DC2626;border:none;padding:2px 8px;">✕</button>
+    </div>
+    <div class="form-grid" style="gap:8px;">
+      <div class="form-group full"><label style="font-size:11px;">Corrective Action</label><input type="text" id="ac-cap-action-${uid}" placeholder="Describe the action…"/></div>
+      <div class="form-group"><label style="font-size:11px;">Type</label>
+        <select id="ac-cap-type-${uid}"><option>Corrective</option><option>Preventive</option><option>Immediate</option></select>
+      </div>
+      <div class="form-group"><label style="font-size:11px;">Responsible Person</label><input type="text" id="ac-cap-owner-${uid}" placeholder="Name"/></div>
+      <div class="form-group"><label style="font-size:11px;">Target Date</label><input type="date" id="ac-cap-date-${uid}"/></div>
+      <div class="form-group"><label style="font-size:11px;">Status</label>
+        <select id="ac-cap-status-${uid}"><option>Open</option><option>In Progress</option><option>Closed</option><option>Verified</option></select>
+      </div>
+      <div class="form-group"><label style="font-size:11px;">Verification Date</label><input type="date" id="ac-cap-verify-date-${uid}"/></div>
+      <div class="form-group"><label style="font-size:11px;">Verified By</label><input type="text" id="ac-cap-verify-by-${uid}" placeholder="Name / Role"/></div>
+      <div class="form-group full"><label style="font-size:11px;">Effectiveness Assessment</label><input type="text" id="ac-cap-verify-notes-${uid}" placeholder="Was the action effective? Describe outcome…"/></div>
+    </div>`;
+  document.getElementById('ac-cap-rows').appendChild(row);
+}
+
+function submitAccidentReport() {
+  const type = document.getElementById('ac-type').value;
+  const severity = document.getElementById('ac-severity-outcome').value;
+  if (!type) { toast('Please select an Accident Type', 'error'); return; }
+  if (!severity && currentRole !== 'student') { toast('Please select Severity of Outcome', 'error'); return; }
+
+  const caps = [];
+  document.querySelectorAll('#ac-cap-rows .cap-row-item').forEach(row => {
+    const actionEl = row.querySelector('[id^="ac-cap-action-"]');
+    const typeEl   = row.querySelector('[id^="ac-cap-type-"]');
+    const ownerEl  = row.querySelector('[id^="ac-cap-owner-"]');
+    const dateEl   = row.querySelector('[id^="ac-cap-date-"]');
+    const statusEl = row.querySelector('[id^="ac-cap-status-"]');
+    if (actionEl && actionEl.value.trim()) {
+      const verifyDateEl  = row.querySelector('[id^="ac-cap-verify-date-"]');
+      const verifyByEl    = row.querySelector('[id^="ac-cap-verify-by-"]');
+      const verifyNotesEl = row.querySelector('[id^="ac-cap-verify-notes-"]');
+      caps.push({
+        action: actionEl.value, type: typeEl ? typeEl.value : '',
+        owner: ownerEl ? ownerEl.value : '', date: dateEl ? dateEl.value : '',
+        status:     statusEl      ? statusEl.value      : 'Open',
+        verifyDate: verifyDateEl  ? verifyDateEl.value  : '',
+        verifyBy:   verifyByEl    ? verifyByEl.value    : '',
+        verifyNotes:verifyNotesEl ? verifyNotesEl.value : '',
+      });
+    }
+  });
+
+  const report = {
+    id: getNextAccidentId(),
+    formType: 'accident',
+    submitted: new Date().toISOString(),
+    type, severityOutcome: severity,
+    via: document.getElementById('ac-via').value,
+    datetime: document.getElementById('ac-datetime').value,
+    name: document.getElementById('ac-name').value,
+    role: document.getElementById('ac-role').value,
+    contact: document.getElementById('ac-contact').value,
+    supervisor: document.getElementById('ac-supervisor').value,
+    org: document.getElementById('ac-org').value,
+    location: document.getElementById('ac-location').value,
+    activity: document.getElementById('ac-activity').value,
+    conditions: document.getElementById('ac-conditions').value,
+    description: document.getElementById('ac-description').value,
+    immediateCause: document.getElementById('ac-immediate-cause').value,
+    injuredNames: document.getElementById('ac-injured-names').value,
+    injuredRole: document.getElementById('ac-injured-role').value,
+    injuryNature: document.getElementById('ac-injury-nature').value,
+    medical: document.getElementById('ac-medical').value,
+    daysLost: document.getElementById('ac-days-lost').value,
+    damage: document.getElementById('ac-damage').value,
+    damageCost: document.getElementById('ac-damage-cost').value,
+    stopped: document.getElementById('ac-stopped').value,
+    responder: document.getElementById('ac-responder').value,
+    immediateAction: document.getElementById('ac-immediate-action').value,
+    notified: document.getElementById('ac-notified').value,
+    rootCause: document.getElementById('ac-root-cause').value,
+    contributing: document.getElementById('ac-contributing').value,
+    investigator: document.getElementById('ac-investigator').value,
+    investigationDate: document.getElementById('ac-investigation-date').value,
+    caps,
+    evidence: document.getElementById('ac-evidence').value,
+    photos: window._acPhotoLinks || [],
+    reportingObligation: document.getElementById('ac-reporting-obligation')?.value || 'mandatory',
+    caapRef: document.getElementById('ac-caap-ref')?.value || '',
+    notifiedDate: document.getElementById('ac-notified-date')?.value || '',
+    notifiedBy: document.getElementById('ac-notified-by')?.value || '',
+    humanFactors: [...document.querySelectorAll('.ac-hf:checked')].map(c => c.value),
+    humanFactorsNotes: document.getElementById('ac-hf-notes')?.value || '',
+    witnesses: collectWitnessRows('ac-witness-rows'),
+    sequenceOfEvents: collectSequenceRows(),
+    status: 'Open',
+    submittedBy: currentRole || 'admin',
+  };
+
+  logAuditEvent('SUBMIT', report.id, `Accident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Severity: ${severity}.`, null, 'Open');
+  toast('🚨 Accident Report submitted: ' + report.id, 'success');
+
+  // Show success banner
+  const page = document.getElementById('page-accident-report');
+  const old = document.getElementById('ac-success-card');
+  if (old) old.remove();
+  const card = document.createElement('div');
+  card.id = 'ac-success-card';
+  card.style.cssText = 'background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:36px 24px;text-align:center;margin-bottom:20px;border-top:4px solid #DC2626;';
+  card.innerHTML = `
+    <div style="font-size:56px;margin-bottom:12px;">✅</div>
+    <div style="font-size:20px;font-weight:800;color:#1B3A6B;margin-bottom:8px;">Accident Report Submitted!</div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Your report has been recorded and will be reviewed by the SMS Coordinator.</div>
+    <div style="font-family:monospace;font-size:17px;font-weight:700;color:#DC2626;background:#FEF2F2;padding:10px 20px;border-radius:8px;display:inline-block;margin-bottom:20px;">${report.id}</div>
+    <div style="font-size:11px;color:#94A3B8;margin-bottom:24px;">Save this Report ID for your records.</div>
+    <button onclick="document.getElementById('ac-success-card').remove();Array.from(document.getElementById('page-accident-report').children).forEach(el=>{el.style.display='';});clearAccidentForm();" style="background:#DC2626;color:white;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📝 Submit Another Report</button>`;
+  Array.from(page.children).forEach(el => { el.style.display = 'none'; });
+  page.insertBefore(card, page.firstChild);
+}
+
+function clearAccidentForm() {
+  ['ac-type','ac-severity-outcome','ac-via','ac-datetime','ac-name','ac-role','ac-contact',
+   'ac-supervisor','ac-org','ac-location','ac-activity','ac-conditions','ac-description',
+   'ac-immediate-cause','ac-injured-names','ac-injured-role','ac-injury-nature','ac-medical',
+   'ac-days-lost','ac-damage','ac-damage-cost','ac-stopped','ac-responder','ac-immediate-action',
+   'ac-notified','ac-root-cause','ac-contributing','ac-investigator','ac-investigation-date',
+   'ac-evidence'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ac-cap-rows').innerHTML = '';
+  acCapUid = 0;
+  window._acPhotoLinks = [];
+  const acPhotoList = document.getElementById('ac-photo-links-list');
+  if (acPhotoList) acPhotoList.innerHTML = '';
+  updateDropZoneCountFor('ac-photo-drop-zone', 0);
+  document.querySelectorAll('.ac-hf').forEach(c => c.checked = false);
+  const acHfNotes = document.getElementById('ac-hf-notes'); if (acHfNotes) acHfNotes.value = '';
+  const acOblig = document.getElementById('ac-reporting-obligation'); if (acOblig) acOblig.value = 'mandatory';
+  ['ac-caap-ref','ac-notified-date','ac-notified-by'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const acWitRows = document.getElementById('ac-witness-rows'); if (acWitRows) acWitRows.innerHTML = '';
+  const acSeqRows = document.getElementById('ac-sequence-rows'); if (acSeqRows) acSeqRows.innerHTML = '';
+  _seqUid = 0;
+}
+
+// ─── INCIDENT REPORT FUNCTIONS ────────────────────────────────────────────────
+let irCapUid = 0;
+
+function getNextIncidentId() {
+  const year = new Date().getFullYear();
+  const prefix = `AMTS-IR-${year}-`;
+  let maxSeq = 0;
+  incidentReports.filter(r => r.id && r.id.startsWith(prefix)).forEach(r => {
+    const seq = parseInt(r.id.replace(prefix, ''), 10);
+    if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+  });
+  const lsKey = `sms_ir_seq_${year}`;
+  const lsMax = parseInt(lsGet(lsKey, 0)) || 0;
+  const next = Math.max(maxSeq, lsMax) + 1;
+  lsSet(lsKey, next);
+  return prefix + String(next).padStart(4, '0');
+}
+
+function toggleIrAnon(yes) {
+  document.getElementById('ir-reporter-fields').style.display = yes ? 'none' : 'grid';
+}
+
+function addIrCapRow() {
+  const uid = ++irCapUid;
+  const row = document.createElement('div');
+  row.className = 'cap-row-item';
+  row.style.cssText = 'background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;';
+  row.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);">Action #${uid}</span>
+      <button class="btn btn-sm" onclick="this.closest('.cap-row-item').remove()" style="background:#FEE2E2;color:#DC2626;border:none;padding:2px 8px;">✕</button>
+    </div>
+    <div class="form-grid" style="gap:8px;">
+      <div class="form-group full"><label style="font-size:11px;">Corrective Action</label><input type="text" id="ir-cap-action-${uid}" placeholder="Describe the action…"/></div>
+      <div class="form-group"><label style="font-size:11px;">Type</label>
+        <select id="ir-cap-type-${uid}"><option>Corrective</option><option>Preventive</option><option>Immediate</option></select>
+      </div>
+      <div class="form-group"><label style="font-size:11px;">Responsible Person</label><input type="text" id="ir-cap-owner-${uid}" placeholder="Name"/></div>
+      <div class="form-group"><label style="font-size:11px;">Target Date</label><input type="date" id="ir-cap-date-${uid}"/></div>
+      <div class="form-group"><label style="font-size:11px;">Status</label>
+        <select id="ir-cap-status-${uid}"><option>Open</option><option>In Progress</option><option>Closed</option><option>Verified</option></select>
+      </div>
+      <div class="form-group"><label style="font-size:11px;">Verification Date</label><input type="date" id="ir-cap-verify-date-${uid}"/></div>
+      <div class="form-group"><label style="font-size:11px;">Verified By</label><input type="text" id="ir-cap-verify-by-${uid}" placeholder="Name / Role"/></div>
+      <div class="form-group full"><label style="font-size:11px;">Effectiveness Assessment</label><input type="text" id="ir-cap-verify-notes-${uid}" placeholder="Was the action effective? Describe outcome…"/></div>
+    </div>`;
+  document.getElementById('ir-cap-rows').appendChild(row);
+}
+
+function submitIncidentReport() {
+  const type = document.getElementById('ir-type').value;
+  const urgency = document.getElementById('ir-urgency').value;
+  if (!type) { toast('Please select an Incident Type', 'error'); return; }
+  if (!urgency && currentRole !== 'student') { toast('Please select an Urgency Level', 'error'); return; }
+
+  const _anonEl = document.querySelector('input[name="ir-anon"]:checked');
+  const isAnon = _anonEl ? _anonEl.value === 'yes' : false;
+  const affected = [...document.querySelectorAll('.ir-affected:checked')].map(c => c.value);
+
+  const caps = [];
+  document.querySelectorAll('#ir-cap-rows .cap-row-item').forEach(row => {
+    const actionEl = row.querySelector('[id^="ir-cap-action-"]');
+    const typeEl   = row.querySelector('[id^="ir-cap-type-"]');
+    const ownerEl  = row.querySelector('[id^="ir-cap-owner-"]');
+    const dateEl   = row.querySelector('[id^="ir-cap-date-"]');
+    const statusEl = row.querySelector('[id^="ir-cap-status-"]');
+    if (actionEl && actionEl.value.trim()) {
+      const verifyDateEl  = row.querySelector('[id^="ir-cap-verify-date-"]');
+      const verifyByEl    = row.querySelector('[id^="ir-cap-verify-by-"]');
+      const verifyNotesEl = row.querySelector('[id^="ir-cap-verify-notes-"]');
+      caps.push({
+        action: actionEl.value, type: typeEl ? typeEl.value : '',
+        owner: ownerEl ? ownerEl.value : '', date: dateEl ? dateEl.value : '',
+        status:     statusEl      ? statusEl.value      : 'Open',
+        verifyDate: verifyDateEl  ? verifyDateEl.value  : '',
+        verifyBy:   verifyByEl    ? verifyByEl.value    : '',
+        verifyNotes:verifyNotesEl ? verifyNotesEl.value : '',
+      });
+    }
+  });
+
+  const report = {
+    id: getNextIncidentId(),
+    formType: 'incident',
+    submitted: new Date().toISOString(),
+    type, urgency,
+    via: document.getElementById('ir-via').value,
+    datetime: document.getElementById('ir-datetime').value,
+    anonymous: isAnon,
+    name: isAnon ? 'Anonymous' : document.getElementById('ir-name').value,
+    role: isAnon ? '' : document.getElementById('ir-role').value,
+    contact: isAnon ? '' : document.getElementById('ir-contact').value,
+    supervisor: isAnon ? '' : document.getElementById('ir-supervisor').value,
+    org: document.getElementById('ir-org').value,
+    location: document.getElementById('ir-location').value,
+    activity: document.getElementById('ir-activity').value,
+    description: document.getElementById('ir-description').value,
+    consequence: document.getElementById('ir-consequence').value,
+    affected,
+    persons: document.getElementById('ir-persons').value,
+    injuries: document.getElementById('ir-injuries').value,
+    stopped: document.getElementById('ir-stopped').value,
+    responder: document.getElementById('ir-responder').value,
+    immediateAction: document.getElementById('ir-immediate-action').value,
+    further: document.getElementById('ir-further').value,
+    rootCause: document.getElementById('ir-root-cause').value,
+    contributing: document.getElementById('ir-contributing').value,
+    caps,
+    evidence: document.getElementById('ir-evidence').value,
+    photos: window._irPhotoLinks || [],
+    reportingObligation: document.getElementById('ir-reporting-obligation')?.value || 'voluntary',
+    incidentClassification: document.getElementById('ir-classification')?.value || 'incident',
+    humanFactors: [...document.querySelectorAll('.ir-hf:checked')].map(c => c.value),
+    humanFactorsNotes: document.getElementById('ir-hf-notes')?.value || '',
+    witnesses: collectWitnessRows('ir-witness-rows'),
+    status: 'Open',
+    submittedBy: currentRole || 'admin',
+  };
+
+  fbSet('sms/incidents/' + report.id, report);
+  logAuditEvent('SUBMIT', report.id, `Incident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Urgency: ${urgency}.`, null, 'Open');
+  toast('⚡ Incident Report submitted: ' + report.id, 'success');
+
+  // Show success banner
+  const page = document.getElementById('page-incident-report');
+  const old = document.getElementById('ir-success-card');
+  if (old) old.remove();
+  const card = document.createElement('div');
+  card.id = 'ir-success-card';
+  card.style.cssText = 'background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:36px 24px;text-align:center;margin-bottom:20px;border-top:4px solid #D97706;';
+  card.innerHTML = `
+    <div style="font-size:56px;margin-bottom:12px;">✅</div>
+    <div style="font-size:20px;font-weight:800;color:#1B3A6B;margin-bottom:8px;">Incident Report Submitted!</div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Your report has been recorded and will be reviewed by the SMS Coordinator.</div>
+    <div style="font-family:monospace;font-size:17px;font-weight:700;color:#D97706;background:#FFFBEB;padding:10px 20px;border-radius:8px;display:inline-block;margin-bottom:20px;">${report.id}</div>
+    <div style="font-size:11px;color:#94A3B8;margin-bottom:24px;">Save this Report ID for your records.</div>
+    <button onclick="document.getElementById('ir-success-card').remove();Array.from(document.getElementById('page-incident-report').children).forEach(el=>{el.style.display='';});clearIncidentForm();" style="background:#D97706;color:white;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📝 Submit Another Report</button>`;
+  Array.from(page.children).forEach(el => { el.style.display = 'none'; });
+  page.insertBefore(card, page.firstChild);
+}
+
+function clearIncidentForm() {
+  ['ir-type','ir-urgency','ir-via','ir-datetime','ir-name','ir-role','ir-contact',
+   'ir-supervisor','ir-org','ir-location','ir-activity','ir-description','ir-consequence',
+   'ir-persons','ir-injuries','ir-stopped','ir-responder','ir-immediate-action',
+   'ir-further','ir-root-cause','ir-contributing','ir-evidence'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.ir-affected').forEach(c => c.checked = false);
+  document.getElementById('ir-anon-no').checked = true;
+  document.getElementById('ir-reporter-fields').style.display = 'grid';
+  document.getElementById('ir-cap-rows').innerHTML = '';
+  irCapUid = 0;
+  window._irPhotoLinks = [];
+  const irPhotoList = document.getElementById('ir-photo-links-list');
+  if (irPhotoList) irPhotoList.innerHTML = '';
+  updateDropZoneCountFor('ir-photo-drop-zone', 0);
+  document.querySelectorAll('.ir-hf').forEach(c => c.checked = false);
+  const irHfNotes = document.getElementById('ir-hf-notes'); if (irHfNotes) irHfNotes.value = '';
+  const irOblig = document.getElementById('ir-reporting-obligation'); if (irOblig) irOblig.value = 'voluntary';
+  const irClass = document.getElementById('ir-classification'); if (irClass) irClass.value = 'incident';
+  const irWitRows = document.getElementById('ir-witness-rows'); if (irWitRows) irWitRows.innerHTML = '';
+}
 
 function getNextReportId() {
   const year = new Date().getFullYear();
@@ -6425,6 +7510,22 @@ function enterApp(role) {
     if (urgencyNotice) urgencyNotice.style.display = 'none';
     const urgencyBadge = document.getElementById('urgency-admin-badge');
     if (urgencyBadge) urgencyBadge.style.display = 'none';
+
+    // Accident Severity — always editable for admin
+    const acSevEl = document.getElementById('ac-severity-outcome');
+    if (acSevEl) { acSevEl.disabled = false; acSevEl.style.opacity = ''; acSevEl.style.cursor = ''; acSevEl.style.background = ''; }
+    const acSevNotice = document.getElementById('ac-severity-student-notice');
+    if (acSevNotice) acSevNotice.style.display = 'none';
+    const acSevBadge = document.getElementById('ac-severity-admin-badge');
+    if (acSevBadge) acSevBadge.style.display = 'none';
+
+    // Incident Urgency — always editable for admin
+    const irUrgEl = document.getElementById('ir-urgency');
+    if (irUrgEl) { irUrgEl.disabled = false; irUrgEl.style.opacity = ''; irUrgEl.style.cursor = ''; irUrgEl.style.background = ''; }
+    const irUrgNotice = document.getElementById('ir-urgency-student-notice');
+    if (irUrgNotice) irUrgNotice.style.display = 'none';
+    const irUrgBadge = document.getElementById('ir-urgency-admin-badge');
+    if (irUrgBadge) irUrgBadge.style.display = 'none';
     // ───────────────────────────────────────────────────────────────────
 
     init(); // full app init for admin
@@ -6478,6 +7579,22 @@ function showStudentBanner() {
   if (urgencyNotice) urgencyNotice.style.display = 'block';
   const urgencyBadge = document.getElementById('urgency-admin-badge');
   if (urgencyBadge) urgencyBadge.style.display = 'inline';
+
+  // 🔒 Lock Accident Severity — admin assigns after review
+  const acSevEl = document.getElementById('ac-severity-outcome');
+  if (acSevEl) { acSevEl.disabled = true; acSevEl.style.opacity = '0.55'; acSevEl.style.cursor = 'not-allowed'; acSevEl.style.background = '#F1F5F9'; }
+  const acSevNotice = document.getElementById('ac-severity-student-notice');
+  if (acSevNotice) acSevNotice.style.display = 'block';
+  const acSevBadge = document.getElementById('ac-severity-admin-badge');
+  if (acSevBadge) acSevBadge.style.display = 'inline';
+
+  // 🔒 Lock Incident Urgency — admin assigns after review
+  const irUrgEl = document.getElementById('ir-urgency');
+  if (irUrgEl) { irUrgEl.disabled = true; irUrgEl.style.opacity = '0.55'; irUrgEl.style.cursor = 'not-allowed'; irUrgEl.style.background = '#F1F5F9'; }
+  const irUrgNotice = document.getElementById('ir-urgency-student-notice');
+  if (irUrgNotice) irUrgNotice.style.display = 'block';
+  const irUrgBadge = document.getElementById('ir-urgency-admin-badge');
+  if (irUrgBadge) irUrgBadge.style.display = 'inline';
 
   // 🔒 Lock entire G. Risk Assessment section — admin-only
   const lockNotice = document.getElementById('risk-admin-lock-notice');
@@ -6636,6 +7753,8 @@ function logout() {
 // ═══════════════════════════════════════════════════════════════════
 
 window._formPhotoLinks = [];  // { id, url, thumbUrl, caption, fileName }
+window._acPhotoLinks   = [];  // accident report photos
+window._irPhotoLinks   = [];  // incident report photos
 const PHOTO_MAX_MB    = 5;
 const PHOTO_MAX_PX    = 1200;  // compress before upload
 const PHOTO_QUALITY   = 0.82;
@@ -6895,6 +8014,125 @@ function addPhotoLink() {
 // ── Lightbox for form photos ───────────────────────────────────────
 let _lbPhotos = [];
 let _lbIndex  = 0;
+
+// ─── GENERIC MULTI-FORM PHOTO ENGINE ─────────────────────────────────────────
+// Supports any form by passing a config object with ids and the links array key.
+
+async function processPhotoFilesFor(files, cfg) {
+  // cfg = { linksKey, listId, bannerId, bannerIconId, bannerTextId, dropZoneId }
+  const linksArr = window[cfg.linksKey];
+  const remaining = PHOTO_MAX_COUNT - linksArr.length;
+  if (remaining <= 0) { toast(`⚠️ Max ${PHOTO_MAX_COUNT} photos per report.`, 'error'); return; }
+  const toProcess = files.slice(0, remaining);
+  if (files.length > remaining) toast(`⚠️ Only ${remaining} more photo(s) can be added. Others skipped.`, 'error');
+
+  const scriptUrl  = getAppsScriptUrl();
+  const banner     = document.getElementById(cfg.bannerId);
+  const bannerIcon = document.getElementById(cfg.bannerIconId);
+  const bannerText = document.getElementById(cfg.bannerTextId);
+
+  for (let i = 0; i < toProcess.length; i++) {
+    const file = toProcess[i];
+    if (!file.type.startsWith('image/')) { toast(`⚠️ ${file.name} is not an image.`, 'error'); continue; }
+    if (file.size > PHOTO_MAX_MB * 1024 * 1024) { toast(`⚠️ ${file.name} is over ${PHOTO_MAX_MB} MB.`, 'error'); continue; }
+
+    if (scriptUrl && banner) {
+      banner.style.display = 'flex';
+      if (bannerIcon) bannerIcon.textContent = '⏳';
+      if (bannerText) bannerText.textContent = `Uploading ${file.name} (${i+1} of ${toProcess.length}) to Google Drive…`;
+    }
+
+    try {
+      let link;
+      if (scriptUrl) {
+        const result = await uploadPhotoToDrive(file, null);
+        link = { id: 'ph-'+Date.now()+'-'+Math.random().toString(36).slice(2,5), url: result.viewUrl, thumbUrl: result.thumbUrl, caption: file.name.replace(/\.[^.]+$/,''), fileName: result.fileName, fileId: result.fileId, uploaded: true };
+      } else {
+        const dataUrl = await compressImageForUpload(file);
+        link = { id: 'ph-'+Date.now()+'-'+Math.random().toString(36).slice(2,5), url: dataUrl, thumbUrl: dataUrl, caption: file.name.replace(/\.[^.]+$/,''), fileName: file.name, uploaded: false };
+        toast('⚠️ No Drive script configured. Photo stored locally only.', 'error');
+      }
+      window[cfg.linksKey].push(link);
+      renderPhotoCardTo(link, cfg.listId, cfg.linksKey, cfg.dropZoneId);
+    } catch(err) {
+      toast(`❌ Failed to upload ${file.name}: ${err.message}`, 'error');
+    }
+  }
+
+  if (banner) banner.style.display = 'none';
+  if (toProcess.length) toast(`✅ ${toProcess.length} photo(s) ${scriptUrl ? 'uploaded to Google Drive' : 'added locally'}!`, 'success');
+  updateDropZoneCountFor(cfg.dropZoneId, window[cfg.linksKey].length);
+}
+
+function renderPhotoCardTo(link, listId, linksKey, dropZoneId) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  const card = document.createElement('div');
+  card.dataset.id = link.id;
+  card.style.cssText = 'background:white;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.09);overflow:hidden;border:1.5px solid var(--border);position:relative;transition:transform .15s;';
+  card.onmouseenter = () => card.style.transform = 'translateY(-2px)';
+  card.onmouseleave = () => card.style.transform = '';
+  const isDrive = link.uploaded;
+  const thumb = link.thumbUrl || link.url;
+  card.innerHTML = `
+    <button onclick="removePhotoFrom('${link.id}','${listId}','${linksKey}','${dropZoneId}')" title="Remove"
+      style="position:absolute;top:5px;right:5px;z-index:2;background:rgba(0,0,0,0.65);color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    ${isDrive ? `<span title="Uploaded to Google Drive" style="position:absolute;top:5px;left:5px;z-index:2;background:rgba(22,163,74,0.9);color:white;border-radius:4px;font-size:9px;padding:2px 5px;font-weight:700;">☁️ Drive</span>` : `<span style="position:absolute;top:5px;left:5px;z-index:2;background:rgba(217,119,6,0.9);color:white;border-radius:4px;font-size:9px;padding:2px 5px;font-weight:700;">⚠️ Local</span>`}
+    <div style="height:105px;overflow:hidden;background:#F1F5F9;cursor:pointer;" onclick="openLightboxFromLinks(window['${linksKey}'],'${link.id}')">
+      <img src="${thumb}" alt="${link.caption||'Photo'}" loading="lazy"
+        style="width:100%;height:100%;object-fit:cover;display:block;"
+        onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;\\'>🖼️</div>'"/>
+    </div>
+    <div style="padding:6px 8px;">
+      <div style="font-size:11px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${link.caption||link.fileName||''}">${link.caption||link.fileName||'Photo'}</div>
+      ${isDrive ? `<a href="${link.url}" target="_blank" rel="noopener" style="font-size:10px;color:var(--blue);text-decoration:none;">↗ Open in Drive</a>` : `<span style="font-size:10px;color:var(--muted);">Local only</span>`}
+    </div>`;
+  list.appendChild(card);
+}
+
+function removePhotoFrom(id, listId, linksKey, dropZoneId) {
+  window[linksKey] = window[linksKey].filter(p => p.id !== id);
+  const el = document.querySelector(`#${listId} [data-id="${id}"]`);
+  if (el) el.remove();
+  updateDropZoneCountFor(dropZoneId, window[linksKey].length);
+}
+
+function updateDropZoneCountFor(dropZoneId, count) {
+  const dz = document.getElementById(dropZoneId);
+  if (!dz) return;
+  const label = dz.querySelector('div:nth-child(2)');
+  if (label) label.textContent = count === 0
+    ? 'Click to upload or drag & drop photos'
+    : `${count} photo${count!==1?'s':''} added — click to upload more`;
+}
+
+function addPhotoLinkTo(urlInputId, capInputId, linksKey, listId, dropZoneId) {
+  const urlInput = document.getElementById(urlInputId);
+  const capInput = document.getElementById(capInputId);
+  const url = (urlInput?.value||'').trim();
+  if (!url) { toast('⚠️ Please paste a Google Drive link first.', 'error'); return; }
+  if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) { toast('⚠️ Please use a Google Drive share link.', 'error'); return; }
+  if (window[linksKey].length >= PHOTO_MAX_COUNT) { toast(`⚠️ Max ${PHOTO_MAX_COUNT} photos per report.`, 'error'); return; }
+  const link = { id: 'pl-'+Date.now(), url, thumbUrl: getDriveThumbUrl(url), caption: capInput?.value?.trim()||'', fileName: 'Drive link', uploaded: true };
+  window[linksKey].push(link);
+  renderPhotoCardTo(link, listId, linksKey, dropZoneId);
+  if (urlInput) urlInput.value = '';
+  if (capInput) capInput.value = '';
+  updateDropZoneCountFor(dropZoneId, window[linksKey].length);
+  toast('📸 Photo link added!', 'success');
+}
+
+// ── Accident photo handlers ──────────────────────────────────────────────────
+const AC_PHOTO_CFG = { linksKey:'_acPhotoLinks', listId:'ac-photo-links-list', bannerId:'ac-photo-upload-banner', bannerIconId:'ac-photo-banner-icon', bannerTextId:'ac-photo-banner-text', dropZoneId:'ac-photo-drop-zone' };
+function handleAcPhotoFileSelect(e) { processPhotoFilesFor([...e.target.files], AC_PHOTO_CFG); e.target.value=''; }
+function handleAcPhotoDrop(e) { e.preventDefault(); document.getElementById('ac-photo-drop-zone')?.classList.remove('dz-hover'); processPhotoFilesFor([...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')), AC_PHOTO_CFG); }
+function addAcPhotoLink() { addPhotoLinkTo('ac-photo-link-input','ac-photo-link-caption','_acPhotoLinks','ac-photo-links-list','ac-photo-drop-zone'); }
+
+// ── Incident photo handlers ──────────────────────────────────────────────────
+const IR_PHOTO_CFG = { linksKey:'_irPhotoLinks', listId:'ir-photo-links-list', bannerId:'ir-photo-upload-banner', bannerIconId:'ir-photo-banner-icon', bannerTextId:'ir-photo-banner-text', dropZoneId:'ir-photo-drop-zone' };
+function handleIrPhotoFileSelect(e) { processPhotoFilesFor([...e.target.files], IR_PHOTO_CFG); e.target.value=''; }
+function handleIrPhotoDrop(e) { e.preventDefault(); document.getElementById('ir-photo-drop-zone')?.classList.remove('dz-hover'); processPhotoFilesFor([...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')), IR_PHOTO_CFG); }
+function addIrPhotoLink() { addPhotoLinkTo('ir-photo-link-input','ir-photo-link-caption','_irPhotoLinks','ir-photo-links-list','ir-photo-drop-zone'); }
 
 function openLightbox(photos, startIndex) {
   _lbPhotos = photos || [];
@@ -7238,7 +8476,7 @@ const DRAFT_TEXT_FIELDS = [
   'f-type','f-urgency','f-via','f-datetime','f-name','f-role','f-contact',
   'f-org','f-location','f-activity','f-observed','f-supervisor','f-description',
   'f-consequence','f-frequency','f-stopped','f-action-person','f-immediate',
-  'f-further','f-existing','f-witness','f-evidence'
+  'f-further','f-existing','f-evidence'
 ];
 
 function captureDraft() {
@@ -7268,12 +8506,15 @@ function captureDraft() {
 
   // CAP rows
   document.querySelectorAll('#cap-rows .cap-row-item').forEach(row => {
-    const a = row.querySelector('[id^="cap-action-"]')?.value || '';
-    const t = row.querySelector('[id^="cap-type-"]')?.value || '';
-    const o = row.querySelector('[id^="cap-owner-"]')?.value || '';
-    const d = row.querySelector('[id^="cap-date-"]')?.value || '';
-    const s = row.querySelector('[id^="cap-status-"]')?.value || '';
-    data.caps.push({ action:a, type:t, owner:o, date:d, status:s });
+    const a  = row.querySelector('[id^="cap-action-"]')?.value || '';
+    const t  = row.querySelector('[id^="cap-type-"]')?.value || '';
+    const o  = row.querySelector('[id^="cap-owner-"]')?.value || '';
+    const d  = row.querySelector('[id^="cap-date-"]')?.value || '';
+    const s  = row.querySelector('[id^="cap-status-"]')?.value || '';
+    const vd = row.querySelector('[id^="cap-verify-date-"]')?.value || '';
+    const vb = row.querySelector('[id^="cap-verify-by-"]')?.value || '';
+    const vn = row.querySelector('[id^="cap-verify-notes-"]')?.value || '';
+    data.caps.push({ action:a, type:t, owner:o, date:d, status:s, verifyDate:vd, verifyBy:vb, verifyNotes:vn });
   });
 
   // Photos (links only — no base64)
@@ -7397,11 +8638,14 @@ function restoreDraft() {
     const rows = document.querySelectorAll('#cap-rows .cap-row-item');
     const row  = rows[rows.length - 1];
     if (!row) return;
-    const ae = row.querySelector('[id^="cap-action-"]'); if (ae) ae.value = c.action;
-    const te = row.querySelector('[id^="cap-type-"]');   if (te) te.value = c.type;
-    const oe = row.querySelector('[id^="cap-owner-"]');  if (oe) oe.value = c.owner;
-    const de = row.querySelector('[id^="cap-date-"]');   if (de) de.value = c.date;
-    const se = row.querySelector('[id^="cap-status-"]'); if (se) se.value = c.status;
+    const ae  = row.querySelector('[id^="cap-action-"]');       if (ae)  ae.value  = c.action      || '';
+    const te  = row.querySelector('[id^="cap-type-"]');         if (te)  te.value  = c.type        || '';
+    const oe  = row.querySelector('[id^="cap-owner-"]');        if (oe)  oe.value  = c.owner       || '';
+    const de  = row.querySelector('[id^="cap-date-"]');         if (de)  de.value  = c.date        || '';
+    const se  = row.querySelector('[id^="cap-status-"]');       if (se)  se.value  = c.status      || '';
+    const vde = row.querySelector('[id^="cap-verify-date-"]');  if (vde) vde.value = c.verifyDate  || '';
+    const vbe = row.querySelector('[id^="cap-verify-by-"]');    if (vbe) vbe.value = c.verifyBy    || '';
+    const vne = row.querySelector('[id^="cap-verify-notes-"]'); if (vne) vne.value = c.verifyNotes || '';
   });
 
   // Restore photo links
