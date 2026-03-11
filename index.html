@@ -201,6 +201,7 @@
   .badge.high      { background: #FFEDD5; color: var(--orange); }
   .badge.medium    { background: #FEF9C3; color: var(--gold); }
   .badge.low       { background: #DCFCE7; color: var(--green); }
+  .badge.pending   { background: #F1F5F9; color: var(--muted); }
   .badge.open      { background: #DBEAFE; color: var(--blue); }
   .badge.progress  { background: #EDE9FE; color: #6D28D9; }
   .badge.closed    { background: #DCFCE7; color: var(--green); }
@@ -3232,6 +3233,12 @@ function trackReport() {
         ${urgencyField}
         <div><strong>Current Status:</strong> <span style="font-weight:700;color:${statusColor};">${r.status}</span></div>
       </div>
+      ${currentRole === 'admin' ? `
+      <div style="margin-top:14px;">
+        ${formType === 'hazard'
+          ? `<button class="btn btn-primary btn-sm" onclick="viewReport('${r.id}')">👁 View Full Report</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="showPage('${formType === 'accident' ? 'accident-report' : 'incident-report'}')">📂 Go to ${formType === 'accident' ? 'Accident' : 'Incident'} Reports Page</button>`}
+      </div>` : ''}
       ${ack ? `
       <div style="margin-top:16px;padding:14px;background:white;border-radius:8px;border:1px solid #BBF7D0;">
         <div style="font-weight:700;color:var(--teal);margin-bottom:6px;">📬 Safety Manager Acknowledgment</div>
@@ -3912,9 +3919,16 @@ function refreshCapNumbers() {
 // ─── SUBMIT REPORT ────────────────────────────────────────────────────────────
 function submitReport() {
   const type = document.getElementById('f-type').value;
-  const urgency = document.getElementById('f-urgency').value;
+  const urgencyEl = document.getElementById('f-urgency');
+  // Re-enable briefly to read value in case it was disabled (student mode)
+  const wasDisabled = urgencyEl && urgencyEl.disabled;
+  if (wasDisabled) urgencyEl.disabled = false;
+  const urgency = urgencyEl ? urgencyEl.value : '';
+  if (wasDisabled) urgencyEl.disabled = true;
   if (!type) { toast('Please select a Report Type', 'error'); return; }
-  if (!urgency) { toast('Please select an Urgency level', 'error'); return; }
+  // Students: urgency is locked and assigned later by admin — skip check, default to 'pending'
+  if (!urgency && currentRole !== 'student') { toast('Please select an Urgency level', 'error'); return; }
+  const finalUrgency = urgency || 'pending';
 
   const _anonEl = document.querySelector('input[name=anon]:checked');
   const isAnon = _anonEl ? _anonEl.value === 'yes' : false;
@@ -3960,7 +3974,7 @@ function submitReport() {
   const report = {
     id: getNextReportId(),
     submitted: new Date().toISOString(),
-    type, urgency,
+    type, urgency: finalUrgency,
     via: document.getElementById('f-via').value,
     datetime: document.getElementById('f-datetime').value,
     anonymous: isAnon,
@@ -3997,7 +4011,7 @@ function submitReport() {
   };
 
   fbSet('sms/reports/' + report.id, report);
-  logAuditEvent('SUBMIT', report.id, `Report submitted: ${report.type || 'Hazard'} at ${report.location || 'unknown location'}. Urgency: ${urgency}. Risk: ${report.caapCode}.`, null, 'Open');
+  logAuditEvent('SUBMIT', report.id, `Report submitted: ${report.type || 'Hazard'} at ${report.location || 'unknown location'}. Urgency: ${finalUrgency}. Risk: ${report.caapCode}.`, null, 'Open');
 
   // Clear draft on submit
   localStorage.removeItem(DRAFT_KEY);
@@ -4601,6 +4615,7 @@ function viewReport(id) {
           <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Urgency</label>
           <select id="modal-edit-urgency" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;">
             <option value="">— Not set —</option>
+            <option value="pending"    ${r.urgency==='pending'?'selected':''}>⏳ Pending Assessment</option>
             <option value="immediate" ${r.urgency==='immediate'?'selected':''}>🔴 Immediate Danger – Stop Work</option>
             <option value="high"      ${r.urgency==='high'?'selected':''}>🟠 High</option>
             <option value="medium"    ${r.urgency==='medium'?'selected':''}>🟡 Medium</option>
