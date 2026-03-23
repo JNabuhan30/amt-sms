@@ -1078,6 +1078,15 @@
   <button class="sidebar-tab" id="stab-audit-a" onclick="showPage('audit-a')">
     <span class="stab-icon">🏢</span><span class="stab-text">Audit G.1-A</span>
   </button>
+  <button class="sidebar-tab" id="stab-audit-guide" onclick="showPage('audit-guide')">
+    <span class="stab-icon">💡</span><span class="stab-text">Audit Guide</span>
+  </button>
+  <button class="sidebar-tab" id="stab-audit-instructor" onclick="showPage('audit-instructor')">
+    <span class="stab-icon">🎓</span><span class="stab-text">Instructor Audit</span>
+  </button>
+  <button class="sidebar-tab" id="stab-instructor-risk" onclick="showPage('instructor-risk')">
+    <span class="stab-icon">⚖️</span><span class="stab-text">Instructor Risk</span>
+  </button>
 
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-label">Analytics</div>
@@ -2329,6 +2338,7 @@
 
   <div class="btn-row">
     <button class="btn btn-primary" onclick="saveAudit()">💾 Save Audit</button>
+    <button class="btn btn-gold" onclick="printCurrentAuditG1()">🖨️ Print Report</button>
     <button class="btn btn-outline" onclick="resetAudit()">🔄 Reset</button>
   </div>
 
@@ -2340,6 +2350,575 @@
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     AUDIT GUIDE — SAFETY MANAGER RECOMMENDATIONS
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-audit-guide" class="page">
+  <div class="section-title">💡 Audit Health &amp; Recommendations</div>
+  <div class="section-sub">Live context-aware guidance based on your actual SMS data — updated every time you open this page</div>
+
+  <!-- ── HEALTH SCORE BANNER ── -->
+  <div id="ag-health-banner" style="background:linear-gradient(135deg,#0A1E3D 0%,#152f5c 100%);border-radius:14px;padding:24px 28px;margin-bottom:22px;box-shadow:0 6px 28px rgba(0,0,0,0.22);display:flex;align-items:center;gap:28px;flex-wrap:wrap;">
+    <div style="text-align:center;flex-shrink:0;">
+      <div style="position:relative;width:110px;height:110px;margin:0 auto;">
+        <svg viewBox="0 0 110 110" width="110" height="110">
+          <circle cx="55" cy="55" r="48" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10"/>
+          <circle id="ag-score-ring" cx="55" cy="55" r="48" fill="none" stroke="#22C55E" stroke-width="10"
+            stroke-dasharray="301.6" stroke-dashoffset="301.6" stroke-linecap="round"
+            transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1),stroke .6s;"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div id="ag-score-num" style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:white;line-height:1;">—</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;">/ 100</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#FBBF24;letter-spacing:1.5px;text-transform:uppercase;margin-top:8px;">Audit Health</div>
+    </div>
+    <div style="flex:1;min-width:220px;">
+      <div id="ag-score-label" style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:white;margin-bottom:6px;">—</div>
+      <div id="ag-score-summary" style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.7;margin-bottom:14px;">Loading your audit data…</div>
+      <div id="ag-live-flags" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;flex-shrink:0;">
+      <div id="ag-mini-g1" style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;text-align:center;">
+        <div id="ag-mini-g1-num" style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:white;">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;">G.1 Audits</div>
+      </div>
+      <div id="ag-mini-ga" style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;text-align:center;">
+        <div id="ag-mini-ga-num" style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:white;">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;">Inspections</div>
+      </div>
+      <div id="ag-mini-days-g1" style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;text-align:center;">
+        <div id="ag-mini-days-g1-num" style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#FBBF24;">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;">Days Since G.1</div>
+      </div>
+      <div id="ag-mini-days-ga" style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;text-align:center;">
+        <div id="ag-mini-days-ga-num" style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#FBBF24;">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;">Days Since G.1-A</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LIVE ALERTS ── -->
+  <div id="ag-alerts-section" style="margin-bottom:20px;display:none;">
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">⚡ Live Action Items</div>
+    <div id="ag-alerts-list" style="display:grid;gap:8px;"></div>
+  </div>
+
+  <!-- ── SCORE BREAKDOWN ── -->
+  <div class="card" style="border-top:4px solid var(--blue);margin-bottom:20px;">
+    <div class="card-title" style="color:var(--blue);">📊 Health Score Breakdown</div>
+    <div id="ag-breakdown" style="display:grid;gap:10px;"></div>
+  </div>
+
+  <!-- ── SELF-ASSESSMENT CHECKLIST ── -->
+  <div class="card" style="border-top:4px solid var(--teal);margin-bottom:20px;">
+    <div class="card-title" style="color:var(--teal);">✅ Audit Program Self-Assessment</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Answer honestly — results update your health score in real time. Your responses are saved locally.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;">
+      <span>✅ Yes: <strong id="sa-yes-count">0</strong></span>
+      <span>❌ No: <strong id="sa-no-count">0</strong></span>
+      <span>⬜ Unanswered: <strong id="sa-pending-count">0</strong></span>
+      <span style="margin-left:auto;font-weight:700;color:var(--navy);">Self-Assessment Score: <span id="sa-score-pct">—</span></span>
+    </div>
+    <div class="progress-bar" style="margin-bottom:18px;"><div class="progress-fill green" id="sa-progress-fill" style="width:0%"></div></div>
+    <div id="ag-self-assess-list" style="display:grid;gap:0;"></div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-outline btn-sm" onclick="resetSelfAssessment()">🔄 Reset Answers</button>
+    </div>
+  </div>
+
+  <!-- ── RECOMMENDATIONS BY CATEGORY ── -->
+  <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">📋 Best-Practice Recommendations</div>
+
+  <!-- Planning -->
+  <div class="card" style="border-top:4px solid var(--blue);">
+    <div class="card-title" style="color:var(--blue);font-size:16px;">🗓️ 1 — Planning &amp; Scheduling</div>
+    <div style="display:grid;gap:12px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">📆</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Conduct audits on a fixed calendar</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">At minimum — <strong>quarterly</strong> for G.1 SMS audits and <strong>monthly</strong> for G.1-A workplace inspections. Never wait for incidents to trigger them.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('audit')">→ Start G.1 Audit</button>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;margin-left:6px;" onclick="showPage('audit-a')">→ Start G.1-A Inspection</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">⚠️</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Risk-rank your audit schedule</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Hangars, workshops, chemical stores, and engine bays need <strong>higher frequency</strong> than administrative areas. Frequency must reflect operational risk, not convenience.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🔄</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Rotate auditors</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Never let the same person audit the same area repeatedly. Familiarity breeds blind spots. Cross-functional auditing catches more.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🎭</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Announce some, surprise others</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Scheduled audits show compliance intent. <strong>Unannounced inspections reveal the real picture.</strong> Your program needs both.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- During -->
+  <div class="card" style="border-top:4px solid var(--teal);">
+    <div class="card-title" style="color:var(--teal);font-size:16px;">📋 2 — During the Audit</div>
+    <div style="display:grid;gap:12px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0FDF4;border-radius:10px;border:1.5px solid #BBF7D0;">
+        <div style="font-size:22px;flex-shrink:0;">🚨</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#065F46;margin-bottom:3px;">Every "No" must generate a Corrective Action</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">A non-compliance without an owner, due date, and follow-up is just a documented failure with no value. No exceptions.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('cap-tracker')">→ Open CAP Tracker</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">📸</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Evidence-based findings only</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Record what you <em>see</em>, not what you assume. Photos, documents, direct observation. <strong>Use the Notes field on every single item.</strong></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🚫</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Do not accept verbal assurances</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">"We have a procedure for that" means nothing without the document in hand. Require physical or digital evidence before marking any item compliant.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🏷️</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Grade your findings</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Distinguish <strong>Observation</strong>, <strong>Minor Non-Compliance</strong>, and <strong>Major Non-Compliance</strong>. Classification drives urgency and response level.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- After -->
+  <div class="card" style="border-top:4px solid var(--orange);">
+    <div class="card-title" style="color:var(--orange);font-size:16px;">🔁 3 — After the Audit — The Part Most Systems Fail At</div>
+    <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+      <div style="font-size:13px;color:#9A3412;font-weight:600;line-height:1.6;">⚠️ This is where most safety management systems break down. An audit that does not drive closure is just paperwork.</div>
+    </div>
+    <div style="display:grid;gap:12px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">✅</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Track every corrective action to verified closure</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Not just "completed" — <strong>independently verified</strong>. Who checked it? When? What evidence? Unverified closure is not closure.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('cap-tracker')">→ Review Open CAPs</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">⏰</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Set realistic but firm due dates</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Overdue actions must be <strong>escalated</strong>, not silently rolled over. A due date that never arrives is worse than no due date.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🔬</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Conduct effectiveness checks</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">After a corrective action is closed, revisit it on the next audit cycle. Did the fix actually eliminate the hazard or just look good on paper?</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">📋</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Feed findings back into the Hazard Register</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Audit findings are hazard data. Repeated failures belong in the risk register as <strong>standing hazards</strong>, not recurring audit notes.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('register')">→ Open Hazard Register</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trends -->
+  <div class="card" style="border-top:4px solid var(--gold);">
+    <div class="card-title" style="color:var(--gold);font-size:16px;">📊 4 — Trend Analysis &amp; Systemic Thinking</div>
+    <div style="display:grid;gap:12px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#FFFBEB;border-radius:10px;border:1.5px solid #FDE68A;">
+        <div style="font-size:22px;flex-shrink:0;">🔁</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#78350F;margin-bottom:3px;">Look for repeat findings</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Same item failing across multiple cycles = <strong>systemic failure</strong>. Requires root cause investigation — not just another corrective action.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">📉</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Track Yes / No / N/A ratios over time</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">A declining compliance score is an early warning. A <strong>rising N/A count</strong> signals auditors avoiding difficult items. Both require investigation.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('statistics')">→ View Statistics</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">📣</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Present audit trends to management</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Safety data without management review has no power to change behavior. Audit outcomes must appear on every management review agenda.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('meetings')">→ Schedule Management Review</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System-specific -->
+  <div class="card" style="border-top:4px solid var(--navy);">
+    <div class="card-title" style="color:var(--navy);font-size:16px;">🔐 5 — System-Specific Recommendations</div>
+    <div style="display:grid;gap:12px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#EFF6FF;border-radius:10px;border:1.5px solid #BFDBFE;">
+        <div style="font-size:22px;flex-shrink:0;">📜</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Every audit save must appear in the Audit Log</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Without Audit Log entries for saved audits you lose traceability. This has been corrected — verify the log after every save.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('auditlog')">→ Verify Audit Log</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#FEF2F2;border-radius:10px;border:1.5px solid #FECACA;">
+        <div style="font-size:22px;flex-shrink:0;">🚫</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#991B1B;margin-bottom:3px;">Never delete audit records — archive instead</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Deletion of safety records is a compliance and legal risk under CAAP and ICAO Annex 19. Use the Archive feature.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('archive')">→ Go to Archive</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🔗</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Run chain integrity verification monthly</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">The blockchain-style hash chain on the Audit Log must be verified regularly. A broken chain indicates tampering and must be investigated immediately.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('auditlog')">→ Verify Chain Integrity</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px;background:#F0F4F8;border-radius:10px;">
+        <div style="font-size:22px;flex-shrink:0;">🖨️</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Print and physically file completed inspections</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Digital records are primary, but a signed physical copy of a G.1-A inspection is your defense in any regulatory audit or incident investigation.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('audit-a')">→ Print G.1-A Inspection</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frequency Table -->
+  <div class="card" style="border-top:4px solid var(--green);">
+    <div class="card-title" style="color:var(--green);font-size:16px;">📅 Recommended Audit Frequencies</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Audit / Inspection Type</th>
+            <th>Recommended Frequency</th>
+            <th>Max Gap Before Alert</th>
+            <th>Tool</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>G.1 SMS Audit (Internal)</strong></td><td><span class="badge medium">Quarterly</span></td><td>90 days</td><td><button class="btn btn-outline btn-sm" onclick="showPage('audit')">Audit G.1</button></td></tr>
+          <tr><td><strong>G.1-A Workplace Inspection</strong></td><td><span class="badge high">Monthly</span></td><td>35 days</td><td><button class="btn btn-outline btn-sm" onclick="showPage('audit-a')">Audit G.1-A</button></td></tr>
+          <tr><td><strong>High-Risk Area (unannounced)</strong></td><td><span class="badge immediate">Bi-weekly</span></td><td>18 days</td><td><button class="btn btn-outline btn-sm" onclick="showPage('audit-a')">Audit G.1-A</button></td></tr>
+          <tr><td><strong>CAP Effectiveness Check</strong></td><td><span class="badge medium">After each closure</span></td><td>—</td><td><button class="btn btn-outline btn-sm" onclick="showPage('cap-tracker')">CAP Tracker</button></td></tr>
+          <tr><td><strong>Audit Log Chain Verification</strong></td><td><span class="badge open">Monthly</span></td><td>35 days</td><td><button class="btn btn-outline btn-sm" onclick="showPage('auditlog')">Audit Log</button></td></tr>
+          <tr><td><strong>Management Review of Trends</strong></td><td><span class="badge medium">Quarterly</span></td><td>90 days</td><td><button class="btn btn-outline btn-sm" onclick="showPage('meetings')">Meetings</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Core Principle -->
+  <div style="background:linear-gradient(135deg,#0A1E3D 0%,#1B3A6B 100%);border-radius:14px;padding:22px 28px;margin-bottom:22px;border-left:6px solid #D97706;box-shadow:0 6px 24px rgba(0,0,0,0.18);">
+    <div style="font-size:11px;font-weight:700;color:#FBBF24;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Core Principle</div>
+    <div style="font-size:16px;color:white;font-family:'Outfit',sans-serif;font-weight:700;line-height:1.6;font-style:italic;">
+      "An audit that finds nothing wrong is not a good audit — it is either a well-functioning system or an auditor who wasn't looking hard enough."
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:10px;">The goal of an audit is not a perfect score. It is to find problems before they become accidents. A high "No" count with strong corrective actions closed on time is far healthier than a perfect "Yes" score that reflects complacency.</div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-gold btn-sm" onclick="printAuditGuide()">🖨️ Print Full Recommendations Report</button>
+    </div>
+  </div>
+
+</div>
+
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     INSTRUCTOR QUALIFICATION AUDIT — G.1-B
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-audit-instructor" class="page">
+  <div class="section-title">🎓 G.1-B Instructor Qualification Audit</div>
+  <div class="section-sub">Safety-critical verification of instructor licenses, currency, teaching authorization, workload, and pedagogical competence</div>
+
+  <!-- Why this is safety-critical -->
+  <div style="background:linear-gradient(135deg,#7C3AED 0%,#5B21B6 100%);border-radius:12px;padding:18px 22px;margin-bottom:20px;border-left:6px solid #FBBF24;">
+    <div style="font-size:11px;font-weight:700;color:#DDD6FE;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Why This Is Safety-Critical</div>
+    <div style="font-size:13px;color:white;line-height:1.7;">
+      An unqualified or expired instructor teaching aviation maintenance students is a <strong style="color:#FDE68A;">direct safety threat</strong> — the students they train will work on aircraft. CAAP regulations require that all instructors hold valid authorizations and maintain currency. Instructor fatigue from excessive teaching hours degrades instruction quality, creating downstream maintenance safety risks.
+    </div>
+  </div>
+
+  <!-- Audit Identity -->
+  <div class="card" style="border-top:4px solid #7C3AED;">
+    <div class="card-title" style="color:#7C3AED;">📋 Audit Identity</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Audit Date</label><input type="date" id="ia-date"/></div>
+      <div class="form-group"><label>Auditor Name</label><input type="text" id="ia-auditor" placeholder="Name(s)"/></div>
+      <div class="form-group"><label>Department / School</label><input type="text" id="ia-dept" placeholder="e.g. BSAVT Department"/></div>
+      <div class="form-group">
+        <label>Audit Type</label>
+        <select id="ia-type">
+          <option>Annual Qualification Review</option>
+          <option>Spot Check</option>
+          <option>Post-Incident Review</option>
+          <option>New Instructor Verification</option>
+          <option>Follow-up Audit</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Instructor Being Audited</label><input type="text" id="ia-instructor-name" placeholder="Full name"/></div>
+      <div class="form-group"><label>Subject / Course Area</label><input type="text" id="ia-subject" placeholder="e.g. Airframe, Powerplant, Avionics"/></div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="card">
+    <div class="card-title">📊 Completion Progress</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:13px;">
+      <span>✅ Yes: <strong id="ia-yes-count">0</strong></span>
+      <span>❌ No: <strong id="ia-no-count">0</strong></span>
+      <span>➖ N/A: <strong id="ia-na-count">0</strong></span>
+      <span>⬜ Pending: <strong id="ia-pending-count">0</strong></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="ia-progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div id="audit-instructor-items"></div>
+
+  <!-- Sign-off -->
+  <div class="card" style="border-top:4px solid var(--green);">
+    <div class="card-title">✍️ Audit Sign-Off</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Overall Result</label>
+        <select id="ia-result">
+          <option>Fully Qualified — No Actions Required</option>
+          <option>Qualified with Minor Actions</option>
+          <option>Qualification Concerns — Action Required</option>
+          <option>SUSPENDED — Do Not Assign to Teaching Until Resolved</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Actions Required (summary)</label><textarea id="ia-actions" placeholder="Summarize any corrective actions, renewal requirements, or restrictions…"></textarea></div>
+      <div class="form-group"><label>Next Review Date</label><input type="date" id="ia-next"/></div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="saveInstructorAudit()">💾 Save Audit</button>
+    <button class="btn btn-gold" onclick="printCurrentInstructorAudit()">🖨️ Print Report</button>
+    <button class="btn btn-outline" onclick="resetInstructorAudit()">🔄 Reset</button>
+  </div>
+
+  <!-- Saved Records -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title"><span class="icon">📂</span> Saved Instructor Audits</div>
+    <div id="saved-instructor-audits-list">
+      <div style="color:var(--muted);font-size:13px;">No instructor audits saved yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     INSTRUCTOR RISK ASSESSMENT TOOL
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-instructor-risk" class="page">
+  <div class="section-title">⚖️ Instructor Risk Assessment Tool</div>
+  <div class="section-sub">Quantitative risk scoring for instructor workload, teaching hours, student ratios, qualification currency, and fatigue indicators</div>
+
+  <!-- Risk context banner -->
+  <div style="background:linear-gradient(135deg,#0F766E 0%,#0D5C56 100%);border-radius:12px;padding:18px 22px;margin-bottom:20px;border-left:6px solid #FCD34D;">
+    <div style="font-size:11px;font-weight:700;color:#99F6E4;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Risk Context</div>
+    <div style="font-size:13px;color:white;line-height:1.7;">
+      Excessive teaching hours cause <strong style="color:#FDE68A;">instructor fatigue</strong> — degrading instruction quality, assessment accuracy, and student supervision. Insufficient student hours create <strong style="color:#FDE68A;">underprepared graduates</strong> working on aircraft. Both are quantifiable safety risks that must be monitored and managed proactively.
+    </div>
+  </div>
+
+  <!-- Assessment Form -->
+  <div class="card" style="border-top:4px solid var(--teal);">
+    <div class="card-title" style="color:var(--teal);">📥 Assessment Inputs</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Assessment Date</label><input type="date" id="ir-date"/></div>
+      <div class="form-group"><label>Assessed By</label><input type="text" id="ir-assessor" placeholder="Safety Manager / Dept Head"/></div>
+      <div class="form-group"><label>Instructor Name</label><input type="text" id="ir-name" placeholder="Full name"/></div>
+      <div class="form-group"><label>Subject Area</label><input type="text" id="ir-subject" placeholder="e.g. Airframe Structures"/></div>
+      <div class="form-group"><label>Current Semester / Period</label><input type="text" id="ir-semester" placeholder="e.g. 2nd Sem AY 2024-2025"/></div>
+      <div class="form-group"><label>Employment Type</label>
+        <select id="ir-emptype">
+          <option>Full-Time Faculty</option>
+          <option>Part-Time / Contractual</option>
+          <option>Guest Lecturer</option>
+          <option>Industry Practitioner</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--light);margin:18px 0;"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">Teaching Hours &amp; Workload</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Teaching Hours / Week (this instructor)</label>
+        <input type="number" id="ir-hrs-week" min="0" max="60" placeholder="e.g. 24" oninput="calcInstructorRisk()"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">CAAP / school max recommended: 30 hrs/week</div>
+      </div>
+      <div class="form-group">
+        <label>Consecutive Teaching Days (without a full rest day)</label>
+        <input type="number" id="ir-consec-days" min="0" max="14" placeholder="e.g. 5" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Total Teaching Hours This Semester</label>
+        <input type="number" id="ir-hrs-semester" min="0" placeholder="e.g. 480" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Number of Subjects Currently Teaching</label>
+        <input type="number" id="ir-subjects" min="0" max="20" placeholder="e.g. 3" oninput="calcInstructorRisk()"/>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--light);margin:18px 0;"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">Student Hours &amp; Ratios</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Total Students Under This Instructor</label>
+        <input type="number" id="ir-students" min="0" placeholder="e.g. 45" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Students Per Class (largest class)</label>
+        <input type="number" id="ir-class-size" min="0" placeholder="e.g. 25" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Average Student Lab / Practical Hours / Week</label>
+        <input type="number" id="ir-student-lab-hrs" min="0" placeholder="e.g. 6" oninput="calcInstructorRisk()"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">CAAP recommended min: 4 hrs/week for maintenance practical</div>
+      </div>
+      <div class="form-group">
+        <label>% of Students Currently Passing</label>
+        <input type="number" id="ir-pass-rate" min="0" max="100" placeholder="e.g. 88" oninput="calcInstructorRisk()"/>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--light);margin:18px 0;"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">Qualification &amp; Currency Indicators</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Months Until License / Certificate Expires</label>
+        <input type="number" id="ir-cert-months" min="0" placeholder="e.g. 8" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Months Since Last Recurrent Training</label>
+        <input type="number" id="ir-recurrent-months" min="0" placeholder="e.g. 14" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Months Since Last Industry / OJT Experience</label>
+        <input type="number" id="ir-industry-months" min="0" placeholder="e.g. 36" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Complaints / Concerns Raised This Semester</label>
+        <input type="number" id="ir-complaints" min="0" placeholder="e.g. 0" oninput="calcInstructorRisk()"/>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--light);margin:18px 0;"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">Fatigue &amp; Wellbeing Indicators</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Self-Reported Fatigue Level</label>
+        <select id="ir-fatigue" onchange="calcInstructorRisk()">
+          <option value="1">1 — Fully Alert</option>
+          <option value="2">2 — Slightly Tired</option>
+          <option value="3">3 — Moderately Fatigued</option>
+          <option value="4">4 — Very Fatigued</option>
+          <option value="5">5 — Exhausted / Unsafe to Teach</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Secondary Employment / Other Teaching Posts</label>
+        <select id="ir-secondary" onchange="calcInstructorRisk()">
+          <option value="0">None</option>
+          <option value="1">1 additional post (low hrs)</option>
+          <option value="2">1 additional post (high hrs)</option>
+          <option value="3">2+ additional posts</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sick / Absent Days This Semester</label>
+        <input type="number" id="ir-absences" min="0" placeholder="e.g. 2" oninput="calcInstructorRisk()"/>
+      </div>
+      <div class="form-group">
+        <label>Incidents / Near-Misses in Class This Semester</label>
+        <input type="number" id="ir-incidents" min="0" placeholder="e.g. 0" oninput="calcInstructorRisk()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE RISK RESULT -->
+  <div class="card" id="ir-result-card" style="border-top:4px solid var(--muted);display:none;">
+    <div class="card-title">🎯 Risk Assessment Result</div>
+
+    <div id="ir-risk-display" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+      <div style="text-align:center;flex-shrink:0;">
+        <div id="ir-risk-score-num" style="font-family:'Outfit',sans-serif;font-size:52px;font-weight:900;line-height:1;color:var(--navy);">—</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:4px;">Risk Score</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <div id="ir-risk-level-badge" style="display:inline-block;padding:6px 18px;border-radius:99px;font-size:14px;font-weight:800;margin-bottom:8px;">—</div>
+        <div id="ir-risk-summary" style="font-size:13px;color:var(--muted);line-height:1.6;"></div>
+      </div>
+    </div>
+
+    <!-- Factor breakdown -->
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">Risk Factor Breakdown</div>
+    <div id="ir-factor-breakdown" style="display:grid;gap:8px;margin-bottom:20px;"></div>
+
+    <!-- Recommendations -->
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">Recommended Actions</div>
+    <div id="ir-recommendations" style="display:grid;gap:8px;"></div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <div class="card-title">📝 Additional Notes &amp; Context</div>
+    <div class="form-group">
+      <label>Assessor Notes</label>
+      <textarea id="ir-notes" placeholder="Any additional context, observations, or mitigating factors not captured above…" style="min-height:80px;"></textarea>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="saveInstructorRisk()">💾 Save Assessment</button>
+    <button class="btn btn-gold" onclick="printInstructorRisk()">🖨️ Print Report</button>
+    <button class="btn btn-outline" onclick="resetInstructorRisk()">🔄 Reset</button>
+  </div>
+
+  <!-- Saved Assessments -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title"><span class="icon">📂</span> Saved Instructor Risk Assessments</div>
+    <div id="saved-instructor-risks-list">
+      <div style="color:var(--muted);font-size:13px;">No assessments saved yet.</div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
      AUDIT G.1-A
@@ -3025,6 +3604,8 @@ window.addEventListener('load', function() {
     // Load from localStorage as fallback
     reports   = lsGet('sms_reports',   []);
     audits    = lsGet('sms_audits',    []);
+    instructorAudits = lsGet('sms_instructor_audits', []);
+    instructorRisks  = lsGet('sms_instructor_risks',  []);
     auditA    = lsGet('sms_auditA',    []);
     meetings  = lsGet('sms_meetings',  []);
     documents = lsGet('sms_documents', []);
@@ -3137,6 +3718,9 @@ function showPage(id, tabEl) {
   if (id === 'statistics')   initStatistics();
   if (id === 'audit')        renderSavedAudits();
   if (id === 'audit-a')      renderSavedInspections();
+  if (id === 'audit-guide')       initAuditGuide();
+  if (id === 'audit-instructor')  { buildInstructorAuditItems(); renderSavedInstructorAudits(); }
+  if (id === 'instructor-risk')   renderSavedInstructorRisks();
   if (id === 'settings')     initSettingsPage();
   if (id === 'archive')      initArchivePage();
   if (id === 'cap-tracker')  renderCapTracker();
@@ -4579,10 +5163,13 @@ function renderSavedAudits() {
         <div class="saved-record-meta">📅 ${a.date||'—'} &nbsp;|&nbsp; Auditor: ${a.auditor||'—'} &nbsp;|&nbsp;
           ✅ ${yesCount} &nbsp; ❌ ${noCount} &nbsp; ➖ ${naCount}</div>
       </div>
-      <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;white-space:nowrap;"
-        onclick="confirmDelete('audit','${a.id}','${a.id}','${safeArea ? ' — '+safeArea : ''}')">
-        🗑 Delete
-      </button>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="printSavedAuditG1('${a.id}')">🖨️ Print</button>
+        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;white-space:nowrap;"
+          onclick="confirmDelete('audit','${a.id}','${a.id}','${safeArea ? ' — '+safeArea : ''}')">
+          🗑 Delete
+        </button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -6736,7 +7323,7 @@ function buildAuditItems(items, containerId) {
 }
 
 function setComply(containerId, ref, val, btn) {
-  const stateKey = containerId === 'audit-items' ? auditState : auditAState;
+  const stateKey = containerId === 'audit-items' ? auditState : containerId === 'audit-instructor-items' ? instructorAuditState : auditAState;
 
   // Toggle off if same button clicked again
   if (stateKey[ref] === val) {
@@ -6770,8 +7357,8 @@ function setComply(containerId, ref, val, btn) {
 
 function updateProgress(containerId) {
   const ids   = PROGRESS_IDS[containerId];
-  const state = containerId === 'audit-items' ? auditState : auditAState;
-  const items = containerId === 'audit-items' ? AUDIT_ITEMS : AUDIT_A_ITEMS;
+  const state = containerId === 'audit-items' ? auditState : containerId === 'audit-instructor-items' ? instructorAuditState : auditAState;
+  const items = containerId === 'audit-items' ? AUDIT_ITEMS : containerId === 'audit-instructor-items' ? INSTRUCTOR_AUDIT_ITEMS : AUDIT_A_ITEMS;
   const refs  = items.filter(i=>i.ref).map(i=>i.ref);
   let yes=0, no=0, na=0;
   refs.forEach(r => {
@@ -6793,6 +7380,14 @@ function updateProgress(containerId) {
 }
 
 function saveAudit() {
+  // Collect per-item notes
+  const notes = {};
+  AUDIT_ITEMS.filter(i => i.ref).forEach(i => {
+    const safeRef = i.ref.replace(/\./g, '_');
+    const el = document.getElementById('audit-items-note-' + safeRef);
+    if (el && el.value.trim()) notes[i.ref] = el.value.trim();
+  });
+
   const record = {
     id: 'AUD-' + Date.now(),
     date: document.getElementById('a-date').value,
@@ -6800,9 +7395,27 @@ function saveAudit() {
     area: document.getElementById('a-area').value,
     type: document.getElementById('a-type').value,
     state: {...auditState},
+    notes,
     saved: new Date().toISOString(),
   };
+
+  // Count results for log detail
+  const yesCount = Object.values(record.state).filter(v => v === 'yes').length;
+  const noCount  = Object.values(record.state).filter(v => v === 'no').length;
+  const naCount  = Object.values(record.state).filter(v => v === 'na').length;
+
   fbSet('sms/audits/' + record.id, record);  // Firebase listener auto-refreshes the list
+
+  // Log to immutable audit trail
+  logAuditEvent(
+    'AUDIT_SAVED',
+    record.id,
+    `G.1 SMS Audit saved — ${record.area || 'No area'} (${record.type}). ` +
+    `Auditor: ${record.auditor || '—'}. Date: ${record.date || '—'}. ` +
+    `Results: ✅ ${yesCount} Yes · ❌ ${noCount} No · ➖ ${naCount} N/A.`,
+    null, 'Saved'
+  );
+
   toast('✅ Audit saved!', 'success');
 }
 
@@ -6812,6 +7425,166 @@ function resetAudit() {
   document.querySelectorAll('#audit-items .comply-btn').forEach(b => b.classList.remove('sel'));
   document.querySelectorAll('#audit-items textarea').forEach(t => t.value = '');
   updateProgress('audit-items');
+}
+
+function printCurrentAuditG1() {
+  // Collect notes from live form
+  const notes = {};
+  AUDIT_ITEMS.filter(i => i.ref).forEach(i => {
+    const sr = i.ref.replace(/\./g, '_');
+    const el = document.getElementById('audit-items-note-' + sr);
+    if (el && el.value.trim()) notes[i.ref] = el.value.trim();
+  });
+  const tmp = {
+    id: 'DRAFT-' + new Date().toLocaleDateString(),
+    date:    document.getElementById('a-date').value,
+    auditor: document.getElementById('a-auditor').value,
+    area:    document.getElementById('a-area').value,
+    type:    document.getElementById('a-type').value,
+    state:   {...auditState},
+    notes,
+  };
+  openAuditG1PrintWindow(tmp);
+}
+
+function printSavedAuditG1(id) {
+  const a = audits.find(x => x.id === id);
+  if (!a) { toast('⚠️ Audit record not found.', 'error'); return; }
+  openAuditG1PrintWindow(a);
+}
+
+function openAuditG1PrintWindow(a) {
+  const refs   = AUDIT_ITEMS.filter(i => i.ref).map(i => i.ref);
+  const yes    = refs.filter(r => (a.state||{})[r] === 'yes').length;
+  const no     = refs.filter(r => (a.state||{})[r] === 'no').length;
+  const na     = refs.filter(r => (a.state||{})[r] === 'na').length;
+  const total  = refs.length;
+  const done   = yes + no + na;
+  const pct    = total ? Math.round(done / total * 100) : 0;
+  const notes  = a.notes || {};
+
+  // Build checklist rows grouped by section
+  let rows = '';
+  AUDIT_ITEMS.forEach(item => {
+    if (item.section) {
+      rows += `<tr><td colspan="3" style="background:#1B3A6B;color:white;font-weight:700;padding:8px 10px;font-size:11px;">${item.section}</td></tr>`;
+    } else {
+      const comply = (a.state||{})[item.ref] || '—';
+      const color  = comply === 'yes' ? '#16A34A' : comply === 'no' ? '#DC2626' : comply === 'na' ? '#64748B' : '#94A3B8';
+      const label  = comply === 'yes' ? 'YES' : comply === 'no' ? 'NO' : comply === 'na' ? 'N/A' : '—';
+      const bgRow  = comply === 'no' ? '#FFF8F0' : '';
+      const note   = notes[item.ref] || '';
+      rows += `<tr style="background:${bgRow};">
+        <td style="font-family:monospace;font-size:10px;color:#64748B;white-space:nowrap;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${item.ref}</td>
+        <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">
+          ${item.req}
+          ${note ? `<div style="margin-top:4px;font-size:10px;color:#475569;background:#F1F5F9;padding:4px 7px;border-radius:4px;border-left:3px solid #94A3B8;">📝 ${note}</div>` : ''}
+        </td>
+        <td style="text-align:center;font-weight:800;color:${color};font-size:12px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;white-space:nowrap;">${label}</td>
+      </tr>`;
+    }
+  });
+
+  // Non-compliance summary table
+  const nonCompliant = AUDIT_ITEMS.filter(i => i.ref && (a.state||{})[i.ref] === 'no');
+  let ncRows = nonCompliant.length
+    ? nonCompliant.map(i => `<tr>
+        <td style="font-family:monospace;font-size:10px;color:#64748B;padding:6px 8px;border-bottom:1px solid #FECACA;">${i.ref}</td>
+        <td style="font-size:11px;padding:6px 8px;border-bottom:1px solid #FECACA;">${i.req}</td>
+        <td style="font-size:10px;color:#475569;padding:6px 8px;border-bottom:1px solid #FECACA;">${notes[i.ref] || '—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" style="padding:12px;text-align:center;color:#16A34A;font-weight:600;">✅ No non-compliances identified.</td></tr>';
+
+  const savedStr = a.saved ? new Date(a.saved).toLocaleString() : new Date().toLocaleString();
+
+  const win = window.open('', '_blank');
+  if (!win) { toast('⚠️ Pop-up blocked. Please allow pop-ups for this page.', 'error'); return; }
+  win.document.write(`<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8"/>
+  <title>G.1 SMS Audit — ${a.id}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; color: #1E293B; font-size: 12px; padding: 28px; }
+    .hdr  { background: #1B3A6B; color: white; padding: 18px 22px; border-radius: 10px 10px 0 0; display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 0; }
+    .hdr h1 { font-size: 18px; font-weight: 800; }
+    .hdr .sub { font-size: 11px; opacity: .7; margin-top: 3px; }
+    .hdr .id-badge { background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 700; }
+    .meta-bar { background: #F0F4F8; border: 1px solid #CBD5E1; padding: 12px 20px; display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 10px; margin-bottom: 18px; }
+    .meta-item .lbl { font-size: 9px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: .8px; }
+    .meta-item .val { font-size: 13px; font-weight: 700; color: #1B3A6B; margin-top: 2px; }
+    .score-row { display:flex; gap:16px; margin-bottom: 18px; flex-wrap:wrap; }
+    .score-box { padding: 12px 18px; border-radius: 8px; text-align:center; flex:1; min-width:100px; }
+    .score-box .num { font-size: 26px; font-weight: 900; line-height: 1; }
+    .score-box .lbl { font-size: 10px; font-weight: 700; text-transform:uppercase; letter-spacing:.6px; margin-top:3px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+    th { background: #1B3A6B; color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
+    .section-title { font-size: 14px; font-weight: 700; color: #1B3A6B; margin: 20px 0 6px; border-bottom: 2px solid #1B3A6B; padding-bottom: 4px; }
+    .footer { margin-top: 30px; font-size: 10px; color: #94A3B8; border-top: 1px solid #E2E8F0; padding-top: 10px; display:flex; justify-content:space-between; }
+    .sign-row { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:24px; margin: 24px 0; }
+    .sign-box { border-top: 1.5px solid #1B3A6B; padding-top: 6px; }
+    .sign-box .sign-label { font-size: 10px; color: #64748B; font-weight: 700; text-transform:uppercase; letter-spacing:.5px; }
+    .sign-box .sign-line { height: 32px; border-bottom: 1px solid #CBD5E1; margin-bottom: 4px; }
+    @media print {
+      body { padding: 14px; }
+      .no-print { display: none !important; }
+    }
+  </style>
+  </head><body>
+  <div class="hdr">
+    <div>
+      <div class="hdr h1" style="font-size:18px;font-weight:800;">G.1 SMS Internal Audit Report</div>
+      <div class="sub">AMTS Safety Management System · ICAO Annex 19 / CAAP Compliance</div>
+    </div>
+    <div class="id-badge">${a.id}</div>
+  </div>
+  <div class="meta-bar">
+    <div class="meta-item"><div class="lbl">Audit Date</div><div class="val">${a.date || '—'}</div></div>
+    <div class="meta-item"><div class="lbl">Auditor(s)</div><div class="val">${a.auditor || '—'}</div></div>
+    <div class="meta-item"><div class="lbl">Area / Department</div><div class="val">${a.area || '—'}</div></div>
+    <div class="meta-item"><div class="lbl">Audit Type</div><div class="val">${a.type || '—'}</div></div>
+    <div class="meta-item"><div class="lbl">Record Saved</div><div class="val">${savedStr}</div></div>
+    <div class="meta-item"><div class="lbl">Completion</div><div class="val">${pct}% (${done}/${total})</div></div>
+  </div>
+
+  <div class="score-row">
+    <div class="score-box" style="background:#F0FDF4;color:#166534;"><div class="num">${yes}</div><div class="lbl">✅ Compliant</div></div>
+    <div class="score-box" style="background:#FEF2F2;color:#991B1B;"><div class="num">${no}</div><div class="lbl">❌ Non-Compliant</div></div>
+    <div class="score-box" style="background:#F8FAFC;color:#475569;"><div class="num">${na}</div><div class="lbl">➖ N/A</div></div>
+    <div class="score-box" style="background:#EFF6FF;color:#1B3A6B;"><div class="num">${total - done}</div><div class="lbl">⬜ Pending</div></div>
+    <div class="score-box" style="background:#1B3A6B;color:white;"><div class="num">${pct}%</div><div class="lbl">Completion</div></div>
+  </div>
+
+  ${nonCompliant.length > 0 ? `
+  <div class="section-title">⚠️ Non-Compliance Summary (${nonCompliant.length} item${nonCompliant.length>1?'s':''})</div>
+  <table style="margin-bottom:22px;">
+    <thead><tr><th style="width:60px;">Ref</th><th>Requirement</th><th>Notes / Evidence</th></tr></thead>
+    <tbody>${ncRows}</tbody>
+  </table>` : ''}
+
+  <div class="section-title">📋 Full Audit Checklist</div>
+  <table>
+    <thead><tr><th style="width:60px;">Ref</th><th>Requirement</th><th style="width:55px;text-align:center;">Result</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="section-title">✍️ Sign-Off</div>
+  <div class="sign-row">
+    <div class="sign-box"><div class="sign-line"></div><div class="sign-label">Auditor Signature &amp; Date</div></div>
+    <div class="sign-box"><div class="sign-line"></div><div class="sign-label">Safety Manager Signature &amp; Date</div></div>
+    <div class="sign-box"><div class="sign-line"></div><div class="sign-label">Accountable Executive / Reviewer</div></div>
+  </div>
+
+  <div class="footer">
+    <span>AMTS Safety Management System · G.1 SMS Audit · ${a.id}</span>
+    <span>Printed: ${new Date().toLocaleString()}</span>
+  </div>
+
+  <div class="no-print" style="margin-top:20px;display:flex;gap:10px;">
+    <button onclick="window.print()" style="padding:10px 20px;background:#1B3A6B;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save as PDF</button>
+    <button onclick="window.close()" style="padding:10px 20px;background:#F1F5F9;color:#475569;border:none;border-radius:8px;font-size:14px;cursor:pointer;">✕ Close</button>
+  </div>
+  </body></html>`);
+  win.document.close();
 }
 
 function collectAuditAActions() {
@@ -6859,6 +7632,24 @@ function saveAuditA() {
     saved: new Date().toISOString(),
   };
   fbSet('sms/auditA/' + record.id, record);  // Firebase listener auto-refreshes the list
+
+  // Count results for log detail
+  const refs = AUDIT_A_ITEMS.filter(i => i.ref).map(i => i.ref);
+  const yesCountA = refs.filter(r => (record.state||{})[r] === 'yes').length;
+  const noCountA  = refs.filter(r => (record.state||{})[r] === 'no').length;
+  const naCountA  = refs.filter(r => (record.state||{})[r] === 'na').length;
+
+  // Log to immutable audit trail
+  logAuditEvent(
+    'AUDIT_SAVED',
+    record.id,
+    `G.1-A Inspection saved — ${record.building || 'No location'}${record.room ? ' / ' + record.room : ''} (${record.trigger || 'Scheduled'}). ` +
+    `Inspector: ${record.inspector || '—'}. Dept: ${record.dept || '—'}. Date: ${record.date || '—'}. ` +
+    `Results: ✅ ${yesCountA} Yes · ❌ ${noCountA} No · ➖ ${naCountA} N/A. ` +
+    `Overall: ${(record.result || '').split('–')[0].trim()}.`,
+    null, 'Saved'
+  );
+
   toast('✅ Inspection saved!', 'success');
 }
 
@@ -6873,6 +7664,962 @@ function resetAuditA() {
   updateProgress('audit-a-items');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIT GUIDE — LIVE ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SELF_ASSESS_KEY = 'sms_self_assess';
+
+const SELF_ASSESS_QUESTIONS = [
+  { id:'sa01', section:'Planning', text:'We have a written, dated audit schedule covering at least the next 12 months.' },
+  { id:'sa02', section:'Planning', text:'Audit frequency is risk-ranked — higher-risk areas are audited more often.' },
+  { id:'sa03', section:'Planning', text:'We rotate auditors — no single auditor covers the same area two cycles in a row.' },
+  { id:'sa04', section:'Planning', text:'We conduct at least one unannounced inspection per quarter.' },
+  { id:'sa05', section:'During',   text:'Every "No" finding generates a formal Corrective Action with an owner and due date.' },
+  { id:'sa06', section:'During',   text:'We use evidence (photos, documents, observation) — not verbal assurance — to mark compliance.' },
+  { id:'sa07', section:'During',   text:'Findings are graded (Observation / Minor / Major Non-Compliance).' },
+  { id:'sa08', section:'During',   text:'Notes / evidence fields are completed for every checklist item answered.' },
+  { id:'sa09', section:'Closure',  text:'All corrective actions are tracked in the CAP Tracker with a due date and responsible person.' },
+  { id:'sa10', section:'Closure',  text:'Overdue CAPs are escalated to management — not silently rolled over.' },
+  { id:'sa11', section:'Closure',  text:'We conduct effectiveness checks after closing corrective actions.' },
+  { id:'sa12', section:'Closure',  text:'Repeat audit findings are logged in the Hazard Register as standing hazards.' },
+  { id:'sa13', section:'Trends',   text:'We analyze Yes/No/N/A ratios across audit cycles to identify trends.' },
+  { id:'sa14', section:'Trends',   text:'Audit findings are presented at every management review.' },
+  { id:'sa15', section:'Trends',   text:'We investigate when the same item fails in multiple audit cycles.' },
+  { id:'sa16', section:'System',   text:'Every saved audit and inspection appears in the Immutable Audit Log.' },
+  { id:'sa17', section:'System',   text:'We run Audit Log chain integrity verification at least monthly.' },
+  { id:'sa18', section:'System',   text:'We archive records — we never permanently delete safety audit data.' },
+  { id:'sa19', section:'System',   text:'Completed G.1-A inspections are printed and physically filed with signatures.' },
+  { id:'sa20', section:'System',   text:'Safety audit outcomes are communicated back to the teams being audited.' },
+];
+
+let _saState = {};
+
+function initAuditGuide() {
+  _saState = lsGet(SELF_ASSESS_KEY, {});
+  buildSelfAssessment();
+  refreshAuditGuide();
+}
+
+function refreshAuditGuide() {
+  const now = new Date();
+
+  // ── Days since last G.1 audit ──
+  const lastG1 = audits.length
+    ? audits.slice().sort((a,b) => new Date(b.saved||b.date) - new Date(a.saved||a.date))[0]
+    : null;
+  const daysSinceG1 = lastG1
+    ? Math.floor((now - new Date(lastG1.saved || lastG1.date)) / 86400000)
+    : null;
+
+  // ── Days since last G.1-A inspection ──
+  const lastGA = auditA.length
+    ? auditA.slice().sort((a,b) => new Date(b.saved||b.date) - new Date(a.saved||a.date))[0]
+    : null;
+  const daysSinceGA = lastGA
+    ? Math.floor((now - new Date(lastGA.saved || lastGA.date)) / 86400000)
+    : null;
+
+  // ── Overdue CAPs ──
+  let overdueCaps = 0;
+  reports.forEach(r => {
+    (r.caps||[]).forEach(c => {
+      if (c.status !== 'Done' && c.status !== 'Verified' && c.date && new Date(c.date) < now)
+        overdueCaps++;
+    });
+  });
+
+  // ── Open reports ──
+  const openReports = reports.filter(r => r.status !== 'Closed').length;
+
+  // ── CAP closure rate ──
+  let totalCaps = 0, doneCaps = 0;
+  reports.forEach(r => { (r.caps||[]).forEach(c => { totalCaps++; if(c.status==='Done'||c.status==='Verified') doneCaps++; }); });
+  const capRate = totalCaps ? Math.round(doneCaps/totalCaps*100) : null;
+
+  // ── Self-assessment score ──
+  const saAnswered = Object.values(_saState).filter(v => v === 'yes' || v === 'no').length;
+  const saYes = Object.values(_saState).filter(v => v === 'yes').length;
+  const saScopePct = saAnswered ? Math.round(saYes / SELF_ASSESS_QUESTIONS.length * 100) : null;
+
+  // ══ HEALTH SCORE CALCULATION (100 points) ══
+  let score = 0;
+  const breakdown = [];
+
+  // 1. G.1 Audit Recency (20 pts)
+  let g1Score = 0, g1Label = '', g1Color = '';
+  if (audits.length === 0) { g1Score = 0; g1Label = 'No G.1 audits on record'; g1Color = '#DC2626'; }
+  else if (daysSinceG1 <= 90)  { g1Score = 20; g1Label = `Last G.1: ${daysSinceG1}d ago ✅`; g1Color = '#16A34A'; }
+  else if (daysSinceG1 <= 120) { g1Score = 12; g1Label = `Last G.1: ${daysSinceG1}d ago — overdue`; g1Color = '#D97706'; }
+  else                          { g1Score = 4;  g1Label = `Last G.1: ${daysSinceG1}d ago — critical gap`; g1Color = '#DC2626'; }
+  score += g1Score;
+  breakdown.push({ label:'G.1 Audit Recency', score:g1Score, max:20, label2:g1Label, color:g1Color });
+
+  // 2. G.1-A Inspection Recency (20 pts)
+  let gaScore = 0, gaLabel = '', gaColor = '';
+  if (auditA.length === 0) { gaScore = 0; gaLabel = 'No G.1-A inspections on record'; gaColor = '#DC2626'; }
+  else if (daysSinceGA <= 35)  { gaScore = 20; gaLabel = `Last G.1-A: ${daysSinceGA}d ago ✅`; gaColor = '#16A34A'; }
+  else if (daysSinceGA <= 50)  { gaScore = 12; gaLabel = `Last G.1-A: ${daysSinceGA}d ago — overdue`; gaColor = '#D97706'; }
+  else                          { gaScore = 4;  gaLabel = `Last G.1-A: ${daysSinceGA}d ago — critical gap`; gaColor = '#DC2626'; }
+  score += gaScore;
+  breakdown.push({ label:'G.1-A Inspection Recency', score:gaScore, max:20, label2:gaLabel, color:gaColor });
+
+  // 3. CAP Overdue (20 pts)
+  let capScore = 0, capLabel = '', capColor = '';
+  if (totalCaps === 0) { capScore = 10; capLabel = 'No CAPs yet — submit reports to generate actions'; capColor = '#64748B'; }
+  else if (overdueCaps === 0) { capScore = 20; capLabel = 'No overdue CAPs ✅'; capColor = '#16A34A'; }
+  else if (overdueCaps <= 2)  { capScore = 12; capLabel = `${overdueCaps} overdue CAP${overdueCaps>1?'s':''} — needs attention`; capColor = '#D97706'; }
+  else                        { capScore = 3;  capLabel = `${overdueCaps} overdue CAPs — critical`; capColor = '#DC2626'; }
+  score += capScore;
+  breakdown.push({ label:'CAP Overdue Status', score:capScore, max:20, label2:capLabel, color:capColor });
+
+  // 4. CAP Closure Rate (20 pts)
+  let closureScore = 0, closureLabel = '', closureColor = '';
+  if (capRate === null) { closureScore = 10; closureLabel = 'No CAP data yet'; closureColor = '#64748B'; }
+  else if (capRate >= 80) { closureScore = 20; closureLabel = `${capRate}% CAP closure rate ✅`; closureColor = '#16A34A'; }
+  else if (capRate >= 60) { closureScore = 13; closureLabel = `${capRate}% CAP closure rate — needs improvement`; closureColor = '#D97706'; }
+  else                    { closureScore = 5;  closureLabel = `${capRate}% CAP closure rate — critical`; closureColor = '#DC2626'; }
+  score += closureScore;
+  breakdown.push({ label:'CAP Closure Rate', score:closureScore, max:20, label2:closureLabel, color:closureColor });
+
+  // 5. Self-Assessment (20 pts)
+  let selfScore = 0, selfLabel = '', selfColor = '';
+  if (saScopePct === null || saAnswered < 10) { selfScore = 0; selfLabel = `Self-assessment incomplete (${saAnswered}/20 answered)`; selfColor = '#64748B'; }
+  else if (saScopePct >= 80) { selfScore = 20; selfLabel = `Self-assessment: ${saScopePct}% ✅`; selfColor = '#16A34A'; }
+  else if (saScopePct >= 60) { selfScore = 12; selfLabel = `Self-assessment: ${saScopePct}% — gaps identified`; selfColor = '#D97706'; }
+  else                       { selfScore = 4;  selfLabel = `Self-assessment: ${saScopePct}% — significant gaps`; selfColor = '#DC2626'; }
+  score += selfScore;
+  breakdown.push({ label:'Self-Assessment Score', score:selfScore, max:20, label2:selfLabel, color:selfColor });
+
+  // ── Update UI ──
+  setEl('ag-mini-g1-num',       audits.length);
+  setEl('ag-mini-ga-num',       auditA.length);
+  setEl('ag-mini-days-g1-num',  daysSinceG1 !== null ? daysSinceG1 + 'd' : 'None');
+  setEl('ag-mini-days-ga-num',  daysSinceGA !== null ? daysSinceGA + 'd' : 'None');
+
+  // Score ring animation
+  const ring = document.getElementById('ag-score-ring');
+  const circ = 2 * Math.PI * 48;
+  if (ring) {
+    const offset = circ - (score / 100) * circ;
+    ring.style.strokeDashoffset = offset;
+    ring.style.stroke = score >= 75 ? '#22C55E' : score >= 50 ? '#F59E0B' : '#EF4444';
+  }
+  setEl('ag-score-num', score);
+
+  // Label and summary
+  let scoreLabel, scoreSummary;
+  if (score >= 85) { scoreLabel = '🟢 Excellent'; scoreSummary = 'Your audit program is operating at a high standard. Maintain this cadence and focus on continuous improvement.'; }
+  else if (score >= 70) { scoreLabel = '🟡 Good'; scoreSummary = 'Solid foundations in place. Address the flagged items below to close the remaining gaps.'; }
+  else if (score >= 50) { scoreLabel = '🟠 Needs Improvement'; scoreSummary = 'Several significant gaps exist in your audit program. Take action on the alerts below immediately.'; }
+  else { scoreLabel = '🔴 Critical'; scoreSummary = 'Your audit program has critical gaps that represent real compliance and safety risk. Immediate management attention required.'; }
+
+  setEl('ag-score-label', scoreLabel);
+  setEl('ag-score-summary', scoreSummary);
+
+  // ── Breakdown bars ──
+  const bdEl = document.getElementById('ag-breakdown');
+  if (bdEl) {
+    bdEl.innerHTML = breakdown.map(b => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#F8FAFC;border-radius:8px;">
+        <div style="min-width:200px;font-size:13px;font-weight:600;color:var(--navy);">${b.label}</div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:${b.color};font-weight:600;margin-bottom:4px;">${b.label2}</div>
+          <div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${Math.round(b.score/b.max*100)}%;background:${b.color};"></div></div>
+        </div>
+        <div style="min-width:54px;text-align:right;font-family:'Outfit',sans-serif;font-weight:800;font-size:14px;color:${b.color};">${b.score}/${b.max}</div>
+      </div>`).join('');
+  }
+
+  // ── Live flags ──
+  const flags = [];
+  if (audits.length === 0)          flags.push({ color:'#DC2626', bg:'rgba(220,38,38,0.15)', text:'No G.1 audits' });
+  else if (daysSinceG1 > 90)        flags.push({ color:'#FCD34D', bg:'rgba(252,211,77,0.15)', text:`G.1 overdue ${daysSinceG1}d` });
+  if (auditA.length === 0)          flags.push({ color:'#DC2626', bg:'rgba(220,38,38,0.15)', text:'No inspections' });
+  else if (daysSinceGA > 35)        flags.push({ color:'#FCD34D', bg:'rgba(252,211,77,0.15)', text:`G.1-A overdue ${daysSinceGA}d` });
+  if (overdueCaps > 0)              flags.push({ color:'#FCD34D', bg:'rgba(252,211,77,0.15)', text:`${overdueCaps} overdue CAP${overdueCaps>1?'s':''}` });
+  if (score >= 85 && flags.length===0) flags.push({ color:'#4ADE80', bg:'rgba(74,222,128,0.15)', text:'All systems nominal' });
+
+  const flagsEl = document.getElementById('ag-live-flags');
+  if (flagsEl) flagsEl.innerHTML = flags.map(f =>
+    `<span style="font-size:11px;font-weight:700;color:${f.color};background:${f.bg};padding:3px 10px;border-radius:99px;">${f.text}</span>`
+  ).join('');
+
+  // ── Live Alerts ──
+  const alerts = [];
+  if (audits.length === 0) {
+    alerts.push({ sev:'critical', icon:'🚨', title:'No G.1 SMS Audits on record', detail:'Conduct your first G.1 internal SMS audit immediately.', action:"showPage('audit')", actionLabel:'Start G.1 Audit' });
+  } else if (daysSinceG1 > 90) {
+    alerts.push({ sev:'warning', icon:'⏰', title:`G.1 Audit overdue by ${daysSinceG1-90} days`, detail:`Last G.1 audit was ${daysSinceG1} days ago. Recommended maximum gap is 90 days (quarterly).`, action:"showPage('audit')", actionLabel:'Start G.1 Audit' });
+  }
+  if (auditA.length === 0) {
+    alerts.push({ sev:'critical', icon:'🚨', title:'No G.1-A Inspections on record', detail:'Conduct your first workplace inspection immediately.', action:"showPage('audit-a')", actionLabel:'Start Inspection' });
+  } else if (daysSinceGA > 35) {
+    alerts.push({ sev:'warning', icon:'⏰', title:`G.1-A Inspection overdue by ${daysSinceGA-35} days`, detail:`Last inspection was ${daysSinceGA} days ago. Recommended maximum gap is 35 days (monthly).`, action:"showPage('audit-a')", actionLabel:'Start Inspection' });
+  }
+  if (overdueCaps > 0) {
+    alerts.push({ sev:'warning', icon:'⚠️', title:`${overdueCaps} Corrective Action${overdueCaps>1?'s':''} overdue`, detail:'Open CAPs past their due date must be escalated to management — not silently rolled over.', action:"showPage('cap-tracker')", actionLabel:'Review CAPs' });
+  }
+  if (capRate !== null && capRate < 60) {
+    alerts.push({ sev:'warning', icon:'📉', title:`CAP closure rate is ${capRate}% — below 60% threshold`, detail:'Low closure rate indicates corrective actions are not being completed. Review and reassign ownership.', action:"showPage('cap-tracker')", actionLabel:'Open CAP Tracker' });
+  }
+  if (saAnswered < 10) {
+    alerts.push({ sev:'info', icon:'📋', title:'Self-assessment checklist incomplete', detail:`You have answered ${saAnswered} of 20 questions. Complete it to get a full health score.`, action:'document.getElementById("ag-self-assess-list").scrollIntoView({behavior:"smooth"})', actionLabel:'Complete Now' });
+  }
+
+  const alertSection = document.getElementById('ag-alerts-section');
+  const alertList = document.getElementById('ag-alerts-list');
+  if (alertList) {
+    if (alerts.length === 0) {
+      alertSection.style.display = 'none';
+    } else {
+      alertSection.style.display = '';
+      const sevColors = { critical:{ bg:'#FEF2F2', border:'#FECACA', icon:'#DC2626', text:'#991B1B' }, warning:{ bg:'#FFFBEB', border:'#FDE68A', icon:'#D97706', text:'#92400E' }, info:{ bg:'#EFF6FF', border:'#BFDBFE', icon:'#2563A8', text:'#1E40AF' } };
+      alertList.innerHTML = alerts.map(a => {
+        const c = sevColors[a.sev] || sevColors.info;
+        return `<div style="display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:${c.bg};border:1.5px solid ${c.border};border-radius:10px;">
+          <div style="font-size:22px;flex-shrink:0;">${a.icon}</div>
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:14px;color:${c.text};margin-bottom:3px;">${a.title}</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5;">${a.detail}</div>
+          </div>
+          <button class="btn btn-sm" style="background:${c.border};color:${c.text};border:none;white-space:nowrap;flex-shrink:0;" onclick="${a.action}">${a.actionLabel}</button>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function setEl(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function buildSelfAssessment() {
+  const container = document.getElementById('ag-self-assess-list');
+  if (!container) return;
+  const sections = [...new Set(SELF_ASSESS_QUESTIONS.map(q => q.section))];
+  let html = '';
+  sections.forEach(sec => {
+    const secColors = { Planning:'var(--blue)', During:'var(--teal)', Closure:'var(--orange)', Trends:'var(--gold)', System:'var(--navy)' };
+    html += `<div style="background:${secColors[sec]||'var(--navy)'};color:white;padding:8px 14px;border-radius:8px;font-weight:700;font-size:12px;letter-spacing:.3px;margin:10px 0 6px;">${sec}</div>`;
+    SELF_ASSESS_QUESTIONS.filter(q => q.section === sec).forEach(q => {
+      const val = _saState[q.id] || '';
+      html += `
+        <div class="audit-item" id="sa-row-${q.id}" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--light);">
+          <div style="font-size:13px;line-height:1.5;">${q.text}</div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="comply-btn yes ${val==='yes'?'sel':''}" onclick="setSA('${q.id}','yes',this)">✅ Yes</button>
+            <button class="comply-btn no ${val==='no'?'sel':''}"  onclick="setSA('${q.id}','no',this)">❌ No</button>
+          </div>
+        </div>`;
+    });
+  });
+  container.innerHTML = html;
+  updateSAProgress();
+}
+
+function setSA(id, val, btn) {
+  if (_saState[id] === val) {
+    delete _saState[id];
+    btn.classList.remove('sel');
+  } else {
+    _saState[id] = val;
+    const row = document.getElementById('sa-row-' + id);
+    if (row) row.querySelectorAll('.comply-btn').forEach(b => b.classList.remove('sel'));
+    btn.classList.add('sel');
+  }
+  lsSet(SELF_ASSESS_KEY, _saState);
+  updateSAProgress();
+  refreshAuditGuide();
+}
+
+function updateSAProgress() {
+  const total   = SELF_ASSESS_QUESTIONS.length;
+  const yesArr  = Object.values(_saState).filter(v => v === 'yes');
+  const noArr   = Object.values(_saState).filter(v => v === 'no');
+  const answered = yesArr.length + noArr.length;
+  const pct = Math.round(yesArr.length / total * 100);
+  setEl('sa-yes-count', yesArr.length);
+  setEl('sa-no-count', noArr.length);
+  setEl('sa-pending-count', total - answered);
+  setEl('sa-score-pct', answered >= 10 ? pct + '%' : '—');
+  const fill = document.getElementById('sa-progress-fill');
+  if (fill) { fill.style.width = Math.round(answered/total*100) + '%'; }
+}
+
+function resetSelfAssessment() {
+  if (!confirm('Reset all self-assessment answers?')) return;
+  _saState = {};
+  lsSet(SELF_ASSESS_KEY, {});
+  buildSelfAssessment();
+  refreshAuditGuide();
+  toast('🔄 Self-assessment reset.', 'success');
+}
+
+function printAuditGuide() {
+  const now = new Date().toLocaleString();
+  const score = document.getElementById('ag-score-num')?.textContent || '—';
+  const label = document.getElementById('ag-score-label')?.textContent || '—';
+  const summary = document.getElementById('ag-score-summary')?.textContent || '';
+  const alertsHtml = document.getElementById('ag-alerts-list')?.innerHTML || '<p style="color:#64748B;">No active alerts.</p>';
+  const bdHtml = document.getElementById('ag-breakdown')?.innerHTML || '';
+
+  let saRows = '';
+  SELF_ASSESS_QUESTIONS.forEach(q => {
+    const val = _saState[q.id] || '—';
+    const color = val==='yes'?'#16A34A':val==='no'?'#DC2626':'#94A3B8';
+    const label2 = val==='yes'?'YES':val==='no'?'NO':'—';
+    saRows += `<tr><td style="font-size:11px;padding:6px 8px;border-bottom:1px solid #E2E8F0;">${q.section}</td>
+      <td style="font-size:11px;padding:6px 8px;border-bottom:1px solid #E2E8F0;">${q.text}</td>
+      <td style="font-size:12px;font-weight:700;color:${color};padding:6px 8px;border-bottom:1px solid #E2E8F0;text-align:center;">${label2}</td></tr>`;
+  });
+
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.write(`<!DOCTYPE html><html><head><title>Audit Health Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #1E293B; padding: 30px; max-width: 900px; margin: 0 auto; }
+    h1 { color: #1B3A6B; font-size: 22px; margin-bottom: 4px; }
+    h2 { color: #1B3A6B; font-size: 15px; margin: 20px 0 8px; border-bottom: 2px solid #1B3A6B; padding-bottom: 4px; }
+    .meta { font-size: 12px; color: #64748B; margin-bottom: 20px; }
+    .score-box { background: #1B3A6B; color: white; padding: 16px 24px; border-radius: 10px; display: flex; gap: 20px; align-items: center; margin-bottom: 16px; }
+    .score-big { font-size: 48px; font-weight: 900; line-height: 1; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #1B3A6B; color: white; padding: 8px; text-align: left; font-size: 11px; }
+    @media print { button { display: none; } }
+  </style></head><body>
+  <h1>📋 Audit Health &amp; Recommendations Report</h1>
+  <div class="meta">Generated: ${now} &nbsp;|&nbsp; AMTS Safety Management System</div>
+  <div class="score-box">
+    <div class="score-big">${score}</div>
+    <div><div style="font-size:18px;font-weight:700;">${label}</div><div style="font-size:12px;opacity:.8;margin-top:4px;">${summary}</div></div>
+  </div>
+  <h2>Live Action Alerts</h2>${alertsHtml}
+  <h2>Score Breakdown</h2>${bdHtml}
+  <h2>Self-Assessment Results</h2>
+  <table><thead><tr><th>Category</th><th>Question</th><th>Answer</th></tr></thead><tbody>${saRows}</tbody></table>
+  <div style="margin-top:30px;font-size:10px;color:#94A3B8;border-top:1px solid #E2E8F0;padding-top:10px;">
+    AMTS Safety Management System · Audit Health Report · ${now}
+  </div>
+  <scr"+"ipt>window.onload=()=>window.print();<"+"/script>
+  </body></html>`);
+  win.document.close();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INSTRUCTOR QUALIFICATION AUDIT (G.1-B)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let instructorAudits = [];
+let instructorAuditState = {};
+
+const INSTRUCTOR_AUDIT_ITEMS = [
+  { section: '1. License & Certificate Validity' },
+  { ref:'IQ1.1', req:'Instructor holds a valid CAAP-issued AMT License or equivalent authorization to teach.' },
+  { ref:'IQ1.2', req:'License / teaching authorization is current — not expired or suspended.' },
+  { ref:'IQ1.3', req:'License is appropriate for the subject(s) being taught (e.g., Airframe, Powerplant, Avionics).' },
+  { ref:'IQ1.4', req:'A certified true copy of the license is on file with the school HR / Safety Office.' },
+  { ref:'IQ1.5', req:"Expiry date has been entered into the school's qualification tracking system." },
+  { ref:'IQ1.6', req:'Renewal action has been initiated if the license expires within 90 days.' },
+
+  { section: '2. Teaching Authorization & Competence' },
+  { ref:'IQ2.1', req:'Instructor has been formally authorized by the Chief Instructor / Director of Training to teach the assigned subject.' },
+  { ref:'IQ2.2', req:'Instructor has completed a formal Instructor Training Course (ITC) or equivalent pedagogical qualification.' },
+  { ref:'IQ2.3', req:'Instructor has demonstrated subject-matter competence via assessment, observation, or prior documented experience.' },
+  { ref:'IQ2.4', req:"Instructor's teaching materials (lesson plans, syllabus, assessments) have been reviewed and approved." },
+  { ref:'IQ2.5', req:'Instructor is assigned only to subjects within their licensed / authorized scope — no out-of-scope teaching.' },
+
+  { section: '3. Recurrent Training & Currency' },
+  { ref:'IQ3.1', req:'Instructor has completed recurrent / refresher training within the required interval (≤ 12 months for safety-critical subjects).' },
+  { ref:'IQ3.2', req:'Recurrent training records are documented and filed.' },
+  { ref:'IQ3.3', req:'Instructor has maintained industry currency — evidence of recent hands-on AMT experience or OJT within 3 years.' },
+  { ref:'IQ3.4', req:'Instructor has attended at least one industry or professional development event in the past 12 months.' },
+  { ref:'IQ3.5', req:'Instructor is aware of current regulatory changes affecting the subject they teach (CAAP ACs, CAR updates).' },
+
+  { section: '4. Teaching Hours & Workload' },
+  { ref:'IQ4.1', req:'Instructor teaching load does not exceed the school-defined maximum (recommended ≤ 30 hrs/week contact time).' },
+  { ref:'IQ4.2', req:'Instructor is not teaching more than 5 consecutive days without a full rest day.' },
+  { ref:'IQ4.3', req:"Instructor's total assigned subjects are within manageable scope — preparation time is adequate." },
+  { ref:'IQ4.4', req:'Instructor has disclosed all secondary employment or external teaching commitments.' },
+  { ref:'IQ4.5', req:'Combined workload (all employment) does not create fatigue risk to instructional safety.' },
+  { ref:'IQ4.6', req:'Instructor has taken all entitled rest days and leave — excessive leave carryover is not present.' },
+
+  { section: '5. Student Hours Delivery & Compliance' },
+  { ref:'IQ5.1', req:'Students under this instructor are receiving the minimum required lab/practical hours per CAAP regulations.' },
+  { ref:'IQ5.2', req:'Student attendance records are maintained accurately and reviewed regularly.' },
+  { ref:'IQ5.3', req:'Students who fall below the minimum hours threshold are flagged and remediation is arranged.' },
+  { ref:'IQ5.4', req:'No student has been certified as completing a unit without meeting the minimum required hours.' },
+  { ref:'IQ5.5', req:'Student practical tasks are logged individually per CAAP OB requirements.' },
+  { ref:'IQ5.6', req:'Assessment methods are valid — exams, practicals, and OB tasks are not being bypassed or short-cut.' },
+
+  { section: '6. Classroom & Workshop Safety Conduct' },
+  { ref:'IQ6.1', req:'Instructor consistently enforces PPE requirements during practical sessions.' },
+  { ref:'IQ6.2', req:'Instructor briefs students on hazards before each practical task.' },
+  { ref:'IQ6.3', req:'Instructor maintains supervision ratio appropriate to the risk level of the task.' },
+  { ref:'IQ6.4', req:'No incidents, near-misses, or complaints attributable to inadequate supervision have been recorded this semester.' },
+  { ref:'IQ6.5', req:'Instructor stops work when conditions are unsafe — no pressure to continue in unsafe conditions.' },
+
+  { section: '7. Records, Documentation & Conduct' },
+  { ref:'IQ7.1', req:'Instructor maintains accurate grade records, OB logs, and attendance sheets.' },
+  { ref:'IQ7.2', req:'Instructor submits required reports on time (grades, incident reports, OB completions).' },
+  { ref:'IQ7.3', req:'No formal disciplinary, academic integrity, or misconduct issues are pending.' },
+  { ref:'IQ7.4', req:'Student feedback / evaluation scores are within acceptable range (if school conducts these).' },
+  { ref:'IQ7.5', req:'Instructor participates in faculty safety meetings and has signed safety acknowledgment for current period.' },
+];
+
+const IA_PROGRESS_IDS = {
+  'audit-instructor-items': { yes:'ia-yes-count', no:'ia-no-count', na:'ia-na-count', pending:'ia-pending-count', fill:'ia-progress-fill' }
+};
+
+function buildInstructorAuditItems() {
+  const c = document.getElementById('audit-instructor-items');
+  if (!c) return;
+  const sectionColors = ['#7C3AED','#0F766E','#1D4ED8','#D97706','#DC2626','#065F46','#B45309'];
+  let html = '', secIdx = -1, openCard = false;
+  INSTRUCTOR_AUDIT_ITEMS.forEach(item => {
+    if (item.section) {
+      if (openCard) html += '</div></div>';
+      secIdx++;
+      const color = sectionColors[secIdx % sectionColors.length];
+      html += `<div class="card" style="margin-bottom:14px;border-top:4px solid ${color};">
+        <div class="card-title" style="color:${color};font-size:14px;margin-bottom:4px;">${item.section}</div><div>`;
+      openCard = true;
+    } else {
+      const sr = item.ref.replace(/\./g,'_');
+      const val = instructorAuditState[item.ref] || '';
+      html += `
+        <div class="audit-item" id="ia-row-${sr}" style="display:grid;grid-template-columns:72px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--light);align-items:start;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);padding-top:3px;font-weight:600;">${item.ref}</div>
+          <div>
+            <div style="font-size:13px;line-height:1.5;margin-bottom:8px;">${item.req}</div>
+            <div class="audit-comply" style="margin-bottom:8px;">
+              <button class="comply-btn yes ${val==='yes'?'sel':''}" onclick="setComply('audit-instructor-items','${item.ref}','yes',this)">✅ Yes</button>
+              <button class="comply-btn no  ${val==='no' ?'sel':''}" onclick="setComply('audit-instructor-items','${item.ref}','no',this)">❌ No</button>
+              <button class="comply-btn na  ${val==='na' ?'sel':''}" onclick="setComply('audit-instructor-items','${item.ref}','na',this)">➖ N/A</button>
+            </div>
+            <textarea id="audit-instructor-items-note-${sr}" placeholder="Evidence / notes…"
+              style="width:100%;font-size:12px;min-height:44px;border:1.5px solid var(--border);border-radius:6px;padding:6px;font-family:inherit;resize:vertical;"
+              oninput="updateProgress('audit-instructor-items')"></textarea>
+          </div>
+        </div>`;
+    }
+  });
+  if (openCard) html += '</div></div>';
+  c.innerHTML = html;
+
+  // Register in PROGRESS_IDS
+  if (!PROGRESS_IDS['audit-instructor-items']) {
+    PROGRESS_IDS['audit-instructor-items'] = IA_PROGRESS_IDS['audit-instructor-items'];
+  }
+  updateProgress('audit-instructor-items');
+}
+
+function saveInstructorAudit() {
+  const notes = {};
+  INSTRUCTOR_AUDIT_ITEMS.filter(i=>i.ref).forEach(i => {
+    const sr = i.ref.replace(/\./g,'_');
+    const el = document.getElementById('audit-instructor-items-note-'+sr);
+    if (el && el.value.trim()) notes[i.ref] = el.value.trim();
+  });
+  const record = {
+    id:       'IAUD-' + Date.now(),
+    date:     document.getElementById('ia-date').value,
+    auditor:  document.getElementById('ia-auditor').value,
+    dept:     document.getElementById('ia-dept').value,
+    type:     document.getElementById('ia-type').value,
+    instructor: document.getElementById('ia-instructor-name').value,
+    subject:  document.getElementById('ia-subject').value,
+    state:    {...instructorAuditState},
+    notes,
+    result:   document.getElementById('ia-result').value,
+    actions:  document.getElementById('ia-actions').value,
+    nextDate: document.getElementById('ia-next').value,
+    saved:    new Date().toISOString(),
+  };
+  const refs = INSTRUCTOR_AUDIT_ITEMS.filter(i=>i.ref).map(i=>i.ref);
+  const yesC = refs.filter(r=>record.state[r]==='yes').length;
+  const noC  = refs.filter(r=>record.state[r]==='no').length;
+  const naC  = refs.filter(r=>record.state[r]==='na').length;
+
+  instructorAudits.push(record);
+  lsSet('sms_instructor_audits', instructorAudits);
+
+  logAuditEvent('AUDIT_SAVED', record.id,
+    `G.1-B Instructor Audit — ${record.instructor||'Unknown'} (${record.subject||'—'}). Auditor: ${record.auditor||'—'}. Result: ${(record.result||'').split('—')[0].trim()}. ✅${yesC} ❌${noC} ➖${naC}.`,
+    null, 'Saved');
+
+  renderSavedInstructorAudits();
+  toast('✅ Instructor audit saved!', 'success');
+}
+
+function renderSavedInstructorAudits() {
+  const c = document.getElementById('saved-instructor-audits-list');
+  if (!c) return;
+  if (!instructorAudits.length) { c.innerHTML = '<div style="color:var(--muted);font-size:13px;">No instructor audits saved yet.</div>'; return; }
+  const refs = INSTRUCTOR_AUDIT_ITEMS.filter(i=>i.ref).map(i=>i.ref);
+  c.innerHTML = [...instructorAudits].reverse().map(a => {
+    const yes = refs.filter(r=>(a.state||{})[r]==='yes').length;
+    const no  = refs.filter(r=>(a.state||{})[r]==='no').length;
+    const pct = refs.length ? Math.round((yes+no+refs.filter(r=>(a.state||{})[r]==='na').length)/refs.length*100) : 0;
+    const isSuspended = (a.result||'').includes('SUSPENDED');
+    const resColor = isSuspended?'#DC2626':(a.result||'').includes('Concerns')?'#D97706':'#16A34A';
+    const safeInst = (a.instructor||'').replace(/'/g,"\\'");
+    return `<div class="saved-record-row" style="${isSuspended?'border-color:#FCA5A5;background:#FEF2F2;':''}">
+      <div class="saved-record-info">
+        <div class="saved-record-id">${a.id} ${isSuspended?'<span style="color:#DC2626;font-weight:800;">⛔ SUSPENDED</span>':''}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px;">${a.instructor||'—'} · ${a.subject||'—'}</div>
+        <div class="saved-record-meta">📅 ${a.date||'—'} &nbsp;|&nbsp; Dept: ${a.dept||'—'} &nbsp;|&nbsp; Auditor: ${a.auditor||'—'}</div>
+        <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:12px;">✅ ${yes} &nbsp; ❌ ${no} &nbsp; ${pct}% done</span>
+          ${no>0?`<span style="font-size:11px;background:#FEF2F2;color:#DC2626;padding:2px 8px;border-radius:99px;font-weight:600;">⚠️ ${no} issue${no>1?'s':''}</span>`:''}
+          <span style="font-size:11px;font-weight:700;color:${resColor};">${(a.result||'').split('—')[0].trim()}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="printSavedInstructorAudit('${a.id}')">🖨️ Print</button>
+        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;"
+          onclick="confirmDeleteInstructorAudit('${a.id}','${safeInst}')">🗑 Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function confirmDeleteInstructorAudit(id, name) {
+  if (!confirm(`Delete instructor audit for "${name}"? This cannot be undone.`)) return;
+  instructorAudits = instructorAudits.filter(a => a.id !== id);
+  lsSet('sms_instructor_audits', instructorAudits);
+  renderSavedInstructorAudits();
+  toast('🗑 Record deleted.', 'success');
+}
+
+function resetInstructorAudit() {
+  if (!confirm('Reset all instructor audit responses?')) return;
+  instructorAuditState = {};
+  document.querySelectorAll('#audit-instructor-items .comply-btn').forEach(b=>b.classList.remove('sel'));
+  document.querySelectorAll('#audit-instructor-items textarea').forEach(t=>t.value='');
+  updateProgress('audit-instructor-items');
+}
+
+function printCurrentInstructorAudit() {
+  const notes = {};
+  INSTRUCTOR_AUDIT_ITEMS.filter(i=>i.ref).forEach(i=>{
+    const sr=i.ref.replace(/\./g,'_');
+    const el=document.getElementById('audit-instructor-items-note-'+sr);
+    if(el&&el.value.trim()) notes[i.ref]=el.value.trim();
+  });
+  openInstructorAuditPrintWindow({
+    id:'DRAFT-'+new Date().toLocaleDateString(),
+    date:document.getElementById('ia-date').value,
+    auditor:document.getElementById('ia-auditor').value,
+    dept:document.getElementById('ia-dept').value,
+    type:document.getElementById('ia-type').value,
+    instructor:document.getElementById('ia-instructor-name').value,
+    subject:document.getElementById('ia-subject').value,
+    state:{...instructorAuditState},
+    notes,
+    result:document.getElementById('ia-result').value,
+    actions:document.getElementById('ia-actions').value,
+    nextDate:document.getElementById('ia-next').value,
+  });
+}
+
+function printSavedInstructorAudit(id) {
+  const a = instructorAudits.find(x=>x.id===id);
+  if (!a) { toast('⚠️ Record not found.','error'); return; }
+  openInstructorAuditPrintWindow(a);
+}
+
+function openInstructorAuditPrintWindow(a) {
+  const refs = INSTRUCTOR_AUDIT_ITEMS.filter(i=>i.ref).map(i=>i.ref);
+  const yes=refs.filter(r=>(a.state||{})[r]==='yes').length;
+  const no =refs.filter(r=>(a.state||{})[r]==='no').length;
+  const na =refs.filter(r=>(a.state||{})[r]==='na').length;
+  const pct=refs.length?Math.round((yes+no+na)/refs.length*100):0;
+  const notes=a.notes||{};
+  const isSuspended=(a.result||'').includes('SUSPENDED');
+
+  let rows='';
+  INSTRUCTOR_AUDIT_ITEMS.forEach(item=>{
+    if(item.section){
+      rows+=`<tr><td colspan="3" style="background:#7C3AED;color:white;font-weight:700;padding:8px 10px;font-size:11px;">${item.section}</td></tr>`;
+    } else {
+      const comply=(a.state||{})[item.ref]||'—';
+      const color=comply==='yes'?'#16A34A':comply==='no'?'#DC2626':comply==='na'?'#64748B':'#94A3B8';
+      const label=comply==='yes'?'YES':comply==='no'?'NO':comply==='na'?'N/A':'—';
+      const note=notes[item.ref]||'';
+      rows+=`<tr style="background:${comply==='no'?'#FFF8F0':''};">
+        <td style="font-family:monospace;font-size:10px;color:#64748B;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;white-space:nowrap;">${item.ref}</td>
+        <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${item.req}${note?`<div style="margin-top:3px;font-size:10px;color:#475569;background:#F1F5F9;padding:3px 6px;border-radius:4px;">📝 ${note}</div>`:''}</td>
+        <td style="text-align:center;font-weight:800;color:${color};font-size:12px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${label}</td>
+      </tr>`;
+    }
+  });
+
+  const ncItems=INSTRUCTOR_AUDIT_ITEMS.filter(i=>i.ref&&(a.state||{})[i.ref]==='no');
+  const ncRows=ncItems.length?ncItems.map(i=>`<tr>
+    <td style="font-family:monospace;font-size:10px;padding:6px 8px;border-bottom:1px solid #FECACA;">${i.ref}</td>
+    <td style="font-size:11px;padding:6px 8px;border-bottom:1px solid #FECACA;">${i.req}</td>
+    <td style="font-size:10px;color:#475569;padding:6px 8px;border-bottom:1px solid #FECACA;">${notes[i.ref]||'—'}</td>
+  </tr>`).join(''):'<tr><td colspan="3" style="padding:12px;text-align:center;color:#16A34A;font-weight:600;">✅ No issues identified.</td></tr>';
+
+  const win=window.open('','_blank');
+  if(!win){toast('⚠️ Pop-up blocked.','error');return;}
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>G.1-B Instructor Qualification Audit — ${a.id}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;color:#1E293B;padding:28px;}
+    .hdr{background:#7C3AED;color:white;padding:18px 22px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:flex-start;}
+    .hdr h1{font-size:17px;font-weight:800;}.hdr .sub{font-size:11px;opacity:.7;margin-top:3px;}
+    .hdr .badge{background:rgba(255,255,255,0.15);padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;}
+    ${isSuspended?'.suspended-banner{background:#DC2626;color:white;padding:12px 18px;font-size:15px;font-weight:800;text-align:center;margin-bottom:18px;border-radius:8px;}':''}
+    .meta-bar{background:#F0F4F8;border:1px solid #CBD5E1;padding:12px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px;}
+    .meta-item .lbl{font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.8px;}
+    .meta-item .val{font-size:13px;font-weight:700;color:#1B3A6B;margin-top:2px;}
+    .score-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+    .score-box{padding:10px 16px;border-radius:8px;text-align:center;flex:1;min-width:80px;}
+    .score-box .num{font-size:24px;font-weight:900;line-height:1;}
+    .score-box .lbl2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+    th{background:#7C3AED;color:white;padding:8px 10px;text-align:left;font-size:11px;}
+    .sec-title{font-size:14px;font-weight:700;color:#1B3A6B;margin:18px 0 6px;border-bottom:2px solid #7C3AED;padding-bottom:4px;}
+    .sign-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin:24px 0;}
+    .sign-box{border-top:1.5px solid #7C3AED;padding-top:6px;}
+    .sign-box .sl{font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+    .sign-box .line{height:32px;border-bottom:1px solid #CBD5E1;margin-bottom:4px;}
+    .footer{margin-top:24px;font-size:10px;color:#94A3B8;border-top:1px solid #E2E8F0;padding-top:8px;display:flex;justify-content:space-between;}
+    @media print{.no-print{display:none!important;}}
+  </style></head><body>
+  <div class="hdr"><div><div class="hdr h1">G.1-B Instructor Qualification Audit</div><div class="sub">AMTS Safety Management System</div></div><div class="badge">${a.id}</div></div>
+  ${isSuspended?'<div class="suspended-banner">⛔ SUSPENDED — DO NOT ASSIGN TO TEACHING UNTIL RESOLVED</div>':''}
+  <div class="meta-bar">
+    <div class="meta-item"><div class="lbl">Date</div><div class="val">${a.date||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Instructor</div><div class="val">${a.instructor||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Subject Area</div><div class="val">${a.subject||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Department</div><div class="val">${a.dept||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Auditor</div><div class="val">${a.auditor||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Audit Type</div><div class="val">${a.type||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Next Review</div><div class="val">${a.nextDate||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Completion</div><div class="val">${pct}%</div></div>
+  </div>
+  <div class="score-row">
+    <div class="score-box" style="background:#F0FDF4;color:#166534;"><div class="num">${yes}</div><div class="lbl2">✅ Compliant</div></div>
+    <div class="score-box" style="background:#FEF2F2;color:#991B1B;"><div class="num">${no}</div><div class="lbl2">❌ Issues</div></div>
+    <div class="score-box" style="background:#F8FAFC;color:#475569;"><div class="num">${na}</div><div class="lbl2">➖ N/A</div></div>
+    <div class="score-box" style="background:#7C3AED;color:white;"><div class="num">${pct}%</div><div class="lbl2">Complete</div></div>
+  </div>
+  <div class="sec-title">Overall Result</div>
+  <div style="font-size:14px;font-weight:700;color:${isSuspended?'#DC2626':(a.result||'').includes('Concerns')?'#D97706':'#16A34A'};margin-bottom:10px;">${a.result||'—'}</div>
+  ${a.actions?`<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;">${a.actions}</div>`:''}
+  ${ncItems.length?`<div class="sec-title">⚠️ Issues Found (${ncItems.length})</div>
+  <table><thead><tr><th style="width:70px;">Ref</th><th>Item</th><th>Notes</th></tr></thead><tbody>${ncRows}</tbody></table>`:''}
+  <div class="sec-title">📋 Full Checklist</div>
+  <table><thead><tr><th style="width:70px;">Ref</th><th>Requirement</th><th style="width:55px;text-align:center;">Result</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="sec-title">✍️ Sign-Off</div>
+  <div class="sign-row">
+    <div class="sign-box"><div class="line"></div><div class="sl">Auditor Signature &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Safety Manager Signature &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Chief Instructor / Training Director</div></div>
+  </div>
+  <div class="footer"><span>AMTS SMS · G.1-B Instructor Audit · ${a.id}</span><span>Printed: ${new Date().toLocaleString()}</span></div>
+  <div class="no-print" style="margin-top:16px;display:flex;gap:10px;">
+    <button onclick="window.print()" style="padding:10px 20px;background:#7C3AED;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
+    <button onclick="window.close()" style="padding:10px 20px;background:#F1F5F9;color:#475569;border:none;border-radius:8px;cursor:pointer;">✕ Close</button>
+  </div>
+  </body></html>`);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INSTRUCTOR RISK ASSESSMENT TOOL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let instructorRisks = [];
+
+const IR_FACTORS = [
+  { id:'hrs_week',        label:'Teaching Hours / Week',           weight:20, calc: v => v>35?20:v>30?14:v>24?7:0 },
+  { id:'consec_days',     label:'Consecutive Teaching Days',       weight:12, calc: v => v>=7?12:v>=6?9:v>=5?5:0 },
+  { id:'subjects',        label:'Number of Subjects Teaching',     weight:8,  calc: v => v>=5?8:v>=4?5:v>=3?2:0 },
+  { id:'cert_months',     label:'License Expiry (months left)',    weight:15, calc: v => v===null||v===''?0:v<=0?15:v<=3?12:v<=6?7:v<=12?3:0 },
+  { id:'recurrent_months',label:'Recurrent Training Gap (months)', weight:12, calc: v => v>=24?12:v>=18?9:v>=12?5:0 },
+  { id:'industry_months', label:'Industry Currency Gap (months)',  weight:10, calc: v => v>=60?10:v>=48?8:v>=36?5:v>=24?2:0 },
+  { id:'student_lab_hrs', label:'Student Lab Hours / Week',        weight:10, calc: v => v<2?10:v<4?7:v<6?3:0 },
+  { id:'pass_rate',       label:'Student Pass Rate (%)',           weight:8,  calc: v => v<50?8:v<65?5:v<75?2:0 },
+  { id:'fatigue',         label:'Self-Reported Fatigue Level',     weight:15, calc: v => v>=5?15:v>=4?11:v>=3?6:v>=2?2:0 },
+  { id:'secondary',       label:'Secondary Employment Load',       weight:8,  calc: v => v>=3?8:v>=2?5:v>=1?2:0 },
+  { id:'complaints',      label:'Complaints / Concerns Raised',    weight:8,  calc: v => v>=3?8:v>=2?5:v>=1?3:0 },
+  { id:'incidents',       label:'In-Class Incidents This Semester',weight:10, calc: v => v>=2?10:v>=1?6:0 },
+  { id:'absences',        label:'Sick / Absent Days (semester)',   weight:6,  calc: v => v>=10?6:v>=6?4:v>=4?2:0 },
+];
+
+function calcInstructorRisk() {
+  const get = id => {
+    const el = document.getElementById('ir-' + id.replace('_','-').replace('_','-').replace('_','-'));
+    if (!el) return null;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? null : v;
+  };
+
+  const vals = {
+    hrs_week:         get('hrs-week'),
+    consec_days:      get('consec-days'),
+    subjects:         get('subjects'),
+    cert_months:      get('cert-months'),
+    recurrent_months: get('recurrent-months'),
+    industry_months:  get('industry-months'),
+    student_lab_hrs:  get('student-lab-hrs'),
+    pass_rate:        get('pass-rate'),
+    fatigue:          parseFloat(document.getElementById('ir-fatigue')?.value||1),
+    secondary:        parseFloat(document.getElementById('ir-secondary')?.value||0),
+    complaints:       get('complaints'),
+    incidents:        get('incidents'),
+    absences:         get('absences'),
+  };
+
+  let totalScore = 0;
+  const factorResults = [];
+
+  IR_FACTORS.forEach(f => {
+    const v = vals[f.id];
+    if (v === null) { factorResults.push({ ...f, score:0, value:null, skipped:true }); return; }
+    const score = f.calc(v);
+    totalScore += score;
+    factorResults.push({ ...f, score, value:v, skipped:false });
+  });
+
+  const maxPossible = IR_FACTORS.reduce((s,f)=>s+f.weight,0);
+  const pct = Math.round(totalScore / maxPossible * 100);
+
+  let level, levelColor, levelBg, summary;
+  if (pct >= 70)      { level='🔴 CRITICAL RISK'; levelColor='#991B1B'; levelBg='#FEF2F2'; summary='Immediate management intervention required. Consider suspending teaching duties pending review.'; }
+  else if (pct >= 45) { level='🟠 HIGH RISK'; levelColor='#92400E'; levelBg='#FFF7ED'; summary='Significant risk factors present. Corrective actions must be implemented within 1–2 weeks.'; }
+  else if (pct >= 25) { level='🟡 MODERATE RISK'; levelColor='#854D0E'; levelBg='#FEFCE8'; summary='Some risk factors identified. Monitor closely and address flagged items this semester.'; }
+  else                { level='🟢 LOW RISK'; levelColor='#166534'; levelBg='#F0FDF4'; summary='Risk profile is acceptable. Continue routine monitoring and scheduled reviews.'; }
+
+  // Show result card
+  const card = document.getElementById('ir-result-card');
+  if (card) { card.style.display=''; card.style.borderTopColor = levelColor; }
+
+  document.getElementById('ir-risk-score-num').textContent = totalScore + ' / ' + maxPossible;
+  const badge = document.getElementById('ir-risk-level-badge');
+  if (badge) { badge.textContent=level; badge.style.background=levelBg; badge.style.color=levelColor; }
+  document.getElementById('ir-risk-summary').textContent = summary;
+
+  // Factor breakdown
+  const bd = document.getElementById('ir-factor-breakdown');
+  if (bd) {
+    bd.innerHTML = factorResults.filter(f=>!f.skipped).sort((a,b)=>b.score-a.score).map(f => {
+      const pctF = Math.round(f.score/f.weight*100);
+      const c = f.score===0?'#16A34A':f.score/f.weight>=0.7?'#DC2626':f.score/f.weight>=0.4?'#D97706':'#F59E0B';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F8FAFC;border-radius:8px;">
+        <div style="min-width:220px;font-size:12px;font-weight:600;color:var(--navy);">${f.label}</div>
+        <div style="flex:1;"><div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${pctF}%;background:${c};transition:width .5s;"></div></div></div>
+        <div style="min-width:60px;text-align:right;font-size:12px;font-weight:700;color:${c};">${f.score}/${f.weight}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Recommendations
+  const recs = [];
+  if ((vals.hrs_week||0)>30) recs.push({ sev:'high', text:`Teaching load is ${vals.hrs_week} hrs/week — exceeds the recommended maximum of 30 hrs. Reduce load immediately or arrange a co-instructor.` });
+  if ((vals.consec_days||0)>=5) recs.push({ sev:'high', text:`${vals.consec_days} consecutive teaching days without a full rest day. Schedule mandatory rest before the next teaching block.` });
+  if ((vals.cert_months||99)<=3 && vals.cert_months!==null) recs.push({ sev:'critical', text:`License/certificate expires in ${vals.cert_months} month(s). Initiate renewal NOW — failure to renew before expiry grounds the instructor.` });
+  if ((vals.recurrent_months||0)>=12) recs.push({ sev:'high', text:`Recurrent training is ${vals.recurrent_months} months overdue. Schedule immediately — instructor currency is compromised.` });
+  if ((vals.industry_months||0)>=36) recs.push({ sev:'medium', text:`Industry/OJT experience gap is ${vals.industry_months} months. Arrange an industry attachment or OJT within this semester.` });
+  if ((vals.student_lab_hrs||99)<4) recs.push({ sev:'high', text:`Students are receiving only ${vals.student_lab_hrs} lab hrs/week — below CAAP minimum of 4 hrs. Review timetable and rectify immediately.` });
+  if ((vals.pass_rate||100)<65) recs.push({ sev:'high', text:`Pass rate is ${vals.pass_rate}%. This may indicate instructional effectiveness issues, unrealistic assessments, or student preparedness gaps. Investigate.` });
+  if ((vals.fatigue||0)>=4) recs.push({ sev:'critical', text:`Instructor self-reported fatigue level ${vals.fatigue}/5. Do not assign to additional teaching until rest is provided. Review workload immediately.` });
+  if ((vals.secondary||0)>=2) recs.push({ sev:'medium', text:`Instructor has significant secondary employment. Require full disclosure and workload cap enforcement.` });
+  if ((vals.complaints||0)>=1) recs.push({ sev:'medium', text:`${vals.complaints} complaint(s)/concern(s) raised this semester. Each must be investigated and resolved before next audit.` });
+  if ((vals.incidents||0)>=1) recs.push({ sev:'high', text:`${vals.incidents} in-class incident(s) recorded. Root cause investigation required. Review supervision practices.` });
+  if (recs.length===0 && pct<25) recs.push({ sev:'good', text:'No significant risk factors identified. Continue routine monitoring.' });
+
+  const recEl = document.getElementById('ir-recommendations');
+  if (recEl) {
+    const sevStyle = { critical:{bg:'#FEF2F2',border:'#FECACA',ic:'🚨',color:'#991B1B'}, high:{bg:'#FFF7ED',border:'#FED7AA',ic:'⚠️',color:'#9A3412'}, medium:{bg:'#FFFBEB',border:'#FDE68A',ic:'⚡',color:'#92400E'}, good:{bg:'#F0FDF4',border:'#BBF7D0',ic:'✅',color:'#166534'} };
+    recEl.innerHTML = recs.map(r=>{const s=sevStyle[r.sev]||sevStyle.medium;return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:${s.bg};border:1.5px solid ${s.border};border-radius:8px;"><span style="font-size:18px;flex-shrink:0;">${s.ic}</span><span style="font-size:13px;color:${s.color};line-height:1.6;">${r.text}</span></div>`;}).join('');
+  }
+
+  return { totalScore, maxPossible, pct, level, factorResults, recs, vals };
+}
+
+function saveInstructorRisk() {
+  const result = calcInstructorRisk();
+  if (!result) { toast('⚠️ Please fill in the assessment fields first.','error'); return; }
+  const record = {
+    id:       'IRA-' + Date.now(),
+    date:     document.getElementById('ir-date').value,
+    assessor: document.getElementById('ir-assessor').value,
+    name:     document.getElementById('ir-name').value,
+    subject:  document.getElementById('ir-subject').value,
+    semester: document.getElementById('ir-semester').value,
+    emptype:  document.getElementById('ir-emptype').value,
+    vals:     result.vals,
+    score:    result.totalScore,
+    maxScore: result.maxPossible,
+    pct:      result.pct,
+    level:    result.level,
+    recs:     result.recs,
+    notes:    document.getElementById('ir-notes').value,
+    saved:    new Date().toISOString(),
+  };
+  instructorRisks.push(record);
+  lsSet('sms_instructor_risks', instructorRisks);
+  logAuditEvent('RISK_SAVED', record.id,
+    `Instructor Risk Assessment — ${record.name||'Unknown'} (${record.subject||'—'}). Score: ${record.totalScore}/${record.maxPossible} (${record.pct}%). Level: ${record.level}.`,
+    null, 'Saved');
+  renderSavedInstructorRisks();
+  toast('✅ Risk assessment saved!', 'success');
+}
+
+function renderSavedInstructorRisks() {
+  const c = document.getElementById('saved-instructor-risks-list');
+  if (!c) return;
+  if (!instructorRisks.length) { c.innerHTML='<div style="color:var(--muted);font-size:13px;">No assessments saved yet.</div>'; return; }
+  c.innerHTML = [...instructorRisks].reverse().map(a => {
+    const pct = a.pct||0;
+    const levelColor = pct>=70?'#DC2626':pct>=45?'#EA580C':pct>=25?'#D97706':'#16A34A';
+    const safeN=(a.name||'').replace(/'/g,"\\'");
+    return `<div class="saved-record-row">
+      <div class="saved-record-info">
+        <div class="saved-record-id">${a.id}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px;">${a.name||'—'} · ${a.subject||'—'}</div>
+        <div class="saved-record-meta">📅 ${a.date||'—'} &nbsp;|&nbsp; ${a.semester||'—'} &nbsp;|&nbsp; Assessor: ${a.assessor||'—'}</div>
+        <div style="margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:12px;font-weight:700;color:${levelColor};">${a.level||'—'}</span>
+          <span style="font-size:12px;color:var(--muted);">Score: ${a.score}/${a.maxScore} (${pct}%)</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="printSavedInstructorRisk('${a.id}')">🖨️ Print</button>
+        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;"
+          onclick="deleteInstructorRisk('${a.id}','${safeN}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteInstructorRisk(id,name){
+  if(!confirm(`Delete risk assessment for "${name}"?`)) return;
+  instructorRisks=instructorRisks.filter(a=>a.id!==id);
+  lsSet('sms_instructor_risks',instructorRisks);
+  renderSavedInstructorRisks();
+  toast('🗑 Deleted.','success');
+}
+
+function resetInstructorRisk(){
+  if(!confirm('Reset all inputs?')) return;
+  ['ir-date','ir-assessor','ir-name','ir-subject','ir-semester','ir-hrs-week','ir-consec-days','ir-hrs-semester','ir-subjects','ir-students','ir-class-size','ir-student-lab-hrs','ir-pass-rate','ir-cert-months','ir-recurrent-months','ir-industry-months','ir-complaints','ir-absences','ir-incidents','ir-notes'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const fg=document.getElementById('ir-fatigue'); if(fg) fg.value='1';
+  const se=document.getElementById('ir-secondary'); if(se) se.value='0';
+  const card=document.getElementById('ir-result-card'); if(card) card.style.display='none';
+}
+
+function printSavedInstructorRisk(id){
+  const a=instructorRisks.find(x=>x.id===id);
+  if(!a){toast('⚠️ Not found.','error');return;}
+  openInstructorRiskPrintWindow(a);
+}
+
+function printInstructorRisk(){
+  const result=calcInstructorRisk();
+  if(!result){toast('⚠️ Complete the assessment first.','error');return;}
+  openInstructorRiskPrintWindow({
+    id:'DRAFT-'+new Date().toLocaleDateString(),
+    date:document.getElementById('ir-date').value,
+    assessor:document.getElementById('ir-assessor').value,
+    name:document.getElementById('ir-name').value,
+    subject:document.getElementById('ir-subject').value,
+    semester:document.getElementById('ir-semester').value,
+    emptype:document.getElementById('ir-emptype').value,
+    vals:result.vals, score:result.totalScore, maxScore:result.maxPossible,
+    pct:result.pct, level:result.level, recs:result.recs,
+    notes:document.getElementById('ir-notes').value,
+  });
+}
+
+function openInstructorRiskPrintWindow(a){
+  const levelColor=a.pct>=70?'#991B1B':a.pct>=45?'#9A3412':a.pct>=25?'#854D0E':'#166534';
+  const levelBg=a.pct>=70?'#FEF2F2':a.pct>=45?'#FFF7ED':a.pct>=25?'#FEFCE8':'#F0FDF4';
+  const vl=a.vals||{};
+  const recRows=(a.recs||[]).map(r=>{
+    const sevStyle={critical:{c:'#991B1B',bg:'#FEF2F2'},high:{c:'#9A3412',bg:'#FFF7ED'},medium:{c:'#854D0E',bg:'#FEFCE8'},good:{c:'#166534',bg:'#F0FDF4'}};
+    const s=sevStyle[r.sev]||sevStyle.medium;
+    return `<tr><td style="padding:8px 10px;background:${s.bg};font-size:11px;color:${s.c};border-bottom:1px solid #E2E8F0;">${r.text}</td></tr>`;
+  }).join('');
+  const inputRows=[
+    ['Teaching Hrs/Week',vl.hrs_week,'Max 30 recommended'],
+    ['Consecutive Teaching Days',vl.consec_days,'Max 5 recommended'],
+    ['Subjects Teaching',vl.subjects,''],
+    ['License Expiry (months left)',vl.cert_months,'Min 12 months recommended'],
+    ['Recurrent Training Gap (months)',vl.recurrent_months,'Max 12 months'],
+    ['Industry Gap (months)',vl.industry_months,'Max 36 months'],
+    ['Student Lab Hrs/Week',vl.student_lab_hrs,'Min 4 hrs (CAAP)'],
+    ['Student Pass Rate (%)',vl.pass_rate,'Min 75% recommended'],
+    ['Fatigue Level (1-5)',vl.fatigue,'Max 2 acceptable'],
+    ['Secondary Employment',vl.secondary,'0 = None'],
+    ['Complaints This Semester',vl.complaints,'Target: 0'],
+    ['In-Class Incidents',vl.incidents,'Target: 0'],
+    ['Sick/Absent Days',vl.absences,''],
+  ].map(([l,v,note])=>`<tr><td style="font-size:11px;padding:6px 10px;border-bottom:1px solid #E2E8F0;font-weight:600;">${l}</td><td style="font-size:13px;font-weight:800;padding:6px 10px;border-bottom:1px solid #E2E8F0;">${v??'—'}</td><td style="font-size:10px;color:#64748B;padding:6px 10px;border-bottom:1px solid #E2E8F0;">${note}</td></tr>`).join('');
+
+  const win=window.open('','_blank');
+  if(!win){toast('⚠️ Pop-up blocked.','error');return;}
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Instructor Risk Assessment — ${a.id}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;color:#1E293B;padding:28px;}
+    .hdr{background:#0F766E;color:white;padding:18px 22px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;}
+    .hdr h1{font-size:17px;font-weight:800;}.hdr .sub{font-size:11px;opacity:.7;margin-top:3px;}
+    .meta-bar{background:#F0F4F8;border:1px solid #CBD5E1;padding:12px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px;}
+    .meta-item .lbl{font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.8px;}
+    .meta-item .val{font-size:13px;font-weight:700;color:#0F766E;margin-top:2px;}
+    .risk-banner{padding:16px 20px;border-radius:8px;margin-bottom:20px;display:flex;align-items:center;gap:16px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+    th{background:#0F766E;color:white;padding:8px 10px;text-align:left;font-size:11px;}
+    .sec-title{font-size:14px;font-weight:700;color:#0F766E;margin:18px 0 6px;border-bottom:2px solid #0F766E;padding-bottom:4px;}
+    .sign-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin:24px 0;}
+    .sign-box{border-top:1.5px solid #0F766E;padding-top:6px;}
+    .sign-box .sl{font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+    .sign-box .line{height:32px;border-bottom:1px solid #CBD5E1;margin-bottom:4px;}
+    .footer{margin-top:24px;font-size:10px;color:#94A3B8;border-top:1px solid #E2E8F0;padding-top:8px;display:flex;justify-content:space-between;}
+    @media print{.no-print{display:none!important;}}
+  </style></head><body>
+  <div class="hdr"><div><div class="hdr h1">Instructor Risk Assessment Report</div><div class="sub">AMTS Safety Management System · Workload &amp; Qualification Risk Analysis</div></div><div style="background:rgba(255,255,255,0.15);padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;">${a.id}</div></div>
+  <div class="meta-bar">
+    <div class="meta-item"><div class="lbl">Date</div><div class="val">${a.date||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Instructor</div><div class="val">${a.name||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Subject Area</div><div class="val">${a.subject||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Semester</div><div class="val">${a.semester||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Employment Type</div><div class="val">${a.emptype||'—'}</div></div>
+    <div class="meta-item"><div class="lbl">Assessed By</div><div class="val">${a.assessor||'—'}</div></div>
+  </div>
+  <div class="risk-banner" style="background:${levelBg};border:2px solid ${levelColor};">
+    <div style="font-size:42px;font-weight:900;color:${levelColor};font-family:Arial;line-height:1;">${a.score}<span style="font-size:18px;font-weight:400;">/${a.maxScore}</span></div>
+    <div><div style="font-size:18px;font-weight:800;color:${levelColor};">${a.level||'—'}</div><div style="font-size:12px;color:#475569;margin-top:4px;">${a.pct}% of maximum risk score</div></div>
+  </div>
+  <div class="sec-title">Assessment Inputs</div>
+  <table><thead><tr><th>Factor</th><th>Value</th><th>Benchmark</th></tr></thead><tbody>${inputRows}</tbody></table>
+  ${(a.recs||[]).length?`<div class="sec-title">Recommended Actions</div><table><tbody>${recRows}</tbody></table>`:''}
+  ${a.notes?`<div class="sec-title">Assessor Notes</div><div style="font-size:12px;padding:10px 14px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;margin-bottom:16px;">${a.notes}</div>`:''}
+  <div class="sec-title">✍️ Sign-Off</div>
+  <div class="sign-row">
+    <div class="sign-box"><div class="line"></div><div class="sl">Assessor Signature &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Safety Manager Signature &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Department Head / Training Director</div></div>
+  </div>
+  <div class="footer"><span>AMTS SMS · Instructor Risk Assessment · ${a.id}</span><span>Printed: ${new Date().toLocaleString()}</span></div>
+  <div class="no-print" style="margin-top:16px;display:flex;gap:10px;">
+    <button onclick="window.print()" style="padding:10px 20px;background:#0F766E;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
+    <button onclick="window.close()" style="padding:10px 20px;background:#F1F5F9;color:#475569;border:none;border-radius:8px;cursor:pointer;">✕ Close</button>
+  </div>
+  </body></html>`);
+  win.document.close();
+}
+
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function init() {
   // Set datetime defaults
@@ -6881,6 +8628,9 @@ function init() {
   document.getElementById('f-observed').value = now;
   document.getElementById('a-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('ga-date').value = new Date().toISOString().slice(0,10);
+  const todayDate = new Date().toISOString().slice(0,10);
+  const iaDate = document.getElementById('ia-date'); if(iaDate) iaDate.value = todayDate;
+  const irDate = document.getElementById('ir-date'); if(irDate) irDate.value = todayDate;
 
   initHazardChecks();
   buildRiskMatrix();
