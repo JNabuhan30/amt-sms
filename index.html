@@ -1063,6 +1063,9 @@
 
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-label">Reports</div>
+  <button class="sidebar-tab" id="stab-rca" onclick="showPage('rca')">
+    <span class="stab-icon">🔬</span><span class="stab-text">Root Cause (RCA)</span>
+  </button>
   <button class="sidebar-tab" id="stab-register" onclick="showPage('register')">
     <span class="stab-icon">📋</span><span class="stab-text">Register</span>
   </button>
@@ -2920,6 +2923,202 @@
 </div>
 
 
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     ROOT CAUSE ANALYSIS
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="page-rca" class="page">
+  <div class="section-title">🔬 Root Cause Analysis</div>
+  <div class="section-sub">Select a methodology, conduct the analysis, and generate a Corrective Action Plan — all in one workflow</div>
+
+  <!-- Why banner -->
+  <div style="background:linear-gradient(135deg,#1D4ED8 0%,#1E40AF 100%);border-radius:12px;padding:18px 24px;margin-bottom:20px;border-left:6px solid #FBBF24;">
+    <div style="font-size:11px;font-weight:700;color:#BFDBFE;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Why RCA Matters in Aviation Safety</div>
+    <div style="font-size:13px;color:white;line-height:1.7;">Fixing symptoms without finding root causes guarantees recurrence. ICAO Annex 19 and CAAP SMS requirements mandate that all significant hazards and incidents undergo root cause investigation. The root cause drives the corrective action — everything else is guesswork.</div>
+  </div>
+
+  <!-- Step 1: Identity -->
+  <div class="card" style="border-top:4px solid var(--navy);">
+    <div class="card-title" style="color:var(--navy);">📋 Step 1 — Incident / Hazard Identity</div>
+    <div class="form-grid">
+      <div class="form-group"><label>RCA Reference No.</label><input type="text" id="rca-ref" placeholder="e.g. RCA-2025-001"/></div>
+      <div class="form-group"><label>Date of Analysis</label><input type="date" id="rca-date"/></div>
+      <div class="form-group"><label>Analyst / Investigator</label><input type="text" id="rca-analyst" placeholder="Name(s)"/></div>
+      <div class="form-group"><label>Department / Area</label><input type="text" id="rca-dept" placeholder="e.g. Powerplant Workshop"/></div>
+      <div class="form-group"><label>Linked Report ID (if any)</label>
+        <select id="rca-linked-report">
+          <option value="">— Not linked to a report —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Event / Hazard Classification</label>
+        <select id="rca-classification">
+          <option>Hazard Report</option>
+          <option>Near Miss</option>
+          <option>Incident</option>
+          <option>Accident</option>
+          <option>Audit Non-Compliance</option>
+          <option>Recurring Hazard</option>
+          <option>Student Injury</option>
+          <option>Equipment Failure</option>
+          <option>Process Failure</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Problem Statement — What happened? (be specific and factual)</label>
+        <textarea id="rca-problem" placeholder="Describe the event, hazard, or finding clearly and objectively. State facts only — not assumptions. E.g. 'On 14 March 2025, Student A sustained a cut to the right hand while using an uncovered box cutter in Bay 3 during practical AMT class.'" style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group full"><label>Immediate Consequences / Impact</label>
+        <textarea id="rca-consequences" placeholder="Describe the immediate impact — injuries, damage, disruption, regulatory implications…" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Method Selector -->
+  <div class="card" style="border-top:4px solid var(--blue);">
+    <div class="card-title" style="color:var(--blue);">🛠️ Step 2 — Select RCA Methodology</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Choose the method most appropriate for the complexity and type of event. You can run multiple methods on the same incident.</div>
+    <div id="rca-method-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px;"></div>
+    <div style="font-size:12px;color:var(--muted);padding:10px 14px;background:#F0F4F8;border-radius:8px;" id="rca-method-desc">Select a method above to see guidance.</div>
+  </div>
+
+  <!-- Step 3: Method Workspace (dynamic) -->
+  <div id="rca-workspace" style="display:none;">
+    <div class="card" style="border-top:4px solid var(--teal);" id="rca-workspace-card">
+      <div class="card-title" style="color:var(--teal);" id="rca-workspace-title">Analysis Workspace</div>
+      <div id="rca-workspace-body"></div>
+    </div>
+  </div>
+
+  <!-- Step 4: Root Cause Summary -->
+  <div class="card" style="border-top:4px solid var(--orange);">
+    <div class="card-title" style="color:var(--orange);">🎯 Step 3 — Root Cause Summary</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Identified Root Cause(s) — state clearly and specifically</label>
+        <textarea id="rca-root-causes" placeholder="State the root cause(s) identified by your analysis. Be specific — avoid vague language like 'human error'. Instead: 'Lack of a formal pre-task safety brief allowed student to use equipment without understanding the hazard.'" style="min-height:90px;"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Contributing Factors (not root causes but relevant)</label>
+        <textarea id="rca-contributing" placeholder="e.g. Inadequate supervision ratio, missing signage, worn PPE not replaced…" style="min-height:60px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Root Cause Category</label>
+        <select id="rca-category">
+          <option>Human Factors — Skill / Knowledge</option>
+          <option>Human Factors — Decision Making</option>
+          <option>Human Factors — Situational Awareness</option>
+          <option>Human Factors — Fatigue / Stress</option>
+          <option>Organizational — Policy / Procedure Gap</option>
+          <option>Organizational — Training Deficiency</option>
+          <option>Organizational — Supervision Failure</option>
+          <option>Organizational — Culture / Communication</option>
+          <option>Equipment / Material — Design</option>
+          <option>Equipment / Material — Maintenance</option>
+          <option>Environment — Workplace Conditions</option>
+          <option>Environment — External Factors</option>
+          <option>Regulatory — Non-Compliance</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Recurrence Risk Without Action</label>
+        <select id="rca-recurrence-risk">
+          <option value="critical">🔴 Critical — Will definitely recur</option>
+          <option value="high">🟠 High — Likely to recur</option>
+          <option value="medium">🟡 Medium — May recur</option>
+          <option value="low">🟢 Low — Unlikely to recur</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5: CAP -->
+  <div class="card" style="border-top:4px solid var(--green);">
+    <div class="card-title" style="color:var(--green);">✅ Step 4 — Corrective Action Plan</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Each corrective action must address a root cause or contributing factor — not just treat the symptom. Include preventive actions where applicable.</div>
+
+    <!-- CAP rows -->
+    <div id="rca-cap-rows" style="display:grid;gap:12px;margin-bottom:14px;"></div>
+    <button class="btn btn-outline btn-sm" onclick="addRcaCapRow()">➕ Add Action</button>
+
+    <div style="height:1px;background:var(--light);margin:18px 0;"></div>
+
+    <!-- Hierarchy of Controls reference -->
+    <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;">📐 Hierarchy of Controls — select actions at the highest feasible level</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
+        <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;">🚫</div><div style="font-size:11px;font-weight:700;color:#166534;">1. Eliminate</div><div style="font-size:10px;color:var(--muted);">Remove the hazard entirely</div></div>
+        <div style="background:#ECFDF5;border:1.5px solid #6EE7B7;border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;">🔄</div><div style="font-size:11px;font-weight:700;color:#065F46;">2. Substitute</div><div style="font-size:10px;color:var(--muted);">Replace with safer option</div></div>
+        <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;">🛡️</div><div style="font-size:11px;font-weight:700;color:#78350F;">3. Engineer</div><div style="font-size:10px;color:var(--muted);">Physical controls/guards</div></div>
+        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:11px;font-weight:700;color:#9A3412;">4. Administer</div><div style="font-size:10px;color:var(--muted);">Procedures, training, signs</div></div>
+        <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;">🦺</div><div style="font-size:11px;font-weight:700;color:#991B1B;">5. PPE</div><div style="font-size:10px;color:var(--muted);">Last line of defense only</div></div>
+      </div>
+    </div>
+
+    <!-- Effectiveness review -->
+    <div class="form-grid">
+      <div class="form-group"><label>CAP Review Date (effectiveness check)</label><input type="date" id="rca-cap-review-date"/></div>
+      <div class="form-group"><label>CAP Review Responsible Person</label><input type="text" id="rca-cap-reviewer" placeholder="Name"/></div>
+      <div class="form-group full"><label>Success Criteria — How will you know the corrective action worked?</label>
+        <textarea id="rca-success-criteria" placeholder="e.g. Zero repeat incidents of this type for 6 months. All students can demonstrate correct box cutter usage in next practical assessment." style="min-height:60px;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 6: Sign-off -->
+  <div class="card" style="border-top:4px solid var(--navy);">
+    <div class="card-title">✍️ Step 5 — Authorization &amp; Sign-Off</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Prepared By</label><input type="text" id="rca-prepared-by" placeholder="Analyst / Investigator name"/></div>
+      <div class="form-group"><label>Reviewed By (Safety Manager)</label><input type="text" id="rca-reviewed-by" placeholder="Safety Manager name"/></div>
+      <div class="form-group"><label>Approved By (Accountable Executive)</label><input type="text" id="rca-approved-by" placeholder="AE / Director name"/></div>
+      <div class="form-group">
+        <label>RCA Status</label>
+        <select id="rca-status">
+          <option value="draft">📝 Draft — In Progress</option>
+          <option value="review">👁️ Under Review</option>
+          <option value="approved">✅ Approved — CAP Active</option>
+          <option value="closed">🔒 Closed — Actions Verified</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="saveRca()">💾 Save RCA</button>
+    <button class="btn btn-gold" onclick="printCurrentRca()">🖨️ Print Full Report</button>
+    <button class="btn btn-outline" onclick="resetRca()">🔄 New RCA</button>
+  </div>
+
+  <!-- Saved RCAs -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title"><span class="icon">📂</span> Saved RCA Records</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <input type="text" id="rca-search" placeholder="🔍 Search by ref, analyst, problem…" style="max-width:280px;" oninput="renderSavedRcas()"/>
+      <select id="rca-filter-status" onchange="renderSavedRcas()" style="max-width:180px;">
+        <option value="">All Statuses</option>
+        <option value="draft">Draft</option>
+        <option value="review">Under Review</option>
+        <option value="approved">Approved</option>
+        <option value="closed">Closed</option>
+      </select>
+      <select id="rca-filter-method" onchange="renderSavedRcas()" style="max-width:180px;">
+        <option value="">All Methods</option>
+        <option value="5whys">5 Whys</option>
+        <option value="fishbone">Fishbone</option>
+        <option value="bowtie">Bow-Tie</option>
+        <option value="hfacs">HFACS</option>
+        <option value="shell">SHELL</option>
+        <option value="fta">Fault Tree</option>
+      </select>
+    </div>
+    <div id="saved-rca-list">
+      <div style="color:var(--muted);font-size:13px;">No RCA records saved yet.</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════════════════
      AUDIT G.1-A
 ════════════════════════════════════════════════════════════════════════════ -->
@@ -3606,6 +3805,7 @@ window.addEventListener('load', function() {
     audits    = lsGet('sms_audits',    []);
     instructorAudits = lsGet('sms_instructor_audits', []);
     instructorRisks  = lsGet('sms_instructor_risks',  []);
+    rcaRecords       = lsGet('sms_rca',                []);
     auditA    = lsGet('sms_auditA',    []);
     meetings  = lsGet('sms_meetings',  []);
     documents = lsGet('sms_documents', []);
@@ -3718,6 +3918,7 @@ function showPage(id, tabEl) {
   if (id === 'statistics')   initStatistics();
   if (id === 'audit')        renderSavedAudits();
   if (id === 'audit-a')      renderSavedInspections();
+  if (id === 'rca')               initRcaPage();
   if (id === 'audit-guide')       initAuditGuide();
   if (id === 'audit-instructor')  { buildInstructorAuditItems(); renderSavedInstructorAudits(); }
   if (id === 'instructor-risk')   renderSavedInstructorRisks();
@@ -8620,6 +8821,816 @@ function openInstructorRiskPrintWindow(a){
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROOT CAUSE ANALYSIS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let rcaRecords = [];
+let rcaCapUid  = 0;
+let currentRcaMethod = null;
+
+// ── RCA Method Definitions ────────────────────────────────────────────────────
+const RCA_METHODS = {
+  '5whys': {
+    label: '5 Whys',
+    icon: '❓',
+    color: '#1D4ED8',
+    bg: '#EFF6FF',
+    desc: 'Ask "Why?" five times in sequence. Each answer becomes the subject of the next "why." Simple, fast, effective for straightforward single-cause events. Best for: incidents with a clear chain of events.',
+    build: build5Whys,
+  },
+  'fishbone': {
+    label: 'Fishbone (Ishikawa)',
+    icon: '🐟',
+    color: '#0F766E',
+    bg: '#F0FDFA',
+    desc: 'Maps causes across 6 categories: Man, Machine, Method, Material, Environment, Measurement. Excellent for complex problems with multiple contributing causes. Best for: workshop incidents, process failures.',
+    build: buildFishbone,
+  },
+  'bowtie': {
+    label: 'Bow-Tie Analysis',
+    icon: '🎀',
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+    desc: 'Maps Threats → Event → Consequences with preventive barriers (left) and mitigation barriers (right). Shows both prevention and recovery. Best for: high-consequence events, risk management.',
+    build: buildBowtie,
+  },
+  'hfacs': {
+    label: 'HFACS',
+    icon: '🧠',
+    color: '#DC2626',
+    bg: '#FEF2F2',
+    desc: 'Human Factors Analysis & Classification System — based on the Swiss Cheese Model. Classifies failures across 4 levels: Unsafe Acts, Preconditions, Unsafe Supervision, Organizational Influences. Best for: aviation maintenance incidents involving people.',
+    build: buildHfacs,
+  },
+  'shell': {
+    label: 'SHELL Model',
+    icon: '🔗',
+    color: '#D97706',
+    bg: '#FFFBEB',
+    desc: 'Analyses the Liveware (person) at center against Software (procedures), Hardware (equipment), Environment, and Liveware-Liveware (team/supervision) interfaces. ICAO-endorsed. Best for: aviation-specific human factors.',
+    build: buildShell,
+  },
+  'fta': {
+    label: 'Fault Tree Analysis',
+    icon: '🌳',
+    color: '#065F46',
+    bg: '#F0FDF4',
+    desc: 'Top-down deductive analysis. Start with the undesired event (top event) and work down through logical AND/OR gates to basic causes. Best for: complex systems, multiple simultaneous failure paths.',
+    build: buildFta,
+  },
+};
+
+// ── Method Selector ───────────────────────────────────────────────────────────
+function initRcaPage() {
+  // Populate linked report dropdown
+  const sel = document.getElementById('rca-linked-report');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Not linked to a report —</option>' +
+      [...reports, ...accidentReports, ...incidentReports]
+        .sort((a,b) => new Date(b.submitted||b.saved||0) - new Date(a.submitted||a.saved||0))
+        .map(r => `<option value="${r.id}">${r.id} — ${(r.type||r.location||'Report').slice(0,40)}</option>`)
+        .join('');
+  }
+  buildRcaMethodCards();
+  renderSavedRcas();
+  if (!document.getElementById('rca-cap-rows').children.length) addRcaCapRow();
+}
+
+function buildRcaMethodCards() {
+  const c = document.getElementById('rca-method-cards');
+  if (!c) return;
+  c.innerHTML = Object.entries(RCA_METHODS).map(([key, m]) => `
+    <div id="rca-method-card-${key}" onclick="selectRcaMethod('${key}')"
+      style="border:2px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;
+             background:white;transition:all .18s;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">${m.icon}</div>
+      <div style="font-weight:700;font-size:13px;color:var(--navy);">${m.label}</div>
+    </div>`).join('');
+}
+
+function selectRcaMethod(key) {
+  currentRcaMethod = key;
+  const m = RCA_METHODS[key];
+  // Highlight selected card
+  Object.keys(RCA_METHODS).forEach(k => {
+    const card = document.getElementById('rca-method-card-' + k);
+    if (!card) return;
+    if (k === key) {
+      card.style.border = `2px solid ${m.color}`;
+      card.style.background = m.bg;
+      card.style.transform = 'translateY(-2px)';
+      card.style.boxShadow = `0 6px 20px rgba(0,0,0,0.12)`;
+    } else {
+      card.style.border = '2px solid var(--border)';
+      card.style.background = 'white';
+      card.style.transform = '';
+      card.style.boxShadow = '';
+    }
+  });
+  // Show description
+  const descEl = document.getElementById('rca-method-desc');
+  if (descEl) descEl.innerHTML = `<strong style="color:${m.color};">${m.icon} ${m.label}:</strong> ${m.desc}`;
+  // Build workspace
+  const ws = document.getElementById('rca-workspace');
+  const wsTitle = document.getElementById('rca-workspace-title');
+  const wsBody = document.getElementById('rca-workspace-body');
+  if (ws && wsTitle && wsBody) {
+    ws.style.display = '';
+    wsTitle.innerHTML = `${m.icon} ${m.label} — Analysis Workspace`;
+    wsTitle.style.color = m.color;
+    wsBody.innerHTML = '';
+    m.build(wsBody);
+    document.getElementById('rca-workspace-card').style.borderTopColor = m.color;
+  }
+}
+
+// ── 5 WHYS ────────────────────────────────────────────────────────────────────
+function build5Whys(container) {
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Start with the problem statement above. Each "why" answer becomes the basis for the next question. The 5th answer is typically the root cause.</div>`;
+  for (let i = 1; i <= 5; i++) {
+    const isLast = i === 5;
+    html += `
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">
+      <div style="flex-shrink:0;width:36px;height:36px;background:${isLast?'#1D4ED8':'var(--navy)'};color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;margin-top:4px;">${i}</div>
+      <div style="flex:1;">
+        <label style="font-size:12px;font-weight:700;color:${isLast?'#1D4ED8':'var(--muted)'};text-transform:uppercase;letter-spacing:.5px;">
+          Why ${i}${isLast?' — This is typically the Root Cause':''}
+        </label>
+        <div style="font-size:11px;color:var(--muted);margin:3px 0 6px;">${i===1?'Why did the problem occur?':i===2?'Why did that happen?':i===3?'Why was that the case?':i===4?'Why did that exist?':'Why — what is the fundamental cause?'}</div>
+        <textarea id="rca-why-${i}" placeholder="Because…" style="width:100%;font-size:13px;min-height:54px;border:1.5px solid ${isLast?'#1D4ED8':'var(--border)'};border-radius:8px;padding:8px 10px;font-family:inherit;resize:vertical;"></textarea>
+      </div>
+      ${i > 1 ? `<div style="flex-shrink:0;padding-top:36px;font-size:20px;color:var(--muted);">↑</div>` : ''}
+    </div>`;
+  }
+  html += `<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:10px 14px;font-size:12px;color:#1E40AF;">
+    💡 <strong>Tip:</strong> When you can no longer ask "why" meaningfully, or when the answer points to something outside your control, you've likely reached the root cause. Copy Why 5 into the Root Cause Summary below.
+  </div>`;
+  container.innerHTML = html;
+}
+
+// ── FISHBONE ──────────────────────────────────────────────────────────────────
+const FISHBONE_CATEGORIES = [
+  { id:'man',     label:'Man (People)',     color:'#1D4ED8', icon:'👤', hint:'Skills, knowledge, training, attitude, workload, fatigue' },
+  { id:'machine', label:'Machine/Equipment',color:'#0F766E', icon:'⚙️', hint:'Equipment condition, design, guards, calibration, PPE' },
+  { id:'method',  label:'Method/Process',   color:'#7C3AED', icon:'📋', hint:'Procedures, SOPs, work instructions, checklists, steps' },
+  { id:'material',label:'Material',         color:'#D97706', icon:'📦', hint:'Raw materials, components, tools, supplies quality' },
+  { id:'env',     label:'Environment',      color:'#065F46', icon:'🌡️', hint:'Lighting, temperature, noise, layout, housekeeping, space' },
+  { id:'measure', label:'Measurement',      color:'#DC2626', icon:'📏', hint:'Inspection standards, test methods, data accuracy, calibration' },
+];
+
+function buildFishbone(container) {
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">For each category, list the causes contributing to the problem. Use the prompts as guides. Identify the most significant cause in each category.</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">`;
+  FISHBONE_CATEGORIES.forEach(cat => {
+    html += `
+    <div style="border:1.5px solid ${cat.color}20;border-radius:10px;overflow:hidden;">
+      <div style="background:${cat.color};color:white;padding:9px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;">
+        <span>${cat.icon}</span><span>${cat.label}</span>
+      </div>
+      <div style="padding:12px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-style:italic;">${cat.hint}</div>
+        <textarea id="rca-fb-${cat.id}" placeholder="List contributing causes in this category…" style="width:100%;font-size:12px;min-height:70px;border:1.5px solid var(--border);border-radius:6px;padding:7px;font-family:inherit;resize:vertical;"></textarea>
+        <div style="margin-top:8px;">
+          <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Primary Cause in this Category</label>
+          <input type="text" id="rca-fb-${cat.id}-primary" placeholder="Main cause (if any)…" style="margin-top:4px;font-size:12px;"/>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += `</div>
+  <div style="margin-top:14px;background:#F0FDFA;border:1.5px solid #99F6E4;border-radius:8px;padding:10px 14px;font-size:12px;color:#134E4A;">
+    💡 <strong>Tip:</strong> After completing all categories, identify the 2–3 causes that most directly led to the event. These are your candidates for root cause. Look for causes that appear in multiple categories — those are systemic.
+  </div>`;
+  container.innerHTML = html;
+}
+
+// ── BOW-TIE ───────────────────────────────────────────────────────────────────
+function buildBowtie(container) {
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Map the <strong>threats</strong> (left) and <strong>consequences</strong> (right) around the central <strong>hazardous event</strong>. Then identify the <strong>preventive barriers</strong> (left) and <strong>mitigation barriers</strong> (right).</div>
+  <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:start;">
+    <!-- LEFT: Threats + Prevention -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">◀ THREATS (What could cause the event)</div>`;
+  for (let i = 1; i <= 4; i++) {
+    html += `<div style="margin-bottom:10px;">
+      <label style="font-size:11px;color:var(--muted);font-weight:600;">Threat ${i}</label>
+      <input type="text" id="rca-bt-threat-${i}" placeholder="e.g. Unsecured tool…"/>
+      <label style="font-size:11px;color:var(--muted);font-weight:600;margin-top:6px;display:block;">Prevention Barrier ${i}</label>
+      <input type="text" id="rca-bt-prev-${i}" placeholder="e.g. Pre-task tool check SOP…" style="border-color:#7C3AED40;"/>
+    </div>`;
+  }
+  html += `</div>
+    <!-- CENTER: Hazardous Event -->
+    <div style="text-align:center;padding:16px 8px;">
+      <div style="background:#7C3AED;color:white;border-radius:12px;padding:16px 12px;min-width:130px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;opacity:.8;margin-bottom:4px;">HAZARDOUS EVENT</div>
+        <textarea id="rca-bt-event" placeholder="The central hazardous event…" style="width:100%;font-size:12px;min-height:60px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:6px;color:white;font-family:inherit;resize:none;"></textarea>
+      </div>
+      <div style="font-size:24px;color:var(--muted);">🎀</div>
+    </div>
+    <!-- RIGHT: Consequences + Mitigation -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">CONSEQUENCES (What happens after) ▶</div>`;
+  for (let i = 1; i <= 4; i++) {
+    html += `<div style="margin-bottom:10px;">
+      <label style="font-size:11px;color:var(--muted);font-weight:600;">Consequence ${i}</label>
+      <input type="text" id="rca-bt-cons-${i}" placeholder="e.g. Student injury…"/>
+      <label style="font-size:11px;color:var(--muted);font-weight:600;margin-top:6px;display:block;">Mitigation Barrier ${i}</label>
+      <input type="text" id="rca-bt-mit-${i}" placeholder="e.g. First aid trained staff on site…" style="border-color:#DC262640;"/>
+    </div>`;
+  }
+  html += `</div></div>
+  <div style="margin-top:14px;">
+    <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;">Failed Barriers (which barriers were absent or failed?)</label>
+    <textarea id="rca-bt-failed" placeholder="List the barriers that were missing or failed, and why…" style="width:100%;font-size:12px;min-height:60px;margin-top:6px;border-radius:8px;border:1.5px solid #DC262640;padding:8px;font-family:inherit;resize:vertical;"></textarea>
+  </div>`;
+  container.innerHTML = html;
+}
+
+// ── HFACS ─────────────────────────────────────────────────────────────────────
+const HFACS_LEVELS = [
+  { id:'unsafe_acts', label:'Level 1 — Unsafe Acts', color:'#DC2626', icon:'⚠️',
+    subcats:[
+      { id:'errors_skill',   label:'Skill-Based Errors',    hint:'Slips, lapses — automatic behaviour gone wrong' },
+      { id:'errors_decision',label:'Decision Errors',        hint:'Wrong procedure, misdiagnosis, poor plan' },
+      { id:'errors_percept', label:'Perceptual Errors',      hint:'Misread instrument, misjudged distance/condition' },
+      { id:'violations_rout',label:'Routine Violations',     hint:'Habitual deviation from rules; accepted by peers' },
+      { id:'violations_excep',label:'Exceptional Violations',hint:'Conscious, deliberate deviation — unusual' },
+    ]
+  },
+  { id:'preconditions', label:'Level 2 — Preconditions for Unsafe Acts', color:'#D97706', icon:'🔶',
+    subcats:[
+      { id:'adv_mental',  label:'Adverse Mental States',   hint:'Fatigue, stress, channelled attention, complacency' },
+      { id:'adv_physio',  label:'Adverse Physiological',   hint:'Illness, medication, physical limitation' },
+      { id:'phys_mental', label:'Physical/Mental Limitation',hint:'Vision, hearing, cognitive limits' },
+      { id:'crew_res',    label:'Crew Resource Management',hint:'Poor teamwork, communication, coordination' },
+      { id:'personal_readiness','label':'Personal Readiness',hint:'Self-medication, missed rest requirements' },
+    ]
+  },
+  { id:'supervision', label:'Level 3 — Unsafe Supervision', color:'#7C3AED', icon:'👁️',
+    subcats:[
+      { id:'inad_super',   label:'Inadequate Supervision',  hint:'Failed to provide guidance, training, oversight' },
+      { id:'plan_ops',     label:'Planned Inappropriate Ops',hint:'Tasked beyond capability, ignored known risks' },
+      { id:'fail_correct', label:'Failed to Correct Problem',hint:'Knew about issue — did nothing' },
+      { id:'super_violate',label:'Supervisory Violations',   hint:'Deliberately broke rules themselves' },
+    ]
+  },
+  { id:'org', label:'Level 4 — Organizational Influences', color:'#1D4ED8', icon:'🏛️',
+    subcats:[
+      { id:'res_mgmt',    label:'Resource Management',     hint:'Budget, staffing, equipment, scheduling pressure' },
+      { id:'org_climate', label:'Organizational Climate',  hint:'Culture, morale, policies, norms, priorities' },
+      { id:'org_process', label:'Organizational Processes',hint:'SOPs, risk management, oversight, documentation' },
+    ]
+  },
+];
+
+function buildHfacs(container) {
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">HFACS uses the Swiss Cheese Model. Work from Level 1 (what the person did) upward to Level 4 (organizational). Check all that apply and add notes.</div>`;
+  HFACS_LEVELS.forEach(lvl => {
+    html += `<div style="border:1.5px solid ${lvl.color}30;border-radius:10px;margin-bottom:14px;overflow:hidden;">
+      <div style="background:${lvl.color};color:white;padding:10px 16px;font-weight:700;font-size:13px;">${lvl.icon} ${lvl.label}</div>
+      <div style="padding:14px;display:grid;gap:10px;">`;
+    lvl.subcats.forEach(sc => {
+      html += `<div style="display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;padding:10px;background:#F8FAFC;border-radius:8px;">
+        <div style="padding-top:2px;"><input type="checkbox" id="rca-hfacs-${sc.id}" class="rca-hfacs-chk" style="width:16px;height:16px;accent-color:${lvl.color};cursor:pointer;"/></div>
+        <div>
+          <label for="rca-hfacs-${sc.id}" style="font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;">${sc.label}</label>
+          <div style="font-size:11px;color:var(--muted);margin:2px 0 6px;">${sc.hint}</div>
+          <textarea id="rca-hfacs-${sc.id}-note" placeholder="Describe how this factor contributed…" style="width:100%;font-size:12px;min-height:44px;border:1.5px solid var(--border);border-radius:6px;padding:6px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:12px;color:#991B1B;">
+    💡 <strong>HFACS Key Principle:</strong> Most accidents have causes at multiple levels. An unsafe act alone is rarely the root cause — look for the organizational and supervisory failures that allowed the act to occur.
+  </div>`;
+  container.innerHTML = html;
+}
+
+// ── SHELL ─────────────────────────────────────────────────────────────────────
+const SHELL_COMPONENTS = [
+  { id:'software', label:'S — Software', color:'#1D4ED8', icon:'💻',
+    hint:'Procedures, SOPs, checklists, regulations, instructions, training programs, documentation',
+    questions:['Were procedures clear, accurate, and up to date?','Were checklists used correctly?','Was the training adequate for this task?'] },
+  { id:'hardware', label:'H — Hardware', color:'#0F766E', icon:'⚙️',
+    hint:'Equipment, tools, aircraft, machinery, workstations, guards, PPE, displays',
+    questions:['Was equipment fit for purpose and well maintained?','Were guards and safety devices in place?','Was the workspace ergonomically appropriate?'] },
+  { id:'environment', label:'E — Environment', color:'#065F46', icon:'🌡️',
+    hint:'Physical environment (lighting, noise, temperature, space) and organisational environment (culture, pressure, norms)',
+    questions:['Did environmental conditions affect performance?','Was there organisational pressure to cut corners?','Were conditions within safe operating limits?'] },
+  { id:'liveware_self', label:'L — Liveware (Self)', color:'#DC2626', icon:'👤',
+    hint:'The individual at the centre — their condition, capability, knowledge, attitude at the time of the event',
+    questions:['Was the person adequately trained and current?','Were there signs of fatigue, stress, or distraction?','Did they have the required knowledge and skills?'] },
+  { id:'liveware_other', label:'L — Liveware (Others)', color:'#7C3AED', icon:'👥',
+    hint:'Interactions with other people — supervisor, instructor, team, students, peers',
+    questions:['Was supervision appropriate and adequate?','Was communication clear between team members?','Were team dynamics a contributing factor?'] },
+];
+
+function buildShell(container) {
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Analyse the central Liveware (the person involved) against each SHELL interface. Identify mismatches between the person and each component.</div>`;
+  SHELL_COMPONENTS.forEach(comp => {
+    html += `<div style="border:1.5px solid ${comp.color}25;border-radius:10px;margin-bottom:12px;overflow:hidden;">
+      <div style="background:${comp.color};color:white;padding:10px 16px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;"><span>${comp.icon}</span><span>${comp.label}</span></div>
+      <div style="padding:14px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-style:italic;">Covers: ${comp.hint}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-bottom:10px;">
+          ${comp.questions.map((q,i) => `
+          <div style="display:flex;gap:8px;align-items:center;background:#F8FAFC;padding:8px 10px;border-radius:7px;">
+            <select id="rca-shell-${comp.id}-q${i}" style="width:80px;font-size:11px;" onchange="">
+              <option value="">—</option><option value="yes">✅ OK</option><option value="no">❌ Issue</option><option value="partial">⚠️ Partial</option>
+            </select>
+            <span style="font-size:12px;color:var(--text);">${q}</span>
+          </div>`).join('')}
+        </div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Interface Mismatch / Findings</label>
+        <textarea id="rca-shell-${comp.id}-notes" placeholder="Describe the mismatch or failure at this interface…" style="width:100%;font-size:12px;min-height:60px;border:1.5px solid var(--border);border-radius:6px;padding:7px;font-family:inherit;resize:vertical;margin-top:6px;"></textarea>
+      </div>
+    </div>`;
+  });
+  html += `<div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400E;">
+    💡 <strong>SHELL Key Principle:</strong> Accidents occur at the interfaces between components, not within them. The goal is to find where the interfaces broke down and redesign them to be more resilient.
+  </div>`;
+  container.innerHTML = html;
+}
+
+// ── FAULT TREE ────────────────────────────────────────────────────────────────
+function buildFta(container) {
+  container.innerHTML = `
+  <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Work top-down from the undesired event. Document each level of causes using AND gates (all sub-causes must occur) and OR gates (any sub-cause triggers it).</div>
+  <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;padding:16px;margin-bottom:14px;">
+    <label style="font-size:12px;font-weight:700;color:#065F46;text-transform:uppercase;">🔴 Top Event (Undesired Event)</label>
+    <input type="text" id="rca-fta-top" placeholder="e.g. Student hand injury from box cutter" style="margin-top:6px;font-weight:600;border-color:#065F46;"/>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div style="background:#F8FAFC;border:1.5px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;">🔗 AND Gate — Immediate Causes<br><span style="font-weight:400;font-size:11px;color:var(--muted);">ALL of these must occur simultaneously</span></div>
+      <div id="rca-fta-and-list"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addFtaEntry('and')">➕ Add AND Cause</button>
+    </div>
+    <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;color:#991B1B;margin-bottom:10px;">🔀 OR Gate — Immediate Causes<br><span style="font-weight:400;font-size:11px;color:var(--muted);">ANY one of these alone can cause the event</span></div>
+      <div id="rca-fta-or-list"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addFtaEntry('or')">➕ Add OR Cause</button>
+    </div>
+  </div>
+  <div style="background:#F8FAFC;border:1.5px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;">🔁 Second Level — Underlying Causes (for each immediate cause above)</div>
+    <textarea id="rca-fta-level2" placeholder="For each immediate cause identified above, describe what underlying conditions or failures enabled it. Work down until you reach a basic event that cannot be further subdivided…" style="width:100%;min-height:90px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;padding:8px;font-family:inherit;resize:vertical;"></textarea>
+  </div>
+  <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;padding:14px;">
+    <div style="font-size:12px;font-weight:700;color:#065F46;margin-bottom:8px;">🔵 Basic Events (Root Level — cannot be broken down further)</div>
+    <textarea id="rca-fta-basic" placeholder="List the basic events — the fundamental failures at the bottom of the tree…" style="width:100%;min-height:70px;font-size:12px;border:1.5px solid #BBF7D0;border-radius:6px;padding:8px;font-family:inherit;resize:vertical;"></textarea>
+  </div>`;
+  addFtaEntry('and'); addFtaEntry('and');
+  addFtaEntry('or');  addFtaEntry('or');
+}
+
+let ftaUid = 0;
+function addFtaEntry(type) {
+  const id = ++ftaUid;
+  const list = document.getElementById(`rca-fta-${type}-list`);
+  if (!list) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+  div.innerHTML = `<input type="text" id="rca-fta-${type}-${id}" placeholder="Cause…" style="flex:1;font-size:12px;"/>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>`;
+  list.appendChild(div);
+}
+
+// ── RCA CAP ROWS ──────────────────────────────────────────────────────────────
+function addRcaCapRow() {
+  const id = ++rcaCapUid;
+  const container = document.getElementById('rca-cap-rows');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.id = `rca-cap-row-${id}`;
+  div.style.cssText = 'background:#F8FAFC;border:1.5px solid var(--border);border-radius:10px;padding:14px;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);">Action #${id}</div>
+      <button onclick="document.getElementById('rca-cap-row-${id}').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;" title="Remove">✕</button>
+    </div>
+    <div class="form-grid" style="gap:10px;">
+      <div class="form-group full">
+        <label>Corrective Action Description</label>
+        <textarea id="rca-cap-action-${id}" placeholder="Describe the action clearly — what will be done, by what method…" style="min-height:60px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Action Type</label>
+        <select id="rca-cap-type-${id}">
+          <option>Eliminate</option><option>Substitute</option><option>Engineering Control</option>
+          <option>Administrative Control</option><option>PPE</option><option>Training</option>
+          <option>Procedure Update</option><option>Supervision Enhancement</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Addresses (Root Cause / Contributing Factor)</label>
+        <select id="rca-cap-addresses-${id}">
+          <option>Root Cause</option><option>Contributing Factor</option><option>Preventive Action</option><option>Systemic Issue</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Responsible Person</label><input type="text" id="rca-cap-owner-${id}" placeholder="Name / Role"/></div>
+      <div class="form-group"><label>Target Completion Date</label><input type="date" id="rca-cap-due-${id}"/></div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="rca-cap-priority-${id}">
+          <option value="immediate">🔴 Immediate (within 24 hrs)</option>
+          <option value="urgent">🟠 Urgent (within 1 week)</option>
+          <option value="medium" selected>🟡 Medium (within 1 month)</option>
+          <option value="low">🟢 Low (within 3 months)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="rca-cap-status-${id}">
+          <option value="open">Open</option><option value="in-progress">In Progress</option>
+          <option value="done">Done</option><option value="verified">Verified</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Verification Date</label><input type="date" id="rca-cap-verify-${id}"/></div>
+      <div class="form-group full"><label>Verification Evidence / Notes</label>
+        <textarea id="rca-cap-verify-notes-${id}" placeholder="How was this action verified as effective?" style="min-height:44px;"></textarea>
+      </div>
+    </div>`;
+  container.appendChild(div);
+}
+
+// ── Collect RCA workspace data ────────────────────────────────────────────────
+function collectRcaMethodData() {
+  if (!currentRcaMethod) return {};
+  const d = { method: currentRcaMethod };
+  switch (currentRcaMethod) {
+    case '5whys':
+      for (let i=1;i<=5;i++) d[`why${i}`] = document.getElementById(`rca-why-${i}`)?.value||'';
+      break;
+    case 'fishbone':
+      FISHBONE_CATEGORIES.forEach(c => {
+        d[c.id]         = document.getElementById(`rca-fb-${c.id}`)?.value||'';
+        d[c.id+'_prim'] = document.getElementById(`rca-fb-${c.id}-primary`)?.value||'';
+      });
+      break;
+    case 'bowtie':
+      d.event = document.getElementById('rca-bt-event')?.value||'';
+      d.failed = document.getElementById('rca-bt-failed')?.value||'';
+      for (let i=1;i<=4;i++) {
+        d[`threat${i}`] = document.getElementById(`rca-bt-threat-${i}`)?.value||'';
+        d[`prev${i}`]   = document.getElementById(`rca-bt-prev-${i}`)?.value||'';
+        d[`cons${i}`]   = document.getElementById(`rca-bt-cons-${i}`)?.value||'';
+        d[`mit${i}`]    = document.getElementById(`rca-bt-mit-${i}`)?.value||'';
+      }
+      break;
+    case 'hfacs':
+      HFACS_LEVELS.forEach(lvl => lvl.subcats.forEach(sc => {
+        d['hfacs_'+sc.id]      = document.getElementById('rca-hfacs-'+sc.id)?.checked||false;
+        d['hfacs_'+sc.id+'_n'] = document.getElementById('rca-hfacs-'+sc.id+'-note')?.value||'';
+      }));
+      break;
+    case 'shell':
+      SHELL_COMPONENTS.forEach(comp => {
+        comp.questions.forEach((_,i) => {
+          d[`shell_${comp.id}_q${i}`] = document.getElementById(`rca-shell-${comp.id}-q${i}`)?.value||'';
+        });
+        d[`shell_${comp.id}_notes`] = document.getElementById(`rca-shell-${comp.id}-notes`)?.value||'';
+      });
+      break;
+    case 'fta':
+      d.topEvent = document.getElementById('rca-fta-top')?.value||'';
+      d.level2   = document.getElementById('rca-fta-level2')?.value||'';
+      d.basic    = document.getElementById('rca-fta-basic')?.value||'';
+      d.andCauses = [...document.querySelectorAll('[id^="rca-fta-and-"]')].map(e=>e.value).filter(Boolean);
+      d.orCauses  = [...document.querySelectorAll('[id^="rca-fta-or-"]')].map(e=>e.value).filter(Boolean);
+      break;
+  }
+  return d;
+}
+
+function collectRcaCaps() {
+  const caps = [];
+  document.querySelectorAll('#rca-cap-rows > div[id^="rca-cap-row-"]').forEach(row => {
+    const id = row.id.replace('rca-cap-row-','');
+    const action = document.getElementById(`rca-cap-action-${id}`)?.value||'';
+    if (!action.trim()) return;
+    caps.push({
+      action,
+      type:          document.getElementById(`rca-cap-type-${id}`)?.value||'',
+      addresses:     document.getElementById(`rca-cap-addresses-${id}`)?.value||'',
+      owner:         document.getElementById(`rca-cap-owner-${id}`)?.value||'',
+      due:           document.getElementById(`rca-cap-due-${id}`)?.value||'',
+      priority:      document.getElementById(`rca-cap-priority-${id}`)?.value||'',
+      status:        document.getElementById(`rca-cap-status-${id}`)?.value||'open',
+      verifyDate:    document.getElementById(`rca-cap-verify-${id}`)?.value||'',
+      verifyNotes:   document.getElementById(`rca-cap-verify-notes-${id}`)?.value||'',
+    });
+  });
+  return caps;
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+function saveRca() {
+  const record = {
+    id:              'RCA-' + Date.now(),
+    ref:             document.getElementById('rca-ref').value,
+    date:            document.getElementById('rca-date').value,
+    analyst:         document.getElementById('rca-analyst').value,
+    dept:            document.getElementById('rca-dept').value,
+    linkedReport:    document.getElementById('rca-linked-report').value,
+    classification:  document.getElementById('rca-classification').value,
+    problem:         document.getElementById('rca-problem').value,
+    consequences:    document.getElementById('rca-consequences').value,
+    methodData:      collectRcaMethodData(),
+    rootCauses:      document.getElementById('rca-root-causes').value,
+    contributing:    document.getElementById('rca-contributing').value,
+    category:        document.getElementById('rca-category').value,
+    recurrenceRisk:  document.getElementById('rca-recurrence-risk').value,
+    caps:            collectRcaCaps(),
+    capReviewDate:   document.getElementById('rca-cap-review-date').value,
+    capReviewer:     document.getElementById('rca-cap-reviewer').value,
+    successCriteria: document.getElementById('rca-success-criteria').value,
+    preparedBy:      document.getElementById('rca-prepared-by').value,
+    reviewedBy:      document.getElementById('rca-reviewed-by').value,
+    approvedBy:      document.getElementById('rca-approved-by').value,
+    status:          document.getElementById('rca-status').value,
+    saved:           new Date().toISOString(),
+  };
+
+  if (!record.problem.trim()) { toast('⚠️ Enter a problem statement first.', 'error'); return; }
+
+  rcaRecords.push(record);
+  lsSet('sms_rca', rcaRecords);
+
+  logAuditEvent('RCA_SAVED', record.id,
+    `RCA saved — ${record.ref||record.id}. Method: ${record.methodData.method||'None selected'}. ` +
+    `Classification: ${record.classification}. Status: ${record.status}. ` +
+    `CAP Actions: ${record.caps.length}. Analyst: ${record.analyst||'—'}.`,
+    null, record.status);
+
+  renderSavedRcas();
+  toast('✅ RCA saved!', 'success');
+}
+
+// ── Render saved list ─────────────────────────────────────────────────────────
+function renderSavedRcas() {
+  const c = document.getElementById('saved-rca-list');
+  if (!c) return;
+  const search = (document.getElementById('rca-search')?.value||'').toLowerCase();
+  const fStatus = document.getElementById('rca-filter-status')?.value||'';
+  const fMethod = document.getElementById('rca-filter-method')?.value||'';
+
+  let list = [...rcaRecords].reverse();
+  if (search) list = list.filter(r =>
+    (r.ref||'').toLowerCase().includes(search) ||
+    (r.analyst||'').toLowerCase().includes(search) ||
+    (r.problem||'').toLowerCase().includes(search) ||
+    (r.id||'').toLowerCase().includes(search));
+  if (fStatus) list = list.filter(r => r.status === fStatus);
+  if (fMethod) list = list.filter(r => (r.methodData?.method||'') === fMethod);
+
+  if (!list.length) {
+    c.innerHTML = `<div style="color:var(--muted);font-size:13px;">${rcaRecords.length?'No records match your filters.':'No RCA records saved yet.'}</div>`;
+    return;
+  }
+
+  const statusColors = { draft:'#64748B', review:'#D97706', approved:'#1D4ED8', closed:'#16A34A' };
+  const statusLabels = { draft:'📝 Draft', review:'👁️ Review', approved:'✅ Approved', closed:'🔒 Closed' };
+  const riskColors   = { critical:'#DC2626', high:'#EA580C', medium:'#D97706', low:'#16A34A' };
+
+  c.innerHTML = list.map(r => {
+    const openCaps = (r.caps||[]).filter(c => c.status==='open'||c.status==='in-progress').length;
+    const doneCaps = (r.caps||[]).filter(c => c.status==='done'||c.status==='verified').length;
+    const meth = RCA_METHODS[r.methodData?.method];
+    const safeRef = (r.ref||r.id).replace(/'/g,"\\'");
+    return `<div class="saved-record-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="saved-record-id">${r.id}</span>
+            ${r.ref?`<span style="font-size:11px;background:#EFF6FF;color:var(--blue);padding:2px 8px;border-radius:99px;font-weight:600;">${r.ref}</span>`:''}
+            <span style="font-size:11px;background:${statusColors[r.status]||'#64748B'}20;color:${statusColors[r.status]||'#64748B'};padding:2px 8px;border-radius:99px;font-weight:600;">${statusLabels[r.status]||r.status}</span>
+            ${meth?`<span style="font-size:11px;background:${meth.bg};color:${meth.color};padding:2px 8px;border-radius:99px;font-weight:600;">${meth.icon} ${meth.label}</span>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:4px;">${(r.problem||'—').slice(0,90)}${r.problem?.length>90?'…':''}</div>
+          <div class="saved-record-meta" style="margin-top:3px;">📅 ${r.date||'—'} &nbsp;|&nbsp; ${r.classification} &nbsp;|&nbsp; Analyst: ${r.analyst||'—'} &nbsp;|&nbsp; Dept: ${r.dept||'—'}</div>
+          <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:12px;color:${riskColors[r.recurrenceRisk]||'#64748B'};font-weight:600;">Recurrence: ${r.recurrenceRisk||'—'}</span>
+            <span style="font-size:12px;color:var(--muted);">CAPs: ${(r.caps||[]).length} total · ${openCaps} open · ${doneCaps} done</span>
+            ${openCaps>0?`<span style="font-size:11px;background:#FEF2F2;color:#DC2626;padding:2px 8px;border-radius:99px;font-weight:600;">⚠️ ${openCaps} open action${openCaps>1?'s':''}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;flex-shrink:0;">
+          <button class="btn btn-outline btn-sm" onclick="printSavedRca('${r.id}')">🖨️ Print</button>
+          <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;"
+            onclick="deleteRca('${r.id}','${safeRef}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteRca(id, ref) {
+  if (!confirm(`Delete RCA "${ref}"? This cannot be undone.`)) return;
+  rcaRecords = rcaRecords.filter(r => r.id !== id);
+  lsSet('sms_rca', rcaRecords);
+  renderSavedRcas();
+  toast('🗑 RCA deleted.', 'success');
+}
+
+function resetRca() {
+  if (!confirm('Clear the current RCA form to start a new one?')) return;
+  ['rca-ref','rca-analyst','rca-dept','rca-problem','rca-consequences','rca-root-causes',
+   'rca-contributing','rca-cap-review-date','rca-cap-reviewer','rca-success-criteria',
+   'rca-prepared-by','rca-reviewed-by','rca-approved-by'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('rca-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('rca-cap-rows').innerHTML = '';
+  rcaCapUid = 0;
+  addRcaCapRow();
+  currentRcaMethod = null;
+  buildRcaMethodCards();
+  document.getElementById('rca-workspace').style.display = 'none';
+  document.getElementById('rca-method-desc').textContent = 'Select a method above to see guidance.';
+}
+
+// ── Print ─────────────────────────────────────────────────────────────────────
+function printCurrentRca() {
+  const data = {
+    id: 'DRAFT-'+new Date().toLocaleDateString(),
+    ref: document.getElementById('rca-ref').value,
+    date: document.getElementById('rca-date').value,
+    analyst: document.getElementById('rca-analyst').value,
+    dept: document.getElementById('rca-dept').value,
+    linkedReport: document.getElementById('rca-linked-report').value,
+    classification: document.getElementById('rca-classification').value,
+    problem: document.getElementById('rca-problem').value,
+    consequences: document.getElementById('rca-consequences').value,
+    methodData: collectRcaMethodData(),
+    rootCauses: document.getElementById('rca-root-causes').value,
+    contributing: document.getElementById('rca-contributing').value,
+    category: document.getElementById('rca-category').value,
+    recurrenceRisk: document.getElementById('rca-recurrence-risk').value,
+    caps: collectRcaCaps(),
+    capReviewDate: document.getElementById('rca-cap-review-date').value,
+    capReviewer: document.getElementById('rca-cap-reviewer').value,
+    successCriteria: document.getElementById('rca-success-criteria').value,
+    preparedBy: document.getElementById('rca-prepared-by').value,
+    reviewedBy: document.getElementById('rca-reviewed-by').value,
+    approvedBy: document.getElementById('rca-approved-by').value,
+    status: document.getElementById('rca-status').value,
+  };
+  openRcaPrintWindow(data);
+}
+
+function printSavedRca(id) {
+  const r = rcaRecords.find(x => x.id === id);
+  if (!r) { toast('⚠️ RCA record not found.', 'error'); return; }
+  openRcaPrintWindow(r);
+}
+
+function openRcaPrintWindow(r) {
+  const meth = RCA_METHODS[r.methodData?.method];
+  const statusLabels = { draft:'Draft — In Progress', review:'Under Review', approved:'Approved — CAP Active', closed:'Closed — Actions Verified' };
+  const riskColors = { critical:'#991B1B', high:'#9A3412', medium:'#854D0E', low:'#166534' };
+  const priorityLabels = { immediate:'🔴 Immediate', urgent:'🟠 Urgent', medium:'🟡 Medium', low:'🟢 Low' };
+
+  // Build method details section
+  let methodHtml = '';
+  if (meth && r.methodData) {
+    const md = r.methodData;
+    methodHtml = `<div style="margin-bottom:20px;"><div style="font-size:14px;font-weight:700;color:${meth.color};border-bottom:2px solid ${meth.color};padding-bottom:4px;margin-bottom:12px;">${meth.icon} ${meth.label} Analysis</div>`;
+    if (md.method === '5whys') {
+      for (let i=1;i<=5;i++) if(md[`why${i}`]) methodHtml += `<div style="display:flex;gap:12px;margin-bottom:8px;"><div style="background:${i===5?'#1D4ED8':'#1B3A6B'};color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;">${i}</div><div><div style="font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;">Why ${i}${i===5?' — ROOT CAUSE':''}</div><div style="font-size:12px;">${md['why'+i]}</div></div></div>`;
+    } else if (md.method === 'fishbone') {
+      FISHBONE_CATEGORIES.forEach(cat => {
+        if (md[cat.id]) methodHtml += `<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:${cat.color};">${cat.icon} ${cat.label}</div><div style="font-size:12px;padding-left:12px;">${md[cat.id]}</div>${md[cat.id+'_prim']?`<div style="font-size:11px;color:#DC2626;padding-left:12px;font-weight:600;">Primary: ${md[cat.id+'_prim']}</div>`:''}</div>`;
+      });
+    } else if (md.method === 'bowtie') {
+      methodHtml += `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;font-size:11px;"><div>`;
+      for(let i=1;i<=4;i++) if(md[`threat${i}`]) methodHtml += `<div style="margin-bottom:6px;"><strong>Threat ${i}:</strong> ${md[`threat${i}`]}<br><span style="color:#7C3AED;">⬛ Barrier: ${md[`prev${i}`]||'—'}</span></div>`;
+      methodHtml += `</div><div style="text-align:center;padding:8px;background:#7C3AED;color:white;border-radius:8px;font-weight:700;">${md.event||'Event'}</div><div>`;
+      for(let i=1;i<=4;i++) if(md[`cons${i}`]) methodHtml += `<div style="margin-bottom:6px;"><strong>Consequence ${i}:</strong> ${md[`cons${i}`]}<br><span style="color:#DC2626;">⬛ Barrier: ${md[`mit${i}`]||'—'}</span></div>`;
+      methodHtml += `</div></div>${md.failed?`<div style="margin-top:8px;font-size:11px;color:#DC2626;"><strong>Failed Barriers:</strong> ${md.failed}</div>`:''}`;
+    } else if (md.method === 'hfacs') {
+      HFACS_LEVELS.forEach(lvl => {
+        const checked = lvl.subcats.filter(sc => md['hfacs_'+sc.id]);
+        if (checked.length) {
+          methodHtml += `<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:${lvl.color};">${lvl.icon} ${lvl.label}</div>`;
+          checked.forEach(sc => methodHtml += `<div style="padding-left:12px;font-size:11px;margin-bottom:4px;"><strong>✓ ${sc.label}</strong>${md['hfacs_'+sc.id+'_n']?`: ${md['hfacs_'+sc.id+'_n']}`:''}</div>`);
+          methodHtml += `</div>`;
+        }
+      });
+    } else if (md.method === 'shell') {
+      SHELL_COMPONENTS.forEach(comp => {
+        if (md[`shell_${comp.id}_notes`]) methodHtml += `<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:${comp.color};">${comp.icon} ${comp.label}</div><div style="font-size:11px;padding-left:12px;">${md[`shell_${comp.id}_notes`]}</div></div>`;
+      });
+    } else if (md.method === 'fta') {
+      methodHtml += `<div style="font-size:11px;"><strong>Top Event:</strong> ${md.topEvent||'—'}</div>`;
+      if ((md.andCauses||[]).length) methodHtml += `<div style="font-size:11px;margin-top:4px;"><strong>AND Causes:</strong> ${md.andCauses.join(', ')}</div>`;
+      if ((md.orCauses||[]).length)  methodHtml += `<div style="font-size:11px;margin-top:4px;"><strong>OR Causes:</strong> ${md.orCauses.join(', ')}</div>`;
+      if (md.basic) methodHtml += `<div style="font-size:11px;margin-top:4px;"><strong>Basic Events:</strong> ${md.basic}</div>`;
+    }
+    methodHtml += `</div>`;
+  }
+
+  // Build CAP table
+  const capRows = (r.caps||[]).map((c,i) => {
+    const pColor = c.priority==='immediate'?'#991B1B':c.priority==='urgent'?'#9A3412':c.priority==='medium'?'#854D0E':'#166534';
+    const sColor = c.status==='verified'||c.status==='done'?'#16A34A':c.status==='in-progress'?'#D97706':'#1D4ED8';
+    return `<tr>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${i+1}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${c.action}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${c.type}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${c.addresses}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;">${c.owner||'—'}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;vertical-align:top;white-space:nowrap;">${c.due||'—'}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;text-align:center;font-weight:700;color:${pColor};white-space:nowrap;">${priorityLabels[c.priority]||c.priority}</td>
+      <td style="font-size:11px;padding:7px 8px;border-bottom:1px solid #E2E8F0;text-align:center;font-weight:700;color:${sColor};">${c.status}</td>
+    </tr>`;
+  }).join('');
+
+  const win = window.open('', '_blank');
+  if (!win) { toast('⚠️ Pop-up blocked.', 'error'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>RCA Report — ${r.ref||r.id}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;color:#1E293B;padding:28px;font-size:12px;}
+    .hdr{background:linear-gradient(135deg,#0A1E3D,#1B3A6B);color:white;padding:20px 24px;border-radius:10px 10px 0 0;margin-bottom:0;}
+    .hdr h1{font-size:19px;font-weight:800;}.hdr .sub{font-size:11px;opacity:.65;margin-top:3px;}
+    .meta{background:#F0F4F8;border:1px solid #CBD5E1;padding:12px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px;}
+    .mi .l{font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.8px;}
+    .mi .v{font-size:13px;font-weight:700;color:#1B3A6B;margin-top:2px;}
+    .sec{font-size:14px;font-weight:700;color:#1B3A6B;border-bottom:2px solid #1B3A6B;padding-bottom:4px;margin:20px 0 10px;}
+    .box{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:1.7;}
+    table{width:100%;border-collapse:collapse;margin-bottom:18px;}
+    th{background:#1B3A6B;color:white;padding:8px 10px;text-align:left;font-size:10px;white-space:nowrap;}
+    .sign-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin:24px 0;}
+    .sign-box .line{height:36px;border-bottom:1.5px solid #1B3A6B;margin-bottom:4px;}
+    .sign-box .sl{font-size:9px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+    .footer{font-size:10px;color:#94A3B8;border-top:1px solid #E2E8F0;padding-top:8px;display:flex;justify-content:space-between;margin-top:20px;}
+    @media print{.no-print{display:none!important;}}
+  </style></head><body>
+  <div class="hdr">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div><div class="hdr h1">Root Cause Analysis Report</div><div class="sub">AMTS Safety Management System · ICAO Annex 19 / CAAP Compliance</div></div>
+      <div style="background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:6px;font-size:13px;font-weight:700;">${r.ref||r.id}</div>
+    </div>
+  </div>
+  <div class="meta">
+    <div class="mi"><div class="l">RCA ID</div><div class="v">${r.id}</div></div>
+    <div class="mi"><div class="l">Ref No.</div><div class="v">${r.ref||'—'}</div></div>
+    <div class="mi"><div class="l">Date</div><div class="v">${r.date||'—'}</div></div>
+    <div class="mi"><div class="l">Analyst</div><div class="v">${r.analyst||'—'}</div></div>
+    <div class="mi"><div class="l">Department</div><div class="v">${r.dept||'—'}</div></div>
+    <div class="mi"><div class="l">Classification</div><div class="v">${r.classification||'—'}</div></div>
+    <div class="mi"><div class="l">Methodology</div><div class="v">${meth?meth.label:'Not selected'}</div></div>
+    <div class="mi"><div class="l">Status</div><div class="v">${statusLabels[r.status]||r.status}</div></div>
+    <div class="mi"><div class="l">Linked Report</div><div class="v">${r.linkedReport||'None'}</div></div>
+  </div>
+
+  <div class="sec">1. Problem Statement</div>
+  <div class="box">${r.problem||'—'}</div>
+  ${r.consequences?`<div class="sec" style="margin-top:12px;">2. Immediate Consequences</div><div class="box">${r.consequences}</div>`:''}
+
+  ${methodHtml?`<div class="sec">3. ${meth?meth.label+' ':'' }Analysis Detail</div>${methodHtml}`:''}
+
+  <div class="sec">4. Root Cause Summary</div>
+  <div class="box" style="border-left:4px solid #DC2626;"><strong>Root Cause(s):</strong><br>${(r.rootCauses||'—').replace(/\n/g,'<br>')}</div>
+  ${r.contributing?`<div class="box"><strong>Contributing Factors:</strong><br>${r.contributing.replace(/\n/g,'<br>')}</div>`:''}
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+    <div class="box" style="flex:1;min-width:160px;"><strong>Category:</strong> ${r.category||'—'}</div>
+    <div class="box" style="flex:1;min-width:160px;background:${(riskColors[r.recurrenceRisk]||'#64748B')}15;border-left:4px solid ${riskColors[r.recurrenceRisk]||'#64748B'};"><strong>Recurrence Risk:</strong> <span style="color:${riskColors[r.recurrenceRisk]||'#64748B'};font-weight:700;">${r.recurrenceRisk||'—'}</span></div>
+  </div>
+
+  <div class="sec">5. Corrective Action Plan</div>
+  ${(r.caps||[]).length?`
+  <table><thead><tr><th>#</th><th>Action</th><th>Type</th><th>Addresses</th><th>Owner</th><th>Due Date</th><th>Priority</th><th>Status</th></tr></thead><tbody>${capRows}</tbody></table>
+  <div class="box"><strong>Review Date:</strong> ${r.capReviewDate||'—'} &nbsp;|&nbsp; <strong>Reviewer:</strong> ${r.capReviewer||'—'}</div>
+  ${r.successCriteria?`<div class="box"><strong>Success Criteria:</strong><br>${r.successCriteria}</div>`:''}
+  `:`<div class="box" style="color:#64748B;">No corrective actions recorded.</div>`}
+
+  <div class="sec">6. Authorization</div>
+  <div class="sign-row">
+    <div class="sign-box"><div class="line"></div><div class="sl">Prepared By: ${r.preparedBy||'______________'} &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Reviewed By (Safety Manager): ${r.reviewedBy||'______________'} &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Approved By (AE): ${r.approvedBy||'______________'} &amp; Date</div></div>
+  </div>
+
+  <div class="footer">
+    <span>AMTS SMS · Root Cause Analysis · ${r.ref||r.id}</span>
+    <span>Printed: ${new Date().toLocaleString()}</span>
+  </div>
+  <div class="no-print" style="margin-top:16px;display:flex;gap:10px;">
+    <button onclick="window.print()" style="padding:10px 22px;background:#1B3A6B;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
+    <button onclick="window.close()" style="padding:10px 22px;background:#F1F5F9;color:#475569;border:none;border-radius:8px;cursor:pointer;">✕ Close</button>
+  </div>
+  </body></html>`);
+  win.document.close();
+}
+
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function init() {
   // Set datetime defaults
@@ -8630,6 +9641,7 @@ function init() {
   document.getElementById('ga-date').value = new Date().toISOString().slice(0,10);
   const todayDate = new Date().toISOString().slice(0,10);
   const iaDate = document.getElementById('ia-date'); if(iaDate) iaDate.value = todayDate;
+  const rcaDate = document.getElementById('rca-date'); if(rcaDate) rcaDate.value = todayDate;
   const irDate = document.getElementById('ir-date'); if(irDate) irDate.value = todayDate;
 
   initHazardChecks();
