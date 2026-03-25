@@ -4660,7 +4660,7 @@ function daysOpen(r) {
 // Returns map of key → { reports[], count, escalatedProb, escalatedRiskIndex }
 function getRecurrenceGroups() {
   const groups = {};
-  reports.forEach(r => {
+  [...reports, ...accidentReports, ...incidentReports].forEach(r => {
     const k = recurrenceKey(r);
     if (!groups[k]) groups[k] = [];
     groups[k].push(r);
@@ -5114,7 +5114,8 @@ function renderRegister() {
 
   const groups = getRecurrenceGroups();
 
-  let filtered = reports.filter(r => {
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  let filtered = allReports.filter(r => {
     // Text search across more fields
     const txt = [r.id,r.type,r.location,r.description,r.name,r.org,r.activity,r.supervisor,(r.hazardTypes||[]).join(' ')].join(' ').toLowerCase();
     if (search && !txt.includes(search)) return false;
@@ -6320,8 +6321,12 @@ function submitAccidentReport() {
     submittedBy: currentRole || 'admin',
   };
 
+  accidentReports.push(report);
+  lsSet('sms_accidents', accidentReports);
+  fbSet('sms/accidents/' + report.id, report);
   logAuditEvent('SUBMIT', report.id, `Accident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Severity: ${severity}.`, null, 'Open');
   toast('🚨 Accident Report submitted: ' + report.id, 'success');
+  try { renderRegister(); updateDashboard(); } catch(e) {}
 
   // Show success banner
   const page = document.getElementById('page-accident-report');
@@ -6485,9 +6490,12 @@ function submitIncidentReport() {
     submittedBy: currentRole || 'admin',
   };
 
+  incidentReports.push(report);
+  lsSet('sms_incidents', incidentReports);
   fbSet('sms/incidents/' + report.id, report);
   logAuditEvent('SUBMIT', report.id, `Incident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Urgency: ${urgency}.`, null, 'Open');
   toast('⚡ Incident Report submitted: ' + report.id, 'success');
+  try { renderRegister(); updateDashboard(); } catch(e) {}
 
   // Show success banner
   const page = document.getElementById('page-incident-report');
