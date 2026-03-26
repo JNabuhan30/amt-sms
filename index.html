@@ -3614,7 +3614,7 @@
 <!-- CAP TRACKER PAGE -->
 <div id="page-cap-tracker" class="page">
   <div class="section-title">✅ Corrective Action Plan Tracker</div>
-  <div class="section-sub">All open corrective actions across every hazard report — sorted by due date</div>
+  <div class="section-sub">All open corrective actions across every report (Hazard, Accident &amp; Incident) — sorted by due date</div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
     <select id="cap-filter-status" onchange="renderCapTracker()" style="max-width:160px;">
       <option value="">All Statuses</option><option>Open</option><option>In Progress</option><option>Done</option><option>Verified</option>
@@ -3931,12 +3931,22 @@ window.addEventListener('load', function() {
   db().ref('sms/accidents').on('value', function(snap) {
     accidentReports = snap.exists() ? Object.values(snap.val()) : [];
     lsSet('sms_accidents', accidentReports);
+    if (currentRole === 'admin') {
+      try { updateDashboard(); } catch(e) {}
+      try { if (document.getElementById('page-register').classList.contains('active')) renderRegister(); } catch(e) {}
+      try { if (document.getElementById('page-cap-tracker').classList.contains('active')) renderCapTracker(); } catch(e) {}
+    }
   });
 
   // Incident Reports (non-blocking)
   db().ref('sms/incidents').on('value', function(snap) {
     incidentReports = snap.exists() ? Object.values(snap.val()) : [];
     lsSet('sms_incidents', incidentReports);
+    if (currentRole === 'admin') {
+      try { updateDashboard(); } catch(e) {}
+      try { if (document.getElementById('page-register').classList.contains('active')) renderRegister(); } catch(e) {}
+      try { if (document.getElementById('page-cap-tracker').classList.contains('active')) renderCapTracker(); } catch(e) {}
+    }
   });
 });
 
@@ -4069,8 +4079,9 @@ function updateCapStatus(reportId, capIdx, newStatus) {
     }
   }
   renderCapTracker();
-  toast('✅ Action status updated.', 'success');
   try { updateDashboard(); } catch(e) {}
+  try { if (document.getElementById('page-register').classList.contains('active')) renderRegister(); } catch(e) {}
+  toast('✅ Action status updated.', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5258,8 +5269,8 @@ function renderRegister() {
       </td>
       <td style="font-size:12px;">${r.type || '—'}</td>
       <td style="font-size:12px;">${r.location || '—'}</td>
-      <td style="max-width:200px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.description || '—'}</td>
-      <td><span class="badge ${r.urgency}">${r.urgency || '—'}</span></td>
+      <td style="max-width:200px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.description || r.immediateCause || '—'}</td>
+      <td><span class="badge ${r.urgency||'pending'}">${r.urgency || r.severityOutcome || '—'}</span></td>
       <td><span class="risk-pill risk-${riskClass(r.riskIndex)}">${r.caapCode || r.riskIndex} — ${riskLabel(r.riskIndex)}</span></td>
       <td>
         <div style="display:flex;flex-direction:column;gap:3px;">
@@ -5375,14 +5386,14 @@ function executeDelete() {
     if (db()) db().ref('sms/accidents/' + id).remove();
     toast('🗑 Accident report deleted.', 'error');
     if (document.getElementById('modal').classList.contains('open')) closeModal();
-    renderRegister(); updateDashboard();
+    renderRegister(); updateDashboard(); try { renderCapTracker(); } catch(e) {}
   } else if (type === 'incident') {
     incidentReports = incidentReports.filter(r => r.id !== id);
     lsSet('sms_incidents', incidentReports);
     if (db()) db().ref('sms/incidents/' + id).remove();
     toast('🗑 Incident report deleted.', 'error');
     if (document.getElementById('modal').classList.contains('open')) closeModal();
-    renderRegister(); updateDashboard();
+    renderRegister(); updateDashboard(); try { renderCapTracker(); } catch(e) {}
   } else if (type === 'all-reports') {
     reports = [];
     if (db()) db().ref('sms/reports').remove();
@@ -6465,7 +6476,7 @@ function submitAccidentReport() {
   fbSet('sms/accidents/' + report.id, report);
   logAuditEvent('SUBMIT', report.id, `Accident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Severity: ${severity}.`, null, 'Open');
   toast('🚨 Accident Report submitted: ' + report.id, 'success');
-  try { renderRegister(); updateDashboard(); } catch(e) {}
+  try { renderRegister(); updateDashboard(); renderCapTracker(); } catch(e) {}
 
   // Show success banner
   const page = document.getElementById('page-accident-report');
@@ -6634,7 +6645,7 @@ function submitIncidentReport() {
   fbSet('sms/incidents/' + report.id, report);
   logAuditEvent('SUBMIT', report.id, `Incident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Urgency: ${urgency}.`, null, 'Open');
   toast('⚡ Incident Report submitted: ' + report.id, 'success');
-  try { renderRegister(); updateDashboard(); } catch(e) {}
+  try { renderRegister(); updateDashboard(); renderCapTracker(); } catch(e) {}
 
   // Show success banner
   const page = document.getElementById('page-incident-report');
