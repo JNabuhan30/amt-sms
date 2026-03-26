@@ -1067,7 +1067,7 @@
     <span class="stab-icon">🔬</span><span class="stab-text">Root Cause (RCA)</span>
   </button>
   <button class="sidebar-tab" id="stab-register" onclick="showPage('register')">
-    <span class="stab-icon">📋</span><span class="stab-text">Register</span>
+    <span class="stab-icon">📋</span><span class="stab-text">Safety Register</span>
   </button>
   <button class="sidebar-tab" id="stab-cap-tracker" onclick="showPage('cap-tracker')">
     <span class="stab-icon">✅</span><span class="stab-text">CAP Tracker</span>
@@ -2202,8 +2202,8 @@
      HAZARD REGISTER
 ════════════════════════════════════════════════════════════════════════════ -->
 <div id="page-register" class="page">
-  <div class="section-title">Hazard Register</div>
-  <div class="section-sub">All submitted hazard reports and their status</div>
+  <div class="section-title">Safety Register</div>
+  <div class="section-sub">All submitted hazard, accident, and incident reports with their current status</div>
 
   <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
     <input type="text" id="reg-search" placeholder="🔍 Search ID, type, location, description, reporter…" style="flex:1;min-width:220px;" oninput="renderRegister()"/>
@@ -2238,14 +2238,42 @@
         </select>
       </div>
       <div>
-        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Report Type</label>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Form Type</label>
+        <select id="reg-filter-form-type" onchange="renderRegister()" style="width:100%;">
+          <option value="">All Form Types</option>
+          <option value="hazard">⚠️ Hazard Report</option>
+          <option value="accident">🚨 Accident Report</option>
+          <option value="incident">⚡ Incident Report</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Sub-Type</label>
         <select id="reg-filter-type" onchange="renderRegister()" style="width:100%;">
-          <option value="">All Types</option>
-          <option>Hazard</option>
-          <option>Near-miss</option>
-          <option>Safety Concern / Observation</option>
-          <option>Unsafe Act</option>
-          <option>Unsafe Condition</option>
+          <option value="">All Sub-Types</option>
+          <optgroup label="— Hazard Sub-Types —">
+            <option>Hazard</option>
+            <option>Near-miss</option>
+            <option>Safety Concern / Observation</option>
+            <option>Unsafe Act</option>
+            <option>Unsafe Condition</option>
+          </optgroup>
+          <optgroup label="— Accident Sub-Types —">
+            <option>Personal Injury</option>
+            <option>Occupational Illness</option>
+            <option>Property / Equipment Damage</option>
+            <option>Aircraft Ground Damage</option>
+            <option>Fire / Explosion</option>
+            <option>Dangerous Occurrence</option>
+          </optgroup>
+          <optgroup label="— Incident Sub-Types —">
+            <option>Near-miss / Close Call</option>
+            <option>Operational Disruption</option>
+            <option>Security Event</option>
+            <option>Environmental Incident</option>
+            <option>Tool / Equipment Malfunction</option>
+            <option>Regulatory Non-compliance</option>
+            <option>Student Misconduct / Safety Breach</option>
+          </optgroup>
         </select>
       </div>
       <div>
@@ -2299,7 +2327,7 @@
     <table>
       <thead>
         <tr>
-          <th>#</th><th>Date</th><th>Type</th><th>Location</th>
+          <th>ID</th><th>Date</th><th>Form Type</th><th>Sub-Type</th><th>Location</th>
           <th>Description</th><th>Urgency</th><th>Risk</th><th>Age / Recurrence</th><th>Status</th><th>Actions</th>
         </tr>
       </thead>
@@ -2307,7 +2335,7 @@
     </table>
   </div>
   <div id="reg-empty" style="text-align:center;padding:40px;color:var(--muted);display:none;">
-    No reports found. Submit a hazard report to get started.
+    No reports found. Submit a hazard, accident, or incident report to get started.
   </div>
 </div>
 
@@ -2550,7 +2578,7 @@
         <div>
           <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Feed findings back into the Hazard Register</div>
           <div style="font-size:13px;color:var(--muted);line-height:1.6;">Audit findings are hazard data. Repeated failures belong in the risk register as <strong>standing hazards</strong>, not recurring audit notes.</div>
-          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('register')">→ Open Hazard Register</button>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPage('register')">→ Open Safety Register</button>
         </div>
       </div>
     </div>
@@ -3330,6 +3358,7 @@
         <button class="modal-tab" onclick="switchModalTab(this,'tab-regulatory')">📖 Regulations</button>
         <button class="modal-tab" onclick="switchModalTab(this,'tab-signoff')">✍️ Sign-offs</button>
         <button class="modal-tab" id="tab-cap-btn" onclick="switchModalTab(this,'tab-cap')">✏️ CAP</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'tab-rca')">🔬 RCA</button>
         <button class="modal-tab" onclick="switchModalTab(this,'tab-trail')">📜 Audit Trail</button>
       </div>
       <div id="tab-details" class="modal-tab-panel active"></div>
@@ -3337,6 +3366,7 @@
       <div id="tab-regulatory" class="modal-tab-panel"></div>
       <div id="tab-signoff" class="modal-tab-panel"></div>
       <div id="tab-cap" class="modal-tab-panel"></div>
+      <div id="tab-rca" class="modal-tab-panel"></div>
       <div id="tab-trail" class="modal-tab-panel"></div>
     </div>
   </div>
@@ -5118,6 +5148,7 @@ function renderRegister() {
   const fStatus    = document.getElementById('reg-filter-status')?.value || '';
   const fUrg       = document.getElementById('reg-filter-urgency')?.value || '';
   const fType      = document.getElementById('reg-filter-type')?.value || '';
+  const fFormType  = document.getElementById('reg-filter-form-type')?.value || '';
   const fReporter  = document.getElementById('reg-filter-reporter')?.value || '';
   const fDateFrom  = document.getElementById('reg-filter-date-from')?.value || '';
   const fDateTo    = document.getElementById('reg-filter-date-to')?.value || '';
@@ -5134,6 +5165,10 @@ function renderRegister() {
     if (fStatus && r.status !== fStatus) return false;
     if (fUrg    && r.urgency !== fUrg) return false;
     if (fType   && r.type !== fType) return false;
+    if (fFormType) {
+      const ft = r.formType || 'hazard';
+      if (ft !== fFormType) return false;
+    }
     if (fReporter === 'student'   && r.submittedBy !== 'student') return false;
     if (fReporter === 'admin'     && r.submittedBy !== 'admin') return false;
     if (fReporter === 'anonymous' && !r.anonymous) return false;
@@ -5168,10 +5203,10 @@ function renderRegister() {
   });
 
   // Active filter chips
-  renderFilterChips({ search, fStatus, fUrg, fType, fReporter, fDateFrom, fDateTo, fSpecial, fSort });
+  renderFilterChips({ search, fStatus, fUrg, fType, fFormType, fReporter, fDateFrom, fDateTo, fSpecial, fSort });
 
   // Update filter button badge
-  const activeCount = [fStatus,fUrg,fType,fReporter,fDateFrom,fDateTo,fSpecial].filter(Boolean).length + (search ? 1 : 0);
+  const activeCount = [fStatus,fUrg,fType,fFormType,fReporter,fDateFrom,fDateTo,fSpecial].filter(Boolean).length + (search ? 1 : 0);
   const countEl = document.getElementById('adv-filter-count');
   if (countEl) countEl.textContent = activeCount ? ` (${activeCount})` : '';
 
@@ -5214,7 +5249,14 @@ function renderRegister() {
         ${r.photos?.length ? `<br><span style="font-size:9px;background:#EFF6FF;color:#2563A8;padding:1px 6px;border-radius:99px;font-weight:600;">📸 ${r.photos.length}</span>` : ''}
       </td>
       <td style="white-space:nowrap;font-size:12px;">${r.submitted ? new Date(r.submitted).toLocaleDateString() : '—'}</td>
-      <td>${r.type || '—'}</td>
+      <td>
+        ${r.formType==='accident'
+          ? `<span style="font-size:12px;font-weight:700;color:#DC2626;">🚨 Accident</span>`
+          : r.formType==='incident'
+          ? `<span style="font-size:12px;font-weight:700;color:#D97706;">⚡ Incident</span>`
+          : `<span style="font-size:12px;font-weight:700;color:#B45309;">⚠️ Hazard</span>`}
+      </td>
+      <td style="font-size:12px;">${r.type || '—'}</td>
       <td style="font-size:12px;">${r.location || '—'}</td>
       <td style="max-width:200px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.description || '—'}</td>
       <td><span class="badge ${r.urgency}">${r.urgency || '—'}</span></td>
@@ -5250,7 +5292,7 @@ function toggleAdvSearch() {
 }
 
 function clearAdvFilters() {
-  ['reg-filter-status','reg-filter-urgency','reg-filter-type','reg-filter-reporter','reg-filter-date-from','reg-filter-date-to','reg-filter-special'].forEach(id => {
+  ['reg-filter-status','reg-filter-urgency','reg-filter-form-type','reg-filter-type','reg-filter-reporter','reg-filter-date-from','reg-filter-date-to','reg-filter-special'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -5261,17 +5303,19 @@ function clearAdvFilters() {
   renderRegister();
 }
 
-function renderFilterChips({ search, fStatus, fUrg, fType, fReporter, fDateFrom, fDateTo, fSpecial, fSort }) {
+function renderFilterChips({ search, fStatus, fUrg, fType, fFormType, fReporter, fDateFrom, fDateTo, fSpecial, fSort }) {
   const chips = [];
-  if (search)     chips.push({ label:`🔍 "${search}"`,         clear:()=>{ document.getElementById('reg-search').value=''; renderRegister(); } });
-  if (fStatus)    chips.push({ label:`Status: ${fStatus}`,      clear:()=>{ document.getElementById('reg-filter-status').value=''; renderRegister(); } });
-  if (fUrg)       chips.push({ label:`Urgency: ${fUrg}`,        clear:()=>{ document.getElementById('reg-filter-urgency').value=''; renderRegister(); } });
-  if (fType)      chips.push({ label:`Type: ${fType}`,          clear:()=>{ document.getElementById('reg-filter-type').value=''; renderRegister(); } });
-  if (fReporter)  chips.push({ label:`Reporter: ${fReporter}`,  clear:()=>{ document.getElementById('reg-filter-reporter').value=''; renderRegister(); } });
-  if (fDateFrom)  chips.push({ label:`From: ${fDateFrom}`,      clear:()=>{ document.getElementById('reg-filter-date-from').value=''; renderRegister(); } });
-  if (fDateTo)    chips.push({ label:`To: ${fDateTo}`,          clear:()=>{ document.getElementById('reg-filter-date-to').value=''; renderRegister(); } });
-  if (fSpecial)   chips.push({ label:`✦ ${fSpecial}`,           clear:()=>{ document.getElementById('reg-filter-special').value=''; renderRegister(); } });
-  if (fSort && fSort !== 'date-desc') chips.push({ label:`Sort: ${fSort}`, clear:()=>{ document.getElementById('reg-sort').value='date-desc'; renderRegister(); } });
+  const formTypeLabels = { hazard:'⚠️ Hazard', accident:'🚨 Accident', incident:'⚡ Incident' };
+  if (search)     chips.push({ label:`🔍 "${search}"`,                      clear:()=>{ document.getElementById('reg-search').value=''; renderRegister(); } });
+  if (fStatus)    chips.push({ label:`Status: ${fStatus}`,                  clear:()=>{ document.getElementById('reg-filter-status').value=''; renderRegister(); } });
+  if (fUrg)       chips.push({ label:`Urgency: ${fUrg}`,                    clear:()=>{ document.getElementById('reg-filter-urgency').value=''; renderRegister(); } });
+  if (fFormType)  chips.push({ label:`Form: ${formTypeLabels[fFormType]||fFormType}`, clear:()=>{ document.getElementById('reg-filter-form-type').value=''; renderRegister(); } });
+  if (fType)      chips.push({ label:`Sub-Type: ${fType}`,                  clear:()=>{ document.getElementById('reg-filter-type').value=''; renderRegister(); } });
+  if (fReporter)  chips.push({ label:`Reporter: ${fReporter}`,              clear:()=>{ document.getElementById('reg-filter-reporter').value=''; renderRegister(); } });
+  if (fDateFrom)  chips.push({ label:`From: ${fDateFrom}`,                  clear:()=>{ document.getElementById('reg-filter-date-from').value=''; renderRegister(); } });
+  if (fDateTo)    chips.push({ label:`To: ${fDateTo}`,                      clear:()=>{ document.getElementById('reg-filter-date-to').value=''; renderRegister(); } });
+  if (fSpecial)   chips.push({ label:`✦ ${fSpecial}`,                       clear:()=>{ document.getElementById('reg-filter-special').value=''; renderRegister(); } });
+  if (fSort && fSort !== 'date-desc') chips.push({ label:`Sort: ${fSort}`,  clear:()=>{ document.getElementById('reg-sort').value='date-desc'; renderRegister(); } });
 
   const container = document.getElementById('reg-filter-chips');
   if (!container) return;
@@ -5843,7 +5887,10 @@ function viewReport(id) {
   if (capTabBtn) capTabBtn.style.display = currentRole === 'admin' ? '' : 'none';
   renderModalCapTab(r.id);
 
-  // ── Tab 5: Audit Trail ──
+  // ── Tab 5: RCA ──
+  renderModalRcaTab(r.id);
+
+  // ── Tab 6: Audit Trail ──
   const reportEvents = auditLog.filter(e => e.reportId === r.id).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   document.getElementById('tab-trail').innerHTML = reportEvents.length ? `
     <div style="display:grid;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
@@ -9437,14 +9484,158 @@ function collectRcaCaps() {
 }
 
 // ── Save ──────────────────────────────────────────────────────────────────────
+// ─── RCA TAB IN REPORT MODAL ─────────────────────────────────────────────────
+function renderModalRcaTab(reportId) {
+  const el = document.getElementById('tab-rca');
+  if (!el) return;
+
+  const linked = rcaRecords.filter(r => r.linkedReport === reportId);
+  const statusColors = { draft:'#64748B', review:'#D97706', approved:'#1D4ED8', closed:'#16A34A' };
+  const statusLabels = { draft:'📝 Draft', review:'👁 Review', approved:'✅ Approved', closed:'🔒 Closed' };
+
+  const listHtml = linked.length ? linked.map(r => {
+    const meth = RCA_METHODS[r.methodData?.method];
+    const openCaps = (r.caps||[]).filter(c => c.status==='open'||c.status==='in-progress').length;
+    const doneCaps = (r.caps||[]).filter(c => c.status==='done'||c.status==='verified').length;
+    const safeRef  = (r.ref||r.id).replace(/'/g,"\\'");
+    return `
+    <div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--bg);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <code style="font-size:11px;color:var(--blue);font-weight:700;">${r.id}</code>
+            ${r.ref ? `<span style="font-size:11px;background:#EFF6FF;color:var(--blue);padding:2px 7px;border-radius:99px;font-weight:600;">${r.ref}</span>` : ''}
+            <span style="font-size:11px;padding:2px 7px;border-radius:99px;font-weight:600;background:${statusColors[r.status]||'#64748B'}20;color:${statusColors[r.status]||'#64748B'};">${statusLabels[r.status]||r.status}</span>
+            ${meth ? `<span style="font-size:11px;background:${meth.bg};color:${meth.color};padding:2px 7px;border-radius:99px;font-weight:600;">${meth.icon} ${meth.label}</span>` : ''}
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${(r.problem||'—').slice(0,100)}${(r.problem||'').length>100?'…':''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">📅 ${r.date||'—'} &nbsp;|&nbsp; Analyst: ${r.analyst||'—'}</div>
+          <div style="font-size:11px;margin-top:4px;">
+            <span style="color:var(--muted);">CAPs: ${(r.caps||[]).length} total</span>
+            ${openCaps > 0 ? `&nbsp;·&nbsp;<span style="color:#DC2626;font-weight:600;">⚠️ ${openCaps} open</span>` : ''}
+            ${doneCaps > 0 ? `&nbsp;·&nbsp;<span style="color:#16A34A;font-weight:600;">✅ ${doneCaps} done</span>` : ''}
+          </div>
+          ${r.rootCauses ? `<div style="font-size:12px;margin-top:6px;padding:8px 10px;background:white;border-radius:6px;border-left:3px solid var(--teal);"><strong style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Root Cause</strong><br>${r.rootCauses.slice(0,120)}${r.rootCauses.length>120?'…':''}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-outline btn-sm" onclick="openRcaFromModal('${r.id}')">✏️ Edit</button>
+          <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" onclick="deleteRcaFromModal('${r.id}','${safeRef}','${reportId}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `
+    <div style="text-align:center;padding:32px 20px;color:var(--muted);">
+      <div style="font-size:36px;margin-bottom:10px;">🔬</div>
+      <div style="font-size:14px;font-weight:600;color:var(--navy);">No RCA conducted yet</div>
+      <div style="font-size:12px;margin-top:4px;">Run a Root Cause Analysis to identify why this event occurred and prevent recurrence.</div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--navy);">🔬 Root Cause Analyses</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${linked.length} RCA record${linked.length!==1?'s':''} linked to this report</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="startRcaForReport('${reportId}')">+ New RCA</button>
+    </div>
+    ${listHtml}`;
+}
+
+function startRcaForReport(reportId) {
+  const found = findReport(reportId);
+  closeModal();
+  showPage('rca');
+
+  // Pre-fill linked report
+  setTimeout(() => {
+    const sel = document.getElementById('rca-linked-report');
+    if (sel) {
+      // Rebuild options first (initRcaPage might not have run)
+      if (sel.options.length <= 1) initRcaPage();
+      sel.value = reportId;
+    }
+
+    // Pre-fill fields from the report if found
+    if (found) {
+      const r = found.r;
+      const refEl = document.getElementById('rca-ref');
+      if (refEl && !refEl.value) refEl.value = `RCA-${reportId}`;
+      const deptEl = document.getElementById('rca-dept');
+      if (deptEl && !deptEl.value) deptEl.value = r.org || r.supervisor || '';
+      const probEl = document.getElementById('rca-problem');
+      if (probEl && !probEl.value) {
+        probEl.value = `[Linked to ${reportId}] ${r.description || ''}`.trim();
+      }
+      const dateEl = document.getElementById('rca-date');
+      if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+      // Auto-set classification
+      const classEl = document.getElementById('rca-classification');
+      if (classEl) {
+        if (found.formType === 'accident') classEl.value = 'Accident';
+        else if (found.formType === 'incident') classEl.value = 'Incident';
+        else classEl.value = 'Hazard Report';
+      }
+    }
+    toast(`🔬 RCA pre-filled for report ${reportId}`, 'success');
+  }, 300);
+}
+
+function openRcaFromModal(rcaId) {
+  closeModal();
+  showPage('rca');
+  setTimeout(() => {
+    const rec = rcaRecords.find(r => r.id === rcaId);
+    if (!rec) return;
+    loadRcaRecord(rec);
+    toast('✏️ RCA loaded for editing', 'success');
+  }, 300);
+}
+
+function deleteRcaFromModal(rcaId, ref, reportId) {
+  if (!confirm(`Delete RCA "${ref}"? This cannot be undone.`)) return;
+  rcaRecords = rcaRecords.filter(r => r.id !== rcaId);
+  lsSet('sms_rca', rcaRecords);
+  // Also remove from linked report
+  const found = findReport(reportId);
+  if (found) {
+    found.r.rcas = (found.r.rcas||[]).filter(id => id !== rcaId);
+    fbSet(found.fbPath + reportId, found.r);
+    lsSet(found.lsKey, found.arr);
+  }
+  renderModalRcaTab(reportId);
+  toast('🗑 RCA deleted.', 'success');
+}
+
+function loadRcaRecord(rec) {
+  const fields = {
+    'rca-ref': rec.ref, 'rca-date': rec.date, 'rca-analyst': rec.analyst,
+    'rca-dept': rec.dept, 'rca-linked-report': rec.linkedReport,
+    'rca-classification': rec.classification, 'rca-problem': rec.problem,
+    'rca-consequences': rec.consequences, 'rca-root-causes': rec.rootCauses,
+    'rca-contributing': rec.contributing, 'rca-category': rec.category,
+    'rca-recurrence-risk': rec.recurrenceRisk, 'rca-cap-review-date': rec.capReviewDate,
+    'rca-cap-reviewer': rec.capReviewer, 'rca-success-criteria': rec.successCriteria,
+    'rca-prepared-by': rec.preparedBy, 'rca-reviewed-by': rec.reviewedBy,
+    'rca-approved-by': rec.approvedBy, 'rca-status': rec.status,
+  };
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val !== undefined && val !== null) el.value = val;
+  });
+  // Mark editing this record (so save overwrites it)
+  window._editingRcaId = rec.id;
+}
+
 function saveRca() {
+  const linkedReportId = document.getElementById('rca-linked-report').value;
+  const isEdit = !!window._editingRcaId;
   const record = {
-    id:              'RCA-' + Date.now(),
+    id:              isEdit ? window._editingRcaId : 'RCA-' + Date.now(),
     ref:             document.getElementById('rca-ref').value,
     date:            document.getElementById('rca-date').value,
     analyst:         document.getElementById('rca-analyst').value,
     dept:            document.getElementById('rca-dept').value,
-    linkedReport:    document.getElementById('rca-linked-report').value,
+    linkedReport:    linkedReportId,
     classification:  document.getElementById('rca-classification').value,
     problem:         document.getElementById('rca-problem').value,
     consequences:    document.getElementById('rca-consequences').value,
@@ -9466,17 +9657,39 @@ function saveRca() {
 
   if (!record.problem.trim()) { toast('⚠️ Enter a problem statement first.', 'error'); return; }
 
-  rcaRecords.push(record);
+  // Save or update in rcaRecords
+  if (isEdit) {
+    const idx = rcaRecords.findIndex(r => r.id === record.id);
+    if (idx >= 0) rcaRecords[idx] = record; else rcaRecords.push(record);
+    window._editingRcaId = null;
+  } else {
+    rcaRecords.push(record);
+  }
   lsSet('sms_rca', rcaRecords);
 
+  // Write RCA root cause + contributing back into the linked report
+  if (linkedReportId) {
+    const found = findReport(linkedReportId);
+    if (found) {
+      const r = found.r;
+      // Store RCA IDs list on the report
+      if (!r.rcas) r.rcas = [];
+      if (!r.rcas.includes(record.id)) r.rcas.push(record.id);
+      // Also sync root cause and contributing fields if empty on report
+      if (record.rootCauses && !r.rootCause) r.rootCause = record.rootCauses;
+      if (record.contributing && !r.contributing) r.contributing = record.contributing;
+      fbSet(found.fbPath + linkedReportId, r);
+      lsSet(found.lsKey, found.arr);
+    }
+  }
+
   logAuditEvent('RCA_SAVED', record.id,
-    `RCA saved — ${record.ref||record.id}. Method: ${record.methodData.method||'None selected'}. ` +
-    `Classification: ${record.classification}. Status: ${record.status}. ` +
-    `CAP Actions: ${record.caps.length}. Analyst: ${record.analyst||'—'}.`,
+    `RCA ${isEdit?'updated':'saved'} — ${record.ref||record.id}. Method: ${record.methodData.method||'None'}. ` +
+    `Linked to: ${linkedReportId||'none'}. Status: ${record.status}. CAPs: ${record.caps.length}. Analyst: ${record.analyst||'—'}.`,
     null, record.status);
 
   renderSavedRcas();
-  toast('✅ RCA saved!', 'success');
+  toast(`✅ RCA ${isEdit?'updated':'saved'}!${linkedReportId?' Linked to '+linkedReportId+'.':''}`, 'success');
 }
 
 // ── Render saved list ─────────────────────────────────────────────────────────
@@ -9520,7 +9733,9 @@ function renderSavedRcas() {
             ${meth?`<span style="font-size:11px;background:${meth.bg};color:${meth.color};padding:2px 8px;border-radius:99px;font-weight:600;">${meth.icon} ${meth.label}</span>`:''}
           </div>
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:4px;">${(r.problem||'—').slice(0,90)}${r.problem?.length>90?'…':''}</div>
-          <div class="saved-record-meta" style="margin-top:3px;">📅 ${r.date||'—'} &nbsp;|&nbsp; ${r.classification} &nbsp;|&nbsp; Analyst: ${r.analyst||'—'} &nbsp;|&nbsp; Dept: ${r.dept||'—'}</div>
+          <div class="saved-record-meta" style="margin-top:3px;">📅 ${r.date||'—'} &nbsp;|&nbsp; ${r.classification} &nbsp;|&nbsp; Analyst: ${r.analyst||'—'} &nbsp;|&nbsp; Dept: ${r.dept||'—'}
+            ${r.linkedReport ? `&nbsp;|&nbsp; <span style="font-size:11px;background:#EFF6FF;color:var(--blue);padding:1px 7px;border-radius:99px;font-weight:600;cursor:pointer;" onclick="viewReport('${r.linkedReport}')">🔗 ${r.linkedReport}</span>` : ''}
+          </div>
           <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <span style="font-size:12px;color:${riskColors[r.recurrenceRisk]||'#64748B'};font-weight:600;">Recurrence: ${r.recurrenceRisk||'—'}</span>
             <span style="font-size:12px;color:var(--muted);">CAPs: ${(r.caps||[]).length} total · ${openCaps} open · ${doneCaps} done</span>
@@ -9528,6 +9743,7 @@ function renderSavedRcas() {
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;flex-shrink:0;">
+          <button class="btn btn-outline btn-sm" onclick="openRcaFromModal('${r.id}')">✏️ Edit</button>
           <button class="btn btn-outline btn-sm" onclick="printSavedRca('${r.id}')">🖨️ Print</button>
           <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;"
             onclick="deleteRca('${r.id}','${safeRef}')">🗑</button>
@@ -9557,6 +9773,7 @@ function resetRca() {
   rcaCapUid = 0;
   addRcaCapRow();
   currentRcaMethod = null;
+  window._editingRcaId = null;
   buildRcaMethodCards();
   document.getElementById('rca-workspace').style.display = 'none';
   document.getElementById('rca-method-desc').textContent = 'Select a method above to see guidance.';
