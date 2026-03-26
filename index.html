@@ -1194,6 +1194,14 @@
       <div class="stat-num" id="stat-closed">0</div><div class="stat-label">Closed</div>
       <div style="font-size:10px;color:#16A34A;margin-top:6px;">&#8599; View Closed Reports</div>
     </div>
+    <div class="stat" style="border-color:#DC2626;cursor:pointer;" onclick="showPage('accident-report')" title="View accident reports">
+      <div class="stat-num" id="stat-accidents" style="color:#DC2626;">0</div><div class="stat-label">Accident Reports</div>
+      <div style="font-size:10px;color:#DC2626;margin-top:6px;">&#8599; Accident Form</div>
+    </div>
+    <div class="stat" style="border-color:#D97706;cursor:pointer;" onclick="showPage('incident-report')" title="View incident reports">
+      <div class="stat-num" id="stat-incidents" style="color:#D97706;">0</div><div class="stat-label">Incident Reports</div>
+      <div style="font-size:10px;color:#D97706;margin-top:6px;">&#8599; Incident Form</div>
+    </div>
     <div class="stat teal" style="cursor:pointer;" onclick="goToAudit()" title="View audits">
       <div class="stat-num" id="stat-audits">0</div><div class="stat-label">Audits Run</div>
       <div style="font-size:10px;color:#0F766E;margin-top:6px;">&#8599; View Audits</div>
@@ -1269,8 +1277,8 @@
   <div style="margin-top:20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <div>
-        <div class="section-title" style="margin-bottom:2px;">📊 Hazard Trends</div>
-        <div class="section-sub" style="margin:0;">Historical analysis of reports, risk levels, and locations</div>
+        <div class="section-title" style="margin-bottom:2px;">📊 Safety Trends</div>
+        <div class="section-sub" style="margin:0;">Historical analysis of all reports, risk levels, and locations</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Period</label>
@@ -4044,8 +4052,9 @@ let _signoffReportId = null;
 function openAckModal(reportId) { openSignoffModal(reportId); }
 
 function openSignoffModal(reportId) {
-  const r = reports.find(x => x.id === reportId);
-  if (!r) return;
+  const found = findReport(reportId);
+  if (!found) return;
+  const { r } = found;
   _signoffReportId = reportId;
   document.getElementById('signoff-report-id-label').textContent = 'Report: ' + reportId;
   renderSignoffTimeline(r);
@@ -4140,8 +4149,9 @@ function renderSignoffTimeline(r) {
 }
 
 function saveSignoff(level) {
-  const r = reports.find(x => x.id === _signoffReportId);
-  if (!r) return;
+  const found = findReport(_signoffReportId);
+  if (!found) return;
+  const { r, arr, fbPath, lsKey } = found;
   if (!r.signoffs) r.signoffs = [];
 
   let entry = {};
@@ -4176,7 +4186,8 @@ function saveSignoff(level) {
   r.signoffs = r.signoffs.filter(s => s.level !== level);
   r.signoffs.push(entry);
   r.acknowledgment = { note: r.signoffs.find(s=>s.level===1)?.notes || '', action: r.signoffs.find(s=>s.level===1)?.nextStep || '', date: entry.timestamp, by: entry.name };
-  fbSet('sms/reports/' + r.id, r);
+  fbSet(fbPath + r.id, r);
+  lsSet(lsKey, arr);
   toast(`✅ Level ${level} sign-off saved.`, 'success');
   renderSignoffTimeline(r);
   try { renderRegister(); updateDashboard(); } catch(e){}
@@ -4363,21 +4374,22 @@ function deleteDocument(id) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Calculate actual current value for auto metrics
 function calcSpiActual(metric) {
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
   switch(metric) {
     case 'overdue_zero': return getOverdueReports().length;
     case 'cap_completion': {
       let total = 0, done = 0;
-      reports.forEach(r => (r.caps||[]).forEach(c => { total++; if(c.status==='Done') done++; }));
+      allReports.forEach(r => (r.caps||[]).forEach(c => { total++; if(c.status==='Done'||c.status==='Verified') done++; }));
       return total ? Math.round(done/total*100) : 100;
     }
     case 'closure_rate': {
-      if (!reports.length) return 100;
-      return Math.round(reports.filter(r => r.status === 'Closed').length / reports.length * 100);
+      if (!allReports.length) return 100;
+      return Math.round(allReports.filter(r => r.status === 'Closed').length / allReports.length * 100);
     }
     case 'recurring_zero': return getRecurringGroups().length;
     case 'reports_month': {
       const now = new Date(), month = now.getMonth(), year = now.getFullYear();
-      return reports.filter(r => { const d = new Date(r.submitted||0); return d.getMonth()===month && d.getFullYear()===year; }).length;
+      return allReports.filter(r => { const d = new Date(r.submitted||0); return d.getMonth()===month && d.getFullYear()===year; }).length;
     }
     default: return null;
   }
@@ -4685,7 +4697,7 @@ function getRecurrenceGroups() {
 
 // Returns only open reports that are overdue based on tolerance window
 function getOverdueReports() {
-  return reports.filter(r => {
+  return [...reports, ...accidentReports, ...incidentReports].filter(r => {
     if (r.status === 'Closed') return false;
     const tol = TOLERANCE_DAYS[r.urgency] ?? 90;
     return daysOpen(r) > tol;
@@ -5197,6 +5209,7 @@ function renderRegister() {
     <tr>
       <td>
         <code style="font-size:11px;color:var(--blue);">${r.id}</code>
+        ${r.formType==='accident' ? `<br><span style="font-size:9px;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:99px;font-weight:700;">🚨 ACCIDENT</span>` : r.formType==='incident' ? `<br><span style="font-size:9px;background:#FFF7ED;color:#D97706;padding:1px 6px;border-radius:99px;font-weight:700;">⚡ INCIDENT</span>` : `<br><span style="font-size:9px;background:#FFFBEB;color:#B45309;padding:1px 6px;border-radius:99px;font-weight:700;">⚠️ HAZARD</span>`}
         ${studentBadge}
         ${r.photos?.length ? `<br><span style="font-size:9px;background:#EFF6FF;color:#2563A8;padding:1px 6px;border-radius:99px;font-weight:600;">📸 ${r.photos.length}</span>` : ''}
       </td>
@@ -5222,7 +5235,7 @@ function renderRegister() {
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="viewReport('${r.id}')">👁 View</button>
         <button class="btn btn-sm" style="background:${r.acknowledgment?'#F0FDF4':'#EFF6FF'};color:${r.acknowledgment?'#16A34A':'#2563A8'};border:1.5px solid ${r.acknowledgment?'#86EFAC':'#BFDBFE'};" onclick="openAckModal('${r.id}')" title="Acknowledge">${r.acknowledgment ? '✅ Ack' : '📬 Ack'}</button>
-        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" onclick="confirmDelete('report','${r.id}','${(r.type||'Report').replace(/'/g,"\\'")} — ${r.id}','')">🗑 Delete</button>
+        <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" onclick="confirmDelete('${r.formType==='accident'?'accident':r.formType==='incident'?'incident':'report'}','${r.id}','${(r.type||'Report').replace(/'/g,"\\'")} — ${r.id}','')">🗑 Delete</button>
       </td>
     </tr>`;
   }).join('');
@@ -5278,14 +5291,18 @@ let _deleteTarget = null;  // { type, id, label }
 function confirmDelete(type, id, label, extra) {
   _deleteTarget = { type, id };
   const titles = {
-    report: 'Delete Hazard Report?',
-    audit:  'Delete Saved Audit?',
-    inspection: 'Delete Saved Inspection?',
+    report:    'Delete Hazard Report?',
+    accident:  'Delete Accident Report?',
+    incident:  'Delete Incident Report?',
+    audit:     'Delete Saved Audit?',
+    inspection:'Delete Saved Inspection?',
   };
   const descs = {
-    report: 'This hazard report will be permanently removed from the register and all statistics.',
-    audit:  'This saved audit record will be permanently deleted. The checklist responses will be lost.',
-    inspection: 'This saved inspection record will be permanently deleted. All checklist responses will be lost.',
+    report:    'This hazard report will be permanently removed from the register and all statistics.',
+    accident:  'This accident report will be permanently removed from the register and all statistics.',
+    incident:  'This incident report will be permanently removed from the register and all statistics.',
+    audit:     'This saved audit record will be permanently deleted. The checklist responses will be lost.',
+    inspection:'This saved inspection record will be permanently deleted. All checklist responses will be lost.',
   };
   document.getElementById('del-modal-title').textContent = titles[type] || 'Delete this record?';
   document.getElementById('del-modal-desc').textContent  = descs[type]  || 'This action cannot be undone.';
@@ -5305,9 +5322,23 @@ function executeDelete() {
   closeDelModal();
 
   if (type === 'report') {
-    fbDelete('sms/reports', id);   // Firebase removes it; listener re-renders automatically
-    toast('🗑 Report deleted.', 'error');
+    fbDelete('sms/reports', id);
+    toast('🗑 Hazard report deleted.', 'error');
     if (document.getElementById('modal').classList.contains('open')) closeModal();
+  } else if (type === 'accident') {
+    accidentReports = accidentReports.filter(r => r.id !== id);
+    lsSet('sms_accidents', accidentReports);
+    if (db()) db().ref('sms/accidents/' + id).remove();
+    toast('🗑 Accident report deleted.', 'error');
+    if (document.getElementById('modal').classList.contains('open')) closeModal();
+    renderRegister(); updateDashboard();
+  } else if (type === 'incident') {
+    incidentReports = incidentReports.filter(r => r.id !== id);
+    lsSet('sms_incidents', incidentReports);
+    if (db()) db().ref('sms/incidents/' + id).remove();
+    toast('🗑 Incident report deleted.', 'error');
+    if (document.getElementById('modal').classList.contains('open')) closeModal();
+    renderRegister(); updateDashboard();
   } else if (type === 'all-reports') {
     reports = [];
     if (db()) db().ref('sms/reports').remove();
@@ -5323,26 +5354,31 @@ function executeDelete() {
 
 function confirmDeleteFromModal() {
   const id = document.getElementById('modal-title').textContent.replace('Report: ','');
-  const r = reports.find(x => x.id === id);
-  if (!r) return;
-  confirmDelete('report', id, r.id, r.location ? ' — ' + r.location : '');
+  const found = findReport(id);
+  if (!found) return;
+  const { r, formType } = found;
+  const type = formType === 'accident' ? 'accident' : formType === 'incident' ? 'incident' : 'report';
+  confirmDelete(type, id, r.id, r.location ? ' — ' + r.location : '');
 }
 
 // Legacy wrapper (still called by old clear-all)
 function deleteReport(id) {
-  const r = reports.find(x => x.id === id);
-  if (!r) return;
-  confirmDelete('report', id, r.id, r.location ? ' — ' + r.location : '');
+  const found = findReport(id);
+  if (!found) return;
+  const { r, formType } = found;
+  const type = formType === 'accident' ? 'accident' : formType === 'incident' ? 'incident' : 'report';
+  confirmDelete(type, id, r.id, r.location ? ' — ' + r.location : '');
 }
 
 function updateStatus(id, status) {
-  const r = reports.find(x => x.id === id);
-  if (r) {
-    const oldStatus = r.status;
-    r.status = status;
-    fbSet('sms/reports/' + id, r);
-    logAuditEvent('STATUS', id, `Status changed`, oldStatus, status);
-  }
+  const found = findReport(id);
+  if (!found) return;
+  const { r, arr, fbPath, lsKey } = found;
+  const oldStatus = r.status;
+  r.status = status;
+  fbSet(fbPath + id, r);
+  lsSet(lsKey, arr);
+  logAuditEvent('STATUS', id, `Status changed`, oldStatus, status);
 }
 
 // ─── SAVED AUDITS / INSPECTIONS LISTS ─────────────────────────────────────────
@@ -5544,9 +5580,21 @@ function openAuditAPrintWindow(a) {
   setTimeout(() => win.print(), 400);
 }
 
+// ─── UNIVERSAL REPORT FINDER ─────────────────────────────────────────────────
+function findReport(id) {
+  let r = reports.find(x => x.id === id);
+  if (r) return { r, formType: 'hazard', arr: reports, fbPath: 'sms/reports/', lsKey: 'sms_reports' };
+  r = accidentReports.find(x => x.id === id);
+  if (r) return { r, formType: 'accident', arr: accidentReports, fbPath: 'sms/accidents/', lsKey: 'sms_accidents' };
+  r = incidentReports.find(x => x.id === id);
+  if (r) return { r, formType: 'incident', arr: incidentReports, fbPath: 'sms/incidents/', lsKey: 'sms_incidents' };
+  return null;
+}
+
 function viewReport(id) {
-  const r = reports.find(x => x.id === id);
-  if (!r) return;
+  const found = findReport(id);
+  if (!found) return;
+  const { r, formType } = found;
   document.getElementById('modal-title').textContent = `Report: ${r.id}`;
 
   // Reset tabs
@@ -5562,25 +5610,57 @@ function viewReport(id) {
           </span>`).join('')}
        </div>` : '<span style="font-size:12px;color:var(--muted);">No sign-offs yet</span>';
 
-  document.getElementById('tab-details').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;padding-top:4px;">
-      ${field('Report ID', `<code style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--blue);background:#EFF6FF;padding:2px 8px;border-radius:4px;">${r.id}</code>`)}
+  const formTypeBadge = formType === 'accident'
+    ? `<span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:6px;">🚨 Accident</span>`
+    : formType === 'incident'
+    ? `<span style="font-size:11px;background:#FFF7ED;color:#D97706;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:6px;">⚡ Incident</span>`
+    : `<span style="font-size:11px;background:#FFFBEB;color:#B45309;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:6px;">⚠️ Hazard</span>`;
+
+  const commonTopFields = `
+      ${field('Report ID', `<code style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--blue);background:#EFF6FF;padding:2px 8px;border-radius:4px;">${r.id}</code>${formTypeBadge}`)}
       ${field('Submitted', r.submitted ? new Date(r.submitted).toLocaleString() : '—')}
       ${field('Type', r.type||'—')}
-      ${field('Urgency', `<span class="badge ${r.urgency}">${r.urgency||'—'}</span>`)}
       ${field('Location', r.location||'—')}
       ${field('Reporter', r.anonymous ? '🔒 Anonymous' : (r.name||'—') + ' (' + (r.role||'—') + ')')}
-      ${field('Activity', r.activity||'—')}
+      ${field('Activity / Course', r.activity||'—')}
       ${field('Supervisor', r.supervisor||'—')}
-    </div>
-    <div style="display:grid;gap:10px;font-size:13px;margin-top:10px;">
-      ${field('Description', r.description||'—')}
+      ${field('Date / Time', r.datetime||'—')}`;
+
+  const typeSpecificFields = formType === 'accident' ? `
+      ${field('Severity of Outcome', r.severityOutcome||'—')}
+      ${field('Injured Person(s)', r.injuredNames||'—')}
+      ${field('Nature of Injury', r.injuryNature||'—')}
+      ${field('Medical Attention', r.medical||'—')}
+      ${field('Days Lost', r.daysLost||'—')}
+      ${field('Equipment Damage', r.damage||'—')}
+      ${field('Immediate Cause', r.immediateCause||'—')}
+      ${field('Root Cause', r.rootCause||'—')}
+      ${field('Contributing Factors', r.contributing||'—')}
+      ${field('Investigator', r.investigator||'—')}` : formType === 'incident' ? `
+      ${field('Urgency', `<span class="badge ${r.urgency}">${r.urgency||'—'}</span>`)}
+      ${field('Incident Classification', r.incidentClassification||'—')}
+      ${field('Consequence', r.consequence||'—')}
+      ${field('Persons Involved', r.persons||'—')}
+      ${field('Injuries / Illness', r.injuries||'—')}
+      ${field('Root Cause', r.rootCause||'—')}
+      ${field('Contributing Factors', r.contributing||'—')}
+      ${field('Affected Areas', (r.affected||[]).join(', ')||'—')}` : `
+      ${field('Urgency', `<span class="badge ${r.urgency}">${r.urgency||'—'}</span>`)}
       ${field('Worst Credible Outcome', r.consequence||'—')}
-      ${field('Exposed', (r.exposed||[]).join(', ')||'—')}
+      ${field('Exposed Persons', (r.exposed||[]).join(', ')||'—')}
       ${field('Hazard Types', r.hazardTypes?.join(', ')||'—')}
       ${field('Risk Assessment', `<span class="risk-pill risk-${riskClass(r.riskIndex)}">${r.caapCode||r.riskIndex} — ${riskLabel(r.riskIndex)}</span> <em style="font-size:11px;color:var(--muted);">P:${r.probability??'—'} × S:${r.severity??'—'}</em>`)}
       ${field('Immediate Action', r.immediate||'—')}
-      ${field('Existing Controls', r.existing||'—')}
+      ${field('Existing Controls', r.existing||'—')}`;
+
+  document.getElementById('tab-details').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;padding-top:4px;">
+      ${commonTopFields}
+      ${typeSpecificFields}
+    </div>
+    <div style="display:grid;gap:10px;font-size:13px;margin-top:10px;">
+      ${field('Description', r.description||'—')}
+      ${field('Immediate Response', r.immediateAction||r.immediate||'—')}
       ${r.caps?.length ? field('CAP Actions', `<div style="display:grid;gap:4px;margin-top:2px;">${r.caps.map((c,i)=>`<div style="font-size:12px;padding:6px 10px;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between;"><span>${i+1}. ${c.action}</span><span style="color:var(--muted);">${c.owner||''} · ${c.status||''}</span></div>`).join('')}</div>`) : ''}
       ${field('Sign-off Status', signoffSummary)}
     </div>
@@ -5790,7 +5870,8 @@ let _modalCapReportId = null;
 
 function renderModalCapTab(reportId) {
   _modalCapReportId = reportId;
-  const r   = reports.find(x => x.id === reportId);
+  const found = findReport(reportId);
+  const r = found ? found.r : null;
   const el  = document.getElementById('tab-cap');
   if (!el) return;
 
@@ -5903,14 +5984,16 @@ function refreshModalCapNumbers() {
 function saveModalCap() {
   if (currentRole !== 'admin') { toast('⛔ Admin access required.', 'error'); return; }
   const id  = _modalCapReportId;
-  const idx = reports.findIndex(r => r.id === id);
-  if (idx < 0) { toast('Report not found.', 'error'); return; }
+  const found = findReport(id);
+  if (!found) { toast('Report not found.', 'error'); return; }
+  const { r, arr, fbPath, lsKey } = found;
+  const idx = arr.findIndex(x => x.id === id);
 
   const rows = document.querySelectorAll('#modal-cap-rows .modal-cap-row');
   const caps = [];
   rows.forEach(row => {
     const action = row.querySelector('.mc-action')?.value?.trim() || '';
-    if (!action) return; // skip blank rows
+    if (!action) return;
     caps.push({
       action,
       type:       row.querySelector('.mc-type')?.value        || 'Administrative',
@@ -5923,10 +6006,10 @@ function saveModalCap() {
     });
   });
 
-  const oldCount = (reports[idx].caps || []).length;
-  reports[idx].caps = caps;
-  fbSet('sms/reports/' + id, reports[idx]);
-  lsSet('sms_reports', reports);
+  const oldCount = (r.caps || []).length;
+  arr[idx].caps = caps;
+  fbSet(fbPath + id, arr[idx]);
+  lsSet(lsKey, arr);
   renderRegister();
   updateDashboard();
 
@@ -5955,7 +6038,6 @@ function saveModalRiskAssessment(reportId) {
   const newProb = parseInt(probEl.value) || 0;
   const newSev  = sevEl.value;
 
-  // Recalculate risk index using the same matrix logic
   const SEV_ORDER = { '0':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5 };
   const riskVal   = newProb * (SEV_ORDER[newSev] ?? 0);
   const CAAP_CODES = {
@@ -5965,23 +6047,24 @@ function saveModalRiskAssessment(reportId) {
   };
   const caapCode = CAAP_CODES[riskVal] || String(riskVal);
 
-  const idx = reports.findIndex(r => r.id === reportId);
-  if (idx < 0) { toast('Report not found.', 'error'); return; }
+  const found = findReport(reportId);
+  if (!found) { toast('Report not found.', 'error'); return; }
+  const { arr, fbPath, lsKey } = found;
+  const idx = arr.findIndex(r => r.id === reportId);
 
-  const oldProb = reports[idx].probability;
-  const oldSev  = reports[idx].severity;
+  const oldProb = arr[idx].probability;
+  const oldSev  = arr[idx].severity;
 
-  reports[idx].probability = newProb;
-  reports[idx].severity    = newSev;
-  reports[idx].riskIndex   = riskVal;
-  reports[idx].caapCode    = caapCode;
+  arr[idx].probability = newProb;
+  arr[idx].severity    = newSev;
+  arr[idx].riskIndex   = riskVal;
+  arr[idx].caapCode    = caapCode;
 
-  fbSet('sms/reports/' + reportId, reports[idx]);
-  lsSet('sms_reports', reports);
+  fbSet(fbPath + reportId, arr[idx]);
+  lsSet(lsKey, arr);
   renderRegister();
   updateDashboard();
 
-  // Audit trail
   logAuditEvent('RISK_UPDATE', reportId,
     `Admin updated risk assessment: P ${oldProb}→${newProb}, S ${oldSev}→${newSev}, Index → ${caapCode} (${riskVal})`, null, null);
 
@@ -6003,24 +6086,26 @@ function saveModalReportControl(reportId) {
   const statusEl   = document.getElementById('modal-control-save-status');
   if (!typeEl || !urgencyEl) return;
 
-  const idx = reports.findIndex(r => r.id === reportId);
-  if (idx < 0) { toast('Report not found.', 'error'); return; }
+  const found = findReport(reportId);
+  if (!found) { toast('Report not found.', 'error'); return; }
+  const { arr, fbPath, lsKey } = found;
+  const idx = arr.findIndex(r => r.id === reportId);
 
-  const oldType    = reports[idx].type;
-  const oldUrgency = reports[idx].urgency;
+  const oldType    = arr[idx].type;
+  const oldUrgency = arr[idx].urgency;
 
-  if (typeEl.value)     reports[idx].type     = typeEl.value;
-  if (urgencyEl.value)  reports[idx].urgency  = urgencyEl.value;
-  if (viaEl?.value)     reports[idx].via      = viaEl.value;
-  if (datetimeEl?.value) reports[idx].datetime = datetimeEl.value;
+  if (typeEl.value)      arr[idx].type     = typeEl.value;
+  if (urgencyEl.value)   arr[idx].urgency  = urgencyEl.value;
+  if (viaEl?.value)      arr[idx].via      = viaEl.value;
+  if (datetimeEl?.value) arr[idx].datetime = datetimeEl.value;
 
-  fbSet('sms/reports/' + reportId, reports[idx]);
-  lsSet('sms_reports', reports);
+  fbSet(fbPath + reportId, arr[idx]);
+  lsSet(lsKey, arr);
   renderRegister();
   updateDashboard();
 
   logAuditEvent('EDIT', reportId,
-    `Admin updated Report Control — Type: ${oldType}→${reports[idx].type}, Urgency: ${oldUrgency}→${reports[idx].urgency}`,
+    `Admin updated Report Control — Type: ${oldType}→${arr[idx].type}, Urgency: ${oldUrgency}→${arr[idx].urgency}`,
     null, null);
 
   if (statusEl) {
@@ -6039,21 +6124,22 @@ function switchModalTab(btn, panelId) {
 // ─── COMPLIANCE SCORECARD ──────────────────────────────────────────────────────
 function renderComplianceScorecard() {
   const el = document.getElementById('compliance-scorecard');
-  if (!el || !reports.length) {
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  if (!el || !allReports.length) {
     if (el) el.innerHTML = '<div style="color:var(--muted);">No reports yet.</div>';
     return;
   }
-  const total = reports.length;
-  const withSignoff  = reports.filter(r => r.signoffs && r.signoffs.length > 0).length;
-  const fullSignoff  = reports.filter(r => r.signoffs && r.signoffs.length >= 3).length;
-  const withRegRefs  = reports.filter(r => r.regRefs && r.regRefs.length > 0).length;
-  const withCap      = reports.filter(r => r.caps && r.caps.some(c => c.action)).length;
-  const closedOnTime = reports.filter(r => {
+  const total = allReports.length;
+  const withSignoff  = allReports.filter(r => r.signoffs && r.signoffs.length > 0).length;
+  const fullSignoff  = allReports.filter(r => r.signoffs && r.signoffs.length >= 3).length;
+  const withRegRefs  = allReports.filter(r => r.regRefs && r.regRefs.length > 0).length;
+  const withCap      = allReports.filter(r => r.caps && r.caps.some(c => c.action)).length;
+  const closedOnTime = allReports.filter(r => {
     if (r.status !== 'Closed') return false;
     const tol = { immediate:1, high:7, medium:30, low:90 }[r.urgency] ?? 90;
     return daysOpen(r) <= tol;
   }).length;
-  const closedTotal  = reports.filter(r => r.status === 'Closed').length;
+  const closedTotal  = allReports.filter(r => r.status === 'Closed').length;
 
   const score = (n, d) => d > 0 ? Math.round((n/d)*100) : 0;
   const bar = (pct, color) => `<div style="height:8px;border-radius:99px;background:var(--light);overflow:hidden;margin-top:4px;"><div style="height:100%;width:${pct}%;background:${color};border-radius:99px;transition:width .6s;"></div></div>`;
@@ -6081,7 +6167,8 @@ function renderComplianceScorecard() {
 function renderPendingSignoffs() {
   const el = document.getElementById('pending-signoffs');
   if (!el) return;
-  const pending = reports.filter(r => r.status !== 'Closed' && (!r.signoffs || r.signoffs.length < 3));
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  const pending = allReports.filter(r => r.status !== 'Closed' && (!r.signoffs || r.signoffs.length < 3));
   if (!pending.length) {
     el.innerHTML = '<div style="color:#16A34A;font-size:13px;font-weight:600;">✅ All open reports are fully signed off.</div>';
     return;
@@ -6090,14 +6177,19 @@ function renderPendingSignoffs() {
     const urgOrder = { immediate:0, high:1, medium:2, low:3 };
     return (urgOrder[a.urgency]??4) - (urgOrder[b.urgency]??4);
   }).slice(0, 6);
+  const formBadge = r => r.formType === 'accident'
+    ? `<span style="font-size:9px;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px;">🚨 AR</span>`
+    : r.formType === 'incident'
+    ? `<span style="font-size:9px;background:#FFF7ED;color:#D97706;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px;">⚡ IR</span>`
+    : `<span style="font-size:9px;background:#FFFBEB;color:#B45309;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:4px;">⚠️ HR</span>`;
   el.innerHTML = sorted.map(r => {
     const level = r.signoffs ? r.signoffs.length : 0;
     const needed = 3 - level;
     const urgColor = { immediate:'#DC2626', high:'#EA580C', medium:'#D97706', low:'#16A34A' }[r.urgency] || '#64748B';
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:var(--bg);border-left:3px solid ${urgColor};">
       <div>
-        <code style="font-size:10px;color:var(--blue);">${r.id}</code>
-        <div style="font-size:11px;color:var(--text);margin-top:1px;">${r.type||'Hazard'} — ${r.location||'—'}</div>
+        <code style="font-size:10px;color:var(--blue);">${r.id}</code>${formBadge(r)}
+        <div style="font-size:11px;color:var(--text);margin-top:1px;">${r.type||'Report'} — ${r.location||'—'}</div>
         <div style="font-size:10px;color:var(--muted);">Level ${level}/3 complete · ${needed} sign-off${needed!==1?'s':''} remaining</div>
       </div>
       <button class="btn btn-sm btn-outline" onclick="openAckModal('${r.id}')" style="font-size:11px;flex-shrink:0;">✍️ Sign</button>
@@ -6909,14 +7001,17 @@ function animateStat(id, target) {
 }
 
 function updateDashboard() {
-  const total  = reports.length;
-  const open   = reports.filter(r => r.status === 'Open').length;
-  const high   = reports.filter(r => ['immediate','high'].includes(r.urgency)).length;
-  const closed = reports.filter(r => r.status === 'Closed').length;
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  const total  = allReports.length;
+  const open   = allReports.filter(r => r.status === 'Open').length;
+  const high   = allReports.filter(r => ['immediate','high'].includes(r.urgency)).length;
+  const closed = allReports.filter(r => r.status === 'Closed').length;
   animateStat('stat-total', total);
   animateStat('stat-open', open);
   animateStat('stat-high', high);
   animateStat('stat-closed', closed);
+  animateStat('stat-accidents', accidentReports.length);
+  animateStat('stat-incidents', incidentReports.length);
   animateStat('stat-audits', audits.length + auditA.length);
 
   // Render recurring hazards & overdue panel
@@ -6926,7 +7021,7 @@ function updateDashboard() {
   try { renderComplianceScorecard(); } catch(e) {}
   try { renderPendingSignoffs(); } catch(e) {}
 
-  // Hazard type chart (Chart.js horizontal bar)
+  // Hazard type chart — hazard reports only (hazardTypes field)
   const typeCounts = {};
   reports.forEach(r => (r.hazardTypes||[]).forEach(t => { typeCounts[t] = (typeCounts[t]||0)+1; }));
   const topTypes = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,7);
@@ -6950,9 +7045,9 @@ function updateDashboard() {
     }
   }
 
-  // Urgency chart (Chart.js doughnut)
+  // Urgency chart — all report types
   const urgCounts = { immediate:0, high:0, medium:0, low:0 };
-  reports.forEach(r => { if (urgCounts[r.urgency] !== undefined) urgCounts[r.urgency]++; });
+  allReports.forEach(r => { if (urgCounts[r.urgency] !== undefined) urgCounts[r.urgency]++; });
   destroyChart('chart-urgency');
   const ctxUrg = document.getElementById('chart-urgency');
   if (ctxUrg) {
@@ -6967,35 +7062,39 @@ function updateDashboard() {
     });
   }
 
-  // CAP summary
+  // CAP summary — all report types
   let totalCaps=0, doneCaps=0;
-  reports.forEach(r => (r.caps||[]).forEach(c => { totalCaps++; if(c.status==='Done') doneCaps++; }));
+  allReports.forEach(r => (r.caps||[]).forEach(c => { totalCaps++; if(c.status==='Done'||c.status==='Verified') doneCaps++; }));
   const pct = totalCaps ? Math.round(doneCaps/totalCaps*100) : 0;
   const fillColor = pct >= 80 ? 'green' : pct >= 50 ? 'orange' : 'red';
   document.getElementById('cap-summary').innerHTML = `
     <div style="font-size:28px;font-weight:700;color:var(--navy);">${pct}%</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${doneCaps} of ${totalCaps} actions completed</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${doneCaps} of ${totalCaps} actions completed (all report types)</div>
     <div class="progress-bar"><div class="progress-fill ${fillColor}" style="width:${pct}%"></div></div>
   `;
 
-  // Recent activity
-  const recent = [...reports].sort((a,b)=>new Date(b.submitted||0)-new Date(a.submitted||0)).slice(0,5);
+  // Recent activity — all report types, sorted by submitted date
+  const recent = [...allReports].sort((a,b)=>new Date(b.submitted||0)-new Date(a.submitted||0)).slice(0,5);
+  const formTypeIcon = r => r.formType==='accident' ? '🚨' : r.formType==='incident' ? '⚡' : '⚠️';
+  const deleteType   = r => r.formType==='accident' ? 'accident' : r.formType==='incident' ? 'incident' : 'report';
   document.getElementById('recent-list').innerHTML = recent.length
     ? recent.map(r => `
       <div style="padding:8px 0;border-bottom:1px solid var(--light);display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div>
-          <div style="font-weight:600;font-size:12px;color:var(--navy);">${r.type || 'Report'}</div>
+          <div style="font-weight:600;font-size:12px;color:var(--navy);">${formTypeIcon(r)} ${r.type || 'Report'}</div>
           <div style="font-size:11px;color:var(--muted);">${r.location || '—'} · ${r.submitted ? new Date(r.submitted).toLocaleDateString() : ''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <span class="badge ${r.urgency}">${r.urgency}</span>
+          <span class="badge ${r.urgency||'pending'}">${r.urgency||r.severityOutcome||'—'}</span>
+          <button class="btn btn-sm" style="background:#EFF6FF;color:#2563A8;border:1.5px solid #BFDBFE;padding:4px 8px;font-size:11px;"
+            onclick="viewReport('${r.id}')" title="View report">👁</button>
           <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;padding:4px 8px;font-size:11px;"
-            onclick="confirmDelete('report','${r.id}','${(r.type||'Report').replace(/'/g,'\\\'')}',' from ${(r.location||'—').replace(/'/g,'\\\'')}')" title="Delete this report">🗑</button>
+            onclick="confirmDelete('${deleteType(r)}','${r.id}','${(r.type||'Report').replace(/'/g,'\\\'')}',' from ${(r.location||'—').replace(/'/g,'\\\'')}')" title="Delete">🗑</button>
         </div>
       </div>`).join('')
     : '<div style="color:var(--muted);">No recent activity</div>';
 
-  // Hazard trends section
+  // Safety trends
   try { updateTrends(); } catch(e) {}
 }
 
@@ -7021,9 +7120,9 @@ function updateTrends() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   }
 
-  // Filter reports to the period
+  // Filter ALL reports to the period
   const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
-  const inPeriod = reports.filter(r => {
+  const inPeriod = [...reports, ...accidentReports, ...incidentReports].filter(r => {
     const d = new Date(r.submitted||0);
     return d >= cutoff;
   });
@@ -7206,16 +7305,15 @@ function updateTrends() {
     heatmapEl.innerHTML = html;
   }
 
-  // ── 6. Report type mix (polar/pie) ────────────────────────────────────────
-  const typeMix = {};
-  inPeriod.forEach(r => { const t = r.type || 'Unspecified'; typeMix[t] = (typeMix[t]||0)+1; });
-  const typeEntries = Object.entries(typeMix).sort((a,b) => b[1]-a[1]);
-  const mixColors = ['#2563A8','#0F766E','#D97706','#DC2626','#8B5CF6','#EA580C','#16A34A','#64748B'];
+  // ── 6. Report form-type mix (Hazard / Accident / Incident) ──────────────────
+  const hazardCount   = inPeriod.filter(r => !r.formType || r.formType === 'hazard').length;
+  const accidentCount = inPeriod.filter(r => r.formType === 'accident').length;
+  const incidentCount = inPeriod.filter(r => r.formType === 'incident').length;
 
   destroyChart('chart-type-mix');
   const ctxTM = document.getElementById('chart-type-mix');
   if (ctxTM) {
-    if (!typeEntries.length) {
+    if (!inPeriod.length) {
       const c = ctxTM.getContext('2d'); c.clearRect(0,0,ctxTM.width,ctxTM.height);
       c.fillStyle='#94A3B8'; c.font='13px Inter,sans-serif'; c.textAlign='center';
       c.fillText('No reports yet', ctxTM.offsetWidth/2, 100);
@@ -7223,14 +7321,15 @@ function updateTrends() {
       _charts['chart-type-mix'] = new Chart(ctxTM, {
         type: 'doughnut',
         data: {
-          labels: typeEntries.map(([t]) => t),
-          datasets: [{ data: typeEntries.map(([,n]) => n), backgroundColor: mixColors, borderWidth: 0, hoverOffset: 8 }]
+          labels: ['⚠️ Hazard', '🚨 Accident', '⚡ Incident'],
+          datasets: [{ data: [hazardCount, accidentCount, incidentCount],
+            backgroundColor: ['#2563A8','#DC2626','#D97706'], borderWidth: 0, hoverOffset: 8 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, cutout: '55%',
           plugins: {
-            legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12, padding: 8, color: '#1E293B' } },
-            tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed } }
+            legend: { position: 'right', labels: { font: { size: 12 }, boxWidth: 12, padding: 10, color: '#1E293B' } },
+            tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed + ' report' + (ctx.parsed !== 1 ? 's' : '') } }
           }
         }
       });
@@ -7931,7 +8030,7 @@ function refreshAuditGuide() {
 
   // ── Overdue CAPs ──
   let overdueCaps = 0;
-  reports.forEach(r => {
+  [...reports, ...accidentReports, ...incidentReports].forEach(r => {
     (r.caps||[]).forEach(c => {
       if (c.status !== 'Done' && c.status !== 'Verified' && c.date && new Date(c.date) < now)
         overdueCaps++;
@@ -7939,11 +8038,12 @@ function refreshAuditGuide() {
   });
 
   // ── Open reports ──
-  const openReports = reports.filter(r => r.status !== 'Closed').length;
+  const allRpts = [...reports, ...accidentReports, ...incidentReports];
+  const openReports = allRpts.filter(r => r.status !== 'Closed').length;
 
   // ── CAP closure rate ──
   let totalCaps = 0, doneCaps = 0;
-  reports.forEach(r => { (r.caps||[]).forEach(c => { totalCaps++; if(c.status==='Done'||c.status==='Verified') doneCaps++; }); });
+  allRpts.forEach(r => { (r.caps||[]).forEach(c => { totalCaps++; if(c.status==='Done'||c.status==='Verified') doneCaps++; }); });
   const capRate = totalCaps ? Math.round(doneCaps/totalCaps*100) : null;
 
   // ── Self-assessment score ──
@@ -9690,24 +9790,26 @@ function printRegister() {
   const search  = (document.getElementById('reg-search').value || '').toLowerCase();
   const fStatus = document.getElementById('reg-filter-status').value;
   const fUrg    = document.getElementById('reg-filter-urgency').value;
-  let filtered = reports.filter(r => {
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  let filtered = allReports.filter(r => {
     const txt = [r.id,r.type,r.location,r.description,r.name].join(' ').toLowerCase();
     return (!search || txt.includes(search)) && (!fStatus || r.status === fStatus) && (!fUrg || r.urgency === fUrg);
-  });
+  }).sort((a,b) => new Date(b.submitted||0) - new Date(a.submitted||0));
+  const typeLabel = r => r.formType === 'accident' ? '🚨 Accident' : r.formType === 'incident' ? '⚡ Incident' : '⚠️ Hazard';
   const rows = filtered.map((r,i) => `
     <tr>
       <td>${i+1}</td>
       <td>${r.id}</td>
       <td>${r.submitted ? new Date(r.submitted).toLocaleDateString() : '—'}</td>
+      <td>${typeLabel(r)}</td>
       <td>${r.type||'—'}</td>
       <td>${r.location||'—'}</td>
-      <td style="max-width:180px;">${r.description||'—'}</td>
-      <td>${r.urgency||'—'}</td>
-      <td>${r.riskIndex} – ${riskLabel(r.riskIndex)}</td>
+      <td style="max-width:160px;">${r.description||'—'}</td>
+      <td>${r.urgency||r.severityOutcome||'—'}</td>
       <td>${r.status||'—'}</td>
     </tr>`).join('');
   const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>AMTS SMS – Hazard Register</title>
+  win.document.write(`<!DOCTYPE html><html><head><title>AMTS SMS – Full Register</title>
   <style>
     body{font-family:Arial,sans-serif;font-size:11px;margin:20px;}
     h2{color:#1B3A6B;margin-bottom:4px;}
@@ -9718,11 +9820,11 @@ function printRegister() {
     tr:nth-child(even) td{background:#F8FAFC;}
     @media print{button{display:none;}}
   </style></head><body>
-  <h2>AMTS Safety Management System — Hazard Register</h2>
-  <p>Printed: ${new Date().toLocaleString()} &nbsp;|&nbsp; Total records: ${filtered.length}</p>
+  <h2>AMTS Safety Management System — Full Safety Register</h2>
+  <p>Printed: ${new Date().toLocaleString()} &nbsp;|&nbsp; Total records: ${filtered.length} (Hazard: ${reports.length} · Accident: ${accidentReports.length} · Incident: ${incidentReports.length})</p>
   <button onclick="window.print()" style="margin-bottom:12px;padding:6px 14px;background:#1B3A6B;color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ Print</button>
   <table>
-    <thead><tr><th>#</th><th>ID</th><th>Date</th><th>Type</th><th>Location</th><th>Description</th><th>Urgency</th><th>Risk</th><th>Status</th></tr></thead>
+    <thead><tr><th>#</th><th>ID</th><th>Date</th><th>Form Type</th><th>Sub-Type</th><th>Location</th><th>Description</th><th>Urgency/Severity</th><th>Status</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></body></html>`);
   win.document.close();
@@ -9732,8 +9834,9 @@ function printRegister() {
 let currentPrintReport = null;
 function printReport() {
   const id = document.getElementById('modal-title').textContent.replace('Report: ','');
-  const r = reports.find(x => x.id === id);
-  if (!r) return;
+  const found = findReport(id);
+  if (!found) return;
+  const r = found.r;
   const win = window.open('','_blank');
   const capsHtml = r.caps?.length ? r.caps.map((c,i) => `
     <tr><td>${i+1}</td><td>${c.action||'—'}</td><td>${c.type||'—'}</td><td>${c.owner||'—'}</td><td>${c.date||'—'}</td><td>${c.status||'—'}</td></tr>`).join('') : '<tr><td colspan="6">No CAP actions</td></tr>';
@@ -9876,8 +9979,9 @@ function printStatistics() {
 // ─── PDF EXPORT: SINGLE REPORT ────────────────────────────────────────────────
 function exportSingleReportPDF() {
   const id = document.getElementById('modal-title').textContent.replace('Report: ','');
-  const r = reports.find(x => x.id === id);
-  if (!r) { toast('⚠️ Report not found.', 'error'); return; }
+  const found = findReport(id);
+  if (!found) { toast('⚠️ Report not found.', 'error'); return; }
+  const { r, formType } = found;
 
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { toast('⚠️ PDF library not loaded yet. Try again.', 'error'); return; }
@@ -9888,6 +9992,8 @@ function exportSingleReportPDF() {
   const white = [255, 255, 255];
   const light = [240, 244, 248];
   const muted = [100, 116, 139];
+  const formTypeLabel = formType === 'accident' ? 'Accident Report' : formType === 'incident' ? 'Incident Report' : 'Hazard Report';
+  const accentColor   = formType === 'accident' ? [220,38,38] : formType === 'incident' ? [217,119,6] : navy;
 
   const W = 210, M = 14;
   let y = 0;
@@ -9904,10 +10010,10 @@ function exportSingleReportPDF() {
   doc.text('AIRCRAFT MAINTENANCE TECHNOLOGY — SAFETY MANAGEMENT SYSTEM', M, 10);
 
   doc.setFontSize(16); doc.setFont('helvetica','bold');
-  doc.text('Hazard Report', M, 20);
+  doc.text(formTypeLabel, M, 20);
 
   doc.setFontSize(10); doc.setFont('helvetica','normal');
-  doc.setFillColor(...blue);
+  doc.setFillColor(...accentColor);
   doc.roundedRect(M, 24, 40, 8, 2, 2, 'F');
   doc.setTextColor(...white);
   doc.text(r.id, M + 2, 29.5);
@@ -9916,13 +10022,13 @@ function exportSingleReportPDF() {
   doc.setFontSize(8);
   doc.text(`Submitted: ${r.submitted ? new Date(r.submitted).toLocaleString() : '—'}   Via: ${r.via||'—'}`, M, 35);
 
-  // Urgency & status badges (top right)
+  // Urgency/severity & status badges (top right)
   const urgColors = { immediate:[220,38,38], high:[234,88,12], medium:[217,119,6], low:[22,163,74] };
   const urgBg = urgColors[r.urgency] || [100,116,139];
   doc.setFillColor(...urgBg);
   doc.roundedRect(W - M - 36, 8, 36, 8, 2, 2, 'F');
   doc.setTextColor(...white); doc.setFontSize(8); doc.setFont('helvetica','bold');
-  doc.text((r.urgency||'—').toUpperCase(), W - M - 34, 13.5);
+  doc.text((r.urgency||r.severityOutcome||'—').toUpperCase(), W - M - 34, 13.5);
 
   const statColors = { 'Open':[37,99,168], 'Closed':[22,163,74], 'In Progress':[109,40,217] };
   const statBg = statColors[r.status] || [100,116,139];
@@ -9942,7 +10048,7 @@ function exportSingleReportPDF() {
     y += 10;
   }
 
-  function field(label, value, x, w, inline) {
+  function fieldPDF(label, value, x, w) {
     checkY(10);
     doc.setTextColor(...muted); doc.setFontSize(7); doc.setFont('helvetica','normal');
     doc.text(label.toUpperCase(), x, y);
@@ -9955,48 +10061,67 @@ function exportSingleReportPDF() {
   function twoCol(l1, v1, l2, v2) {
     checkY(16);
     const half = (W - M*2 - 6) / 2;
-    const yLeft  = field(l1, v1, M, half);
-    const yRight = field(l2, v2, M + half + 6, half);
+    const yLeft  = fieldPDF(l1, v1, M, half);
+    const yRight = fieldPDF(l2, v2, M + half + 6, half);
     y = Math.max(yLeft, yRight) + 4;
   }
 
   function oneCol(label, value) {
     checkY(12);
-    field(label, value, M, W - M*2);
+    fieldPDF(label, value, M, W - M*2);
     const lines = doc.splitTextToSize(String(value||'—'), W - M*2 - 4);
     y += 4 + lines.length * 4.5 + 3;
   }
 
   // ── A. Report Control ──────────────────────────────────────────────────────
   section('A. Report Control & Reporter');
-  twoCol('Report Type', r.type, 'Date Observed', r.observed||'—');
+  twoCol('Report Type', r.type||formTypeLabel, 'Date / Time', r.datetime||r.observed||'—');
   twoCol('Reporter', r.anonymous ? 'Anonymous' : `${r.name||'—'} (${r.role||'—'})`, 'Contact', r.anonymous ? '—' : (r.contact||'—'));
+  twoCol('Organization / Unit', r.org||'—', 'Supervisor', r.supervisor||'—');
 
   // ── B. Location ────────────────────────────────────────────────────────────
   section('B. Location & Activity');
-  twoCol('Organization / Unit', r.org, 'Exact Location', r.location);
-  twoCol('Supervisor', r.supervisor, 'Frequency', r.frequency);
-  oneCol('Activity / Task', r.activity);
+  twoCol('Exact Location', r.location||'—', 'Activity / Task', r.activity||'—');
 
-  // ── C. Hazard ──────────────────────────────────────────────────────────────
-  section('C. Hazard Classification & Description');
-  oneCol('Hazard Types', (r.hazardTypes||[]).join(' · '));
-  oneCol('Who / What Is Exposed', (r.exposed||[]).join(', '));
-  oneCol('Description', r.description);
-  oneCol('Worst Credible Consequence', r.consequence);
+  // ── C. Description ─────────────────────────────────────────────────────────
+  section('C. Incident / Hazard Description');
+  oneCol('Description', r.description||'—');
 
-  // ── D. Risk ────────────────────────────────────────────────────────────────
-  section('D. Risk Assessment (CAAP)');
-  twoCol('Probability', String(r.probability??'—'), 'Severity', String(r.severity??'—'));
-  twoCol('Risk Index / Code', `${r.caapCode||r.riskIndex||'—'} — ${caapRiskLabel(r.riskIndex)}`, 'Existing Controls', r.existing);
+  if (formType === 'hazard') {
+    oneCol('Hazard Types', (r.hazardTypes||[]).join(' · ')||'—');
+    oneCol('Who / What Is Exposed', (r.exposed||[]).join(', ')||'—');
+    oneCol('Worst Credible Consequence', r.consequence||'—');
+  } else if (formType === 'accident') {
+    twoCol('Severity of Outcome', r.severityOutcome||'—', 'Immediate Cause', r.immediateCause||'—');
+    twoCol('Injured Person(s)', r.injuredNames||'—', 'Nature of Injury', r.injuryNature||'—');
+    twoCol('Medical Attention', r.medical||'—', 'Days Lost', r.daysLost||'—');
+    twoCol('Equipment Damage', r.damage||'—', 'Damage Cost', r.damageCost||'—');
+  } else {
+    twoCol('Incident Classification', r.incidentClassification||'—', 'Consequence', r.consequence||'—');
+    twoCol('Persons Involved', r.persons||'—', 'Injuries / Illness', r.injuries||'—');
+    oneCol('Affected Areas', (r.affected||[]).join(', ')||'—');
+  }
 
-  // ── E. Immediate Controls ──────────────────────────────────────────────────
-  section('E. Immediate Controls');
-  twoCol('Work Stopped / Area Secured', r.stopped, 'Action Taken By', r.actionPerson);
-  oneCol('Immediate Action', r.immediate);
+  // ── D. Response ────────────────────────────────────────────────────────────
+  section('D. Immediate Response');
+  twoCol('Work Stopped / Area Secured', r.stopped||'—', 'Responder', r.responder||'—');
+  oneCol('Immediate Action Taken', r.immediateAction||r.immediate||'—');
 
-  // ── F. CAP ─────────────────────────────────────────────────────────────────
-  section('F. Corrective Action Plan');
+  // ── E. Investigation ───────────────────────────────────────────────────────
+  section('E. Investigation & Root Cause');
+  oneCol('Root Cause', r.rootCause||'—');
+  oneCol('Contributing Factors', r.contributing||'—');
+  if (formType !== 'hazard') twoCol('Investigator', r.investigator||'—', 'Investigation Date', r.investigationDate||'—');
+
+  // ── F. Risk Assessment (hazard only) ──────────────────────────────────────
+  if (formType === 'hazard') {
+    section('F. Risk Assessment (CAAP)');
+    twoCol('Probability', String(r.probability??'—'), 'Severity', String(r.severity??'—'));
+    twoCol('Risk Index / Code', `${r.caapCode||r.riskIndex||'—'} — ${caapRiskLabel(r.riskIndex)}`, 'Existing Controls', r.existing||'—');
+  }
+
+  // ── G. CAP ─────────────────────────────────────────────────────────────────
+  section('G. Corrective Action Plan');
   checkY(20);
   const capRows = (r.caps||[]).map((c,i) => [i+1, c.action||'—', c.type||'—', c.owner||'—', c.date||'—', c.status||'—']);
   doc.autoTable({
@@ -10011,9 +10136,9 @@ function exportSingleReportPDF() {
   });
   y = doc.lastAutoTable.finalY + 6;
 
-  // ── G. Evidence ────────────────────────────────────────────────────────────
-  section('G. Evidence & Witness');
-  twoCol('Witness', r.witness, 'Evidence Notes', r.evidence);
+  // ── H. Evidence ────────────────────────────────────────────────────────────
+  section('H. Evidence & Witness');
+  twoCol('Witness', r.witness||'—', 'Evidence Notes', r.evidence||'—');
 
   // ── Sign-off lines ─────────────────────────────────────────────────────────
   checkY(30);
@@ -10053,7 +10178,8 @@ function exportRegisterPDF() {
   const fStatus = document.getElementById('reg-filter-status')?.value || '';
   const fUrg    = document.getElementById('reg-filter-urgency')?.value || '';
 
-  let filtered = reports.filter(r => {
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  let filtered = allReports.filter(r => {
     const txt = [r.id,r.type,r.location,r.description,r.name].join(' ').toLowerCase();
     return (!search || txt.includes(search)) && (!fStatus || r.status === fStatus) && (!fUrg || r.urgency === fUrg);
   }).sort((a,b) => new Date(b.submitted||0) - new Date(a.submitted||0));
@@ -10124,7 +10250,7 @@ function exportStatsCSV() {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let csv = 'Month,Total,Immediate,High,Medium,Low,Open,In Progress,Closed\n';
   months.forEach((m,i) => {
-    const mReports = reports.filter(r => {
+    const mReports = [...reports, ...accidentReports, ...incidentReports].filter(r => {
       const d = new Date(r.submitted);
       return d.getFullYear() == yr && d.getMonth() === i;
     });
@@ -10150,8 +10276,9 @@ function renderStatistics(year) {
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const shortM  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Annual filter
-  const yearReports = reports.filter(r => {
+  // Annual filter — all report types
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  const yearReports = allReports.filter(r => {
     const d = new Date(r.submitted);
     return d.getFullYear() == year;
   });
@@ -10169,8 +10296,8 @@ function renderStatistics(year) {
   document.getElementById('st-high').textContent   = yearReports.filter(r=>['immediate','high'].includes(r.urgency)).length;
   document.getElementById('st-closed').textContent = yearReports.filter(r=>r.status==='Closed').length;
 
-  // Monthly counts
-  const monthlyCounts = months.map((_,i) => reports.filter(r => {
+  // Monthly counts — all report types
+  const monthlyCounts = months.map((_,i) => allReports.filter(r => {
     const d = new Date(r.submitted);
     return d.getFullYear() == year && d.getMonth() === i;
   }));
@@ -10250,25 +10377,26 @@ function renderStatistics(year) {
   }
 
   // YoY comparison
-  const allYears = [...new Set(reports.map(r=>new Date(r.submitted).getFullYear()))].sort();
-  document.getElementById('comparison-card').style.display = allYears.length > 0 ? '' : 'none';
+  const allYearsSet = [...new Set(allReports.map(r=>new Date(r.submitted).getFullYear()))].sort();
+  document.getElementById('comparison-card').style.display = allYearsSet.length > 0 ? '' : 'none';
   const metrics = ['Total','Immediate','High','Medium','Low','Closed'];
-  document.getElementById('yoy-head').innerHTML = '<th>Metric</th>' + allYears.map(y=>`<th>${y}</th>`).join('');
+  document.getElementById('yoy-head').innerHTML = '<th>Metric</th>' + allYearsSet.map(y=>`<th>${y}</th>`).join('');
   const metricFns = [
-    y => reports.filter(r=>new Date(r.submitted).getFullYear()==y).length,
-    y => reports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='immediate').length,
-    y => reports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='high').length,
-    y => reports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='medium').length,
-    y => reports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='low').length,
-    y => reports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.status==='Closed').length,
+    y => allReports.filter(r=>new Date(r.submitted).getFullYear()==y).length,
+    y => allReports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='immediate').length,
+    y => allReports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='high').length,
+    y => allReports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='medium').length,
+    y => allReports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.urgency==='low').length,
+    y => allReports.filter(r=>new Date(r.submitted).getFullYear()==y&&r.status==='Closed').length,
   ];
   document.getElementById('yoy-body').innerHTML = metrics.map((m,mi) =>
-    `<tr><td style="font-weight:600;">${m}</td>${allYears.map(y=>`<td>${metricFns[mi](y)}</td>`).join('')}</tr>`
+    `<tr><td style="font-weight:600;">${m}</td>${allYearsSet.map(y=>`<td>${metricFns[mi](y)}</td>`).join('')}</tr>`
   ).join('');
 }
 
 function initStatistics() {
-  const allYears = [...new Set(reports.map(r => new Date(r.submitted).getFullYear()))].sort((a,b)=>b-a);
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
+  const allYears = [...new Set(allReports.map(r => new Date(r.submitted).getFullYear()))].sort((a,b)=>b-a);
   const container = document.getElementById('year-selector');
   if (!allYears.length) {
     container.innerHTML = '<span style="font-size:13px;color:var(--muted);">No data yet — submit hazard reports to see statistics.</span>';
@@ -11196,12 +11324,15 @@ function initArchivePage() {
 function renderLiveSummary() {
   const el = document.getElementById('arc-live-summary');
   if (!el) return;
+  const allReports = [...reports, ...accidentReports, ...incidentReports];
   const items = [
-    { label: 'Hazard Reports', value: reports.length, color: 'var(--blue)' },
-    { label: 'Open Reports',   value: reports.filter(r=>r.status==='Open').length, color: 'var(--red)' },
-    { label: 'Closed Reports', value: reports.filter(r=>r.status==='Closed').length, color: 'var(--green)' },
-    { label: 'Audits (G.1)',   value: audits.length, color: 'var(--teal)' },
-    { label: 'Inspections',    value: auditA.length, color: 'var(--navy)' },
+    { label: 'Hazard Reports',    value: reports.length,         color: 'var(--blue)' },
+    { label: 'Accident Reports',  value: accidentReports.length, color: '#DC2626' },
+    { label: 'Incident Reports',  value: incidentReports.length, color: '#D97706' },
+    { label: 'Open Reports',      value: allReports.filter(r=>r.status==='Open').length,   color: 'var(--red)' },
+    { label: 'Closed Reports',    value: allReports.filter(r=>r.status==='Closed').length, color: 'var(--green)' },
+    { label: 'Audits (G.1)',      value: audits.length,  color: 'var(--teal)' },
+    { label: 'Inspections',       value: auditA.length,  color: 'var(--navy)' },
     { label: 'Audit Log Entries', value: auditLog.length, color: '#8B5CF6' },
   ];
   el.innerHTML = items.map(i => `
@@ -11230,17 +11361,21 @@ async function createArchive() {
     semester, year, label,
     createdAt: new Date().toISOString(),
     stats: {
-      reports:  reports.length,
-      audits:   audits.length,
-      auditA:   auditA.length,
-      auditLog: auditLog.length,
-      meetings: (window.meetings||[]).length,
+      reports:         reports.length,
+      accidentReports: accidentReports.length,
+      incidentReports: incidentReports.length,
+      audits:          audits.length,
+      auditA:          auditA.length,
+      auditLog:        auditLog.length,
+      meetings:        (window.meetings||[]).length,
     },
     data: {
-      reports:  JSON.parse(JSON.stringify(reports)),
-      audits:   JSON.parse(JSON.stringify(audits)),
-      auditA:   JSON.parse(JSON.stringify(auditA)),
-      auditLog: JSON.parse(JSON.stringify(auditLog)),
+      reports:         JSON.parse(JSON.stringify(reports)),
+      accidentReports: JSON.parse(JSON.stringify(accidentReports)),
+      incidentReports: JSON.parse(JSON.stringify(incidentReports)),
+      audits:          JSON.parse(JSON.stringify(audits)),
+      auditA:          JSON.parse(JSON.stringify(auditA)),
+      auditLog:        JSON.parse(JSON.stringify(auditLog)),
     }
   };
 
@@ -11274,20 +11409,26 @@ async function createArchive() {
 
 function clearLiveDataAfterArchive() {
   // Clear in-memory
-  reports.length  = 0;
-  audits.length   = 0;
-  auditA.length   = 0;
-  auditLog.length = 0;
+  reports.length          = 0;
+  accidentReports.length  = 0;
+  incidentReports.length  = 0;
+  audits.length           = 0;
+  auditA.length           = 0;
+  auditLog.length         = 0;
 
   // Clear localStorage
-  lsSet('sms_reports',  []);
-  lsSet('sms_audits',   []);
-  lsSet('sms_auditA',   []);
-  lsSet('sms_auditlog', []);
+  lsSet('sms_reports',   []);
+  lsSet('sms_accidents', []);
+  lsSet('sms_incidents', []);
+  lsSet('sms_audits',    []);
+  lsSet('sms_auditA',    []);
+  lsSet('sms_auditlog',  []);
 
   // Clear Firebase
   if (db()) {
     db().ref('sms/reports').remove();
+    db().ref('sms/accidents').remove();
+    db().ref('sms/incidents').remove();
     db().ref('sms/audits').remove();
     db().ref('sms/auditA').remove();
     db().ref('sms/auditlog').remove();
