@@ -1620,15 +1620,29 @@
           <label>Incident Type</label>
           <select id="ir-type">
             <option value="">Select…</option>
-            <option>Operational Incident</option>
-            <option>Security Incident</option>
-            <option>Maintenance Incident</option>
-            <option>Training Incident</option>
-            <option>Environmental Incident</option>
-            <option>IT / Data Incident</option>
-            <option>Regulatory Non-Compliance</option>
-            <option>Near-Miss</option>
-            <option>Other</option>
+            <optgroup label="— Operational —">
+              <option>Operational Incident</option>
+              <option>Near-Miss / Close Call</option>
+              <option>Maintenance Incident</option>
+              <option>Environmental Incident</option>
+            </optgroup>
+            <optgroup label="— Training &amp; Examination —">
+              <option>Training Incident</option>
+              <option>Training Integrity Breach / Cheating Incident</option>
+              <option>Examination Security Breach</option>
+              <option>Student Misconduct / Safety Breach</option>
+              <option>Instructor / Staff Misconduct</option>
+            </optgroup>
+            <optgroup label="— Security &amp; Compliance —">
+              <option>Security Incident</option>
+              <option>Regulatory Non-Compliance</option>
+              <option>IT / Data Incident</option>
+              <option>Unauthorized Access / Disclosure</option>
+            </optgroup>
+            <optgroup label="— Other —">
+              <option>Process Failure</option>
+              <option>Other</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group">
@@ -1647,8 +1661,15 @@
         <div class="form-group">
           <label>Submitted Via</label>
           <select id="ir-via">
-            <option>In-person</option><option>Email</option>
-            <option>Phone</option><option>Drop box</option><option>Online Form</option>
+            <option>Online Form</option>
+            <option>In-person</option>
+            <option>Instructor Detection / Direct Observation</option>
+            <option>CCTV / Video Evidence</option>
+            <option>Student / Peer Report</option>
+            <option>Management Escalation</option>
+            <option>Email</option>
+            <option>Phone</option>
+            <option>Drop box</option>
           </select>
         </div>
         <div class="form-group">
@@ -1667,6 +1688,13 @@
           <select id="ir-classification">
             <option value="incident">Incident</option>
             <option value="serious_incident">⚠️ Serious Incident (near-accident)</option>
+            <option value="process_failure">Process Failure</option>
+            <option value="training_integrity">Training Integrity / Examination Security Breach</option>
+            <option value="policy_violation">Policy / Procedure Violation</option>
+            <option value="security_breach">Security / Unauthorized Disclosure</option>
+            <option value="regulatory_breach">Regulatory Non-Compliance</option>
+            <option value="near_miss">Near-Miss / Close Call</option>
+            <option value="other">Other</option>
           </select>
         </div>
       </div>
@@ -1703,9 +1731,10 @@
     <div class="form-section-header" onclick="toggleSection(this)">C. Location &amp; Circumstances <span>▾</span></div>
     <div class="form-section-body">
       <div class="form-grid">
-        <div class="form-group"><label>Organization / Unit</label><input type="text" id="ir-org" placeholder="e.g. Engine Workshop"/></div>
+        <div class="form-group"><label>Organization / Unit</label><input type="text" id="ir-org" placeholder="e.g. APLUS Technical Training / A320 Family Training"/></div>
         <div class="form-group"><label>Exact Location</label><input type="text" id="ir-location" placeholder="Building / Room / Bay / Area"/></div>
-        <div class="form-group full"><label>Activity / Operation at Time of Incident</label><input type="text" id="ir-activity" placeholder="What was happening?"/></div>
+        <div class="form-group"><label>Instructor / Invigilator Present</label><input type="text" id="ir-invigilator" placeholder="Name of instructor or invigilator present"/></div>
+        <div class="form-group full"><label>Activity / Operation at Time of Incident</label><input type="text" id="ir-activity" placeholder="e.g. A320 Family written examination / re-sit examination process"/></div>
       </div>
     </div>
   </div>
@@ -1715,11 +1744,11 @@
     <div class="form-section-header" onclick="toggleSection(this)">D. Incident Description <span>▾</span></div>
     <div class="form-section-body">
       <div class="form-grid">
-        <div class="form-group full"><label>Describe the Incident (what happened, sequence of events)</label><textarea id="ir-description" placeholder="Provide a clear, factual account…"></textarea></div>
-        <div class="form-group full"><label>Actual or Potential Consequences</label><textarea id="ir-consequence" placeholder="What did happen or could have happened as a result?"></textarea></div>
+        <div class="form-group full"><label>Describe the Incident (what happened, sequence of events)</label><textarea id="ir-description" placeholder="Provide a clear, factual account of what happened. State facts only — not assumptions. E.g. 'During the A320 Family examination in Room A301, trainee [Name] retained an unsurrendered cellphone, photographed the test paper while the instructor was writing on the board, and shared the image with three other trainees via AirDrop and Messenger. The matter was detected by an instructor before the next exam sitting.'"></textarea></div>
+        <div class="form-group full"><label>Actual or Potential Consequences</label><textarea id="ir-consequence" placeholder="What did happen or could have happened? E.g. 'Compromise of examination integrity and training credibility. Potential unfair advantage to trainees scheduled for the next exam sitting. Four trainees disqualified from training. No physical injury or property damage.'"></textarea></div>
         <div class="form-group">
           <label>Who / What Was Affected?</label>
-          <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));">
+          <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">
             <label class="cb-item"><input type="checkbox" class="ir-affected" value="Personnel"> Personnel</label>
             <label class="cb-item"><input type="checkbox" class="ir-affected" value="Aircraft"> Aircraft</label>
             <label class="cb-item"><input type="checkbox" class="ir-affected" value="Equipment"> Equipment</label>
@@ -1727,6 +1756,11 @@
             <label class="cb-item"><input type="checkbox" class="ir-affected" value="Operations"> Operations</label>
             <label class="cb-item"><input type="checkbox" class="ir-affected" value="Environment"> Environment</label>
             <label class="cb-item"><input type="checkbox" class="ir-affected" value="Data / IT"> Data / IT</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Training Operations"> Training Operations</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Examination Security"> Examination Security</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Student Discipline"> Student Discipline</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Competency Assessment Integrity"> Competency Assessment Integrity</label>
+            <label class="cb-item"><input type="checkbox" class="ir-affected" value="Regulatory Compliance"> Regulatory Compliance</label>
           </div>
         </div>
       </div>
@@ -1737,8 +1771,10 @@
   <div class="form-section">
     <div class="form-section-header" onclick="toggleSection(this)">E. Persons Involved <span>▾</span></div>
     <div class="form-section-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">List all persons directly involved — originators, recipients, responders, and detecting personnel.</div>
+      <div id="ir-persons-rows"></div>
+      <button class="btn btn-outline btn-sm" onclick="addIrPersonRow()" style="margin-bottom:14px;">+ Add Person</button>
       <div class="form-grid">
-        <div class="form-group"><label>Name(s) of Persons Involved</label><input type="text" id="ir-persons" placeholder="Name(s) and role(s)"/></div>
         <div class="form-group"><label>Any Injuries Sustained?</label>
           <select id="ir-injuries">
             <option>No injuries</option>
@@ -1746,6 +1782,12 @@
             <option>Serious injuries</option>
             <option>Unknown / Under assessment</option>
           </select>
+        </div>
+        <div class="form-group"><label>Number of Persons Involved</label>
+          <input type="number" id="ir-persons-count" min="1" placeholder="Total count"/>
+        </div>
+        <div class="form-group full"><label>Brief summary of persons involved (for record)</label>
+          <input type="text" id="ir-persons" placeholder="e.g. Trainee Fineza (originator), Cleopas, Blawis, Tabancura (recipients), APLUS Instructor (detecting)"/>
         </div>
       </div>
     </div>
@@ -1789,6 +1831,8 @@
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Perceptual Error"> Perceptual Error (misread situation)</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Routine Violation"> Routine Violation (accepted shortcut)</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Exceptional Violation"> Exceptional Violation (deliberate risk)</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Intentional Violation / Deliberate Non-Compliance"> Intentional Violation / Deliberate Non-Compliance</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Pressure / Fear of Failure"> Pressure / Fear of Failure</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Crew Resource Management"> Crew / Team Resource Management</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Personal Readiness"> Personal Readiness (fatigue/illness)</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Adverse Physical State"> Adverse Physical / Mental State</label>
@@ -1796,6 +1840,8 @@
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Organizational Influence"> Organizational / Resource Influence</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Environmental Factor"> Environmental / Workspace Factor</label>
           <label class="cb-item"><input type="checkbox" class="ir-hf" value="Equipment / Design"> Equipment / Design Deficiency</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Peer Influence / Social Pressure"> Peer Influence / Social Pressure</label>
+          <label class="cb-item"><input type="checkbox" class="ir-hf" value="Training / Knowledge Gap"> Training / Knowledge Gap</label>
         </div>
         <div class="form-group" style="margin-top:8px;"><label style="font-size:11px;">Additional Human Factors Notes</label><textarea id="ir-hf-notes" placeholder="Describe how human factors contributed…" style="min-height:60px;"></textarea></div>
       </div>
@@ -2998,14 +3044,18 @@
           <option>Student Injury</option>
           <option>Equipment Failure</option>
           <option>Process Failure</option>
+          <option>Training Integrity / Examination Security Breach</option>
+          <option>Policy / Procedure Violation</option>
+          <option>Security / Unauthorized Disclosure</option>
+          <option>Organizational Non-Compliance</option>
           <option>Other</option>
         </select>
       </div>
       <div class="form-group full"><label>Problem Statement — What happened? (be specific and factual)</label>
-        <textarea id="rca-problem" placeholder="Describe the event, hazard, or finding clearly and objectively. State facts only — not assumptions. E.g. 'On 14 March 2025, Student A sustained a cut to the right hand while using an uncovered box cutter in Bay 3 during practical AMT class.'" style="min-height:80px;"></textarea>
+        <textarea id="rca-problem" placeholder="Describe the event clearly and objectively. State facts only — not assumptions. E.g. 'During the A320 Family examination in Room A301, trainee [Name] failed to surrender his cellphone, photographed the examination paper while the instructor was writing on the board, stored the image on his device, and shared it with three other trainees via AirDrop and Messenger. The incident was detected by an instructor before the next exam sitting commenced, preventing further use of the compromised material.'" style="min-height:80px;"></textarea>
       </div>
       <div class="form-group full"><label>Immediate Consequences / Impact</label>
-        <textarea id="rca-consequences" placeholder="Describe the immediate impact — injuries, damage, disruption, regulatory implications…" style="min-height:60px;"></textarea>
+        <textarea id="rca-consequences" placeholder="What was the immediate impact? E.g. 'The integrity of the examination process was compromised. There was a risk of unfair advantage in the next exam sitting and a loss of confidence in exam security controls. The four involved trainees were disqualified from training. No physical injury or equipment damage occurred.'" style="min-height:60px;"></textarea>
       </div>
     </div>
   </div>
@@ -3032,11 +3082,11 @@
     <div class="form-grid">
       <div class="form-group full">
         <label>Identified Root Cause(s) — state clearly and specifically</label>
-        <textarea id="rca-root-causes" placeholder="State the root cause(s) identified by your analysis. Be specific — avoid vague language like 'human error'. Instead: 'Lack of a formal pre-task safety brief allowed student to use equipment without understanding the hazard.'" style="min-height:90px;"></textarea>
+        <textarea id="rca-root-causes" placeholder="Be specific — avoid vague language like 'human error'. E.g. 'The incident was enabled by inadequate examination security controls — specifically, the failure to physically collect and verify surrender of student cellphones before and during the examination process. This control weakness allowed a trainee to retain a device, capture protected exam content, and distribute it to other trainees.'" style="min-height:90px;"></textarea>
       </div>
       <div class="form-group full">
         <label>Contributing Factors (not root causes but relevant)</label>
-        <textarea id="rca-contributing" placeholder="e.g. Inadequate supervision ratio, missing signage, worn PPE not replaced…" style="min-height:60px;"></textarea>
+        <textarea id="rca-contributing" placeholder="E.g. 'Instructor attention was temporarily diverted while writing on the board. Test papers had already been distributed when the image was taken. Some exam questions were known to repeat across exam takes, increasing the perceived value of retaining content. Students reported fear of failing and pressure related to the cost of training. The room setup did not fully eliminate opportunities for covert device use.'" style="min-height:60px;"></textarea>
       </div>
       <div class="form-group">
         <label>Root Cause Category</label>
@@ -3097,7 +3147,7 @@
       <div class="form-group"><label>CAP Review Date (effectiveness check)</label><input type="date" id="rca-cap-review-date"/></div>
       <div class="form-group"><label>CAP Review Responsible Person</label><input type="text" id="rca-cap-reviewer" placeholder="Name"/></div>
       <div class="form-group full"><label>Success Criteria — How will you know the corrective action worked?</label>
-        <textarea id="rca-success-criteria" placeholder="e.g. Zero repeat incidents of this type for 6 months. All students can demonstrate correct box cutter usage in next practical assessment." style="min-height:60px;"></textarea>
+        <textarea id="rca-success-criteria" placeholder="E.g. 'Zero unauthorized device possession during written exams for the next review period; 100% documented cellphone collection before exam start; no repeated exam-content leakage incidents; and all re-sit exams issued from controlled alternate question sets.'" style="min-height:60px;"></textarea>
       </div>
     </div>
   </div>
@@ -3106,6 +3156,10 @@
   <div class="card" style="border-top:4px solid var(--navy);">
     <div class="card-title">✍️ Step 5 — Authorization &amp; Sign-Off</div>
     <div class="form-grid">
+      <div class="form-group full">
+        <label>Investigation Conclusion / Closing Statement</label>
+        <textarea id="rca-conclusion" placeholder="Summarize the investigation findings and final determination. E.g. 'The event was a confirmed training-integrity incident involving unauthorized capture and sharing of protected exam material. The primary root cause was not merely student misconduct, but a weakness in exam-security controls that failed to ensure actual surrender and verification of prohibited devices before and during the examination.'" style="min-height:70px;"></textarea>
+      </div>
       <div class="form-group"><label>Prepared By</label><input type="text" id="rca-prepared-by" placeholder="Analyst / Investigator name"/></div>
       <div class="form-group"><label>Reviewed By (Safety Manager)</label><input type="text" id="rca-reviewed-by" placeholder="Safety Manager name"/></div>
       <div class="form-group"><label>Approved By (Accountable Executive)</label><input type="text" id="rca-approved-by" placeholder="AE / Director name"/></div>
@@ -5694,12 +5748,20 @@ function viewReport(id) {
       ${field('Investigator', r.investigator||'—')}` : formType === 'incident' ? `
       ${field('Urgency', `<span class="badge ${r.urgency}">${r.urgency||'—'}</span>`)}
       ${field('Incident Classification', r.incidentClassification||'—')}
+      ${field('Invigilator / Instructor', r.invigilator||'—')}
       ${field('Consequence', r.consequence||'—')}
-      ${field('Persons Involved', r.persons||'—')}
       ${field('Injuries / Illness', r.injuries||'—')}
+      ${field('Affected Areas', (r.affected||[]).join(', ')||'—')}
       ${field('Root Cause', r.rootCause||'—')}
       ${field('Contributing Factors', r.contributing||'—')}
-      ${field('Affected Areas', (r.affected||[]).join(', ')||'—')}` : `
+      ${r.personsDetail?.length ? field('Persons Involved',
+        `<div style="display:grid;gap:4px;margin-top:2px;">
+          ${r.personsDetail.map(p=>`<div style="font-size:12px;padding:5px 10px;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+            <span><strong>${p.name}</strong> — ${p.role||'—'}</span>
+            <span style="color:var(--muted);font-size:11px;">${p.involvement||''}</span>
+          </div>`).join('')}
+        </div>`) : field('Persons Involved', r.persons||'—')}
+      ${r.humanFactors?.length ? field('Human Factors', r.humanFactors.join(' · ')) : ''}` : `
       ${field('Urgency', `<span class="badge ${r.urgency}">${r.urgency||'—'}</span>`)}
       ${field('Worst Credible Outcome', r.consequence||'—')}
       ${field('Exposed Persons', (r.exposed||[]).join(', ')||'—')}
@@ -6523,6 +6585,68 @@ function clearAccidentForm() {
 
 // ─── INCIDENT REPORT FUNCTIONS ────────────────────────────────────────────────
 let irCapUid = 0;
+let irPersonUid = 0;
+
+function addIrPersonRow() {
+  const uid = ++irPersonUid;
+  const container = document.getElementById('ir-persons-rows');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'ir-person-row-item';
+  row.style.cssText = 'background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;';
+  row.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);">Person #${uid}</span>
+      <button class="btn btn-sm" onclick="this.closest('.ir-person-row-item').remove()" style="background:#FEE2E2;color:#DC2626;border:none;padding:2px 8px;">✕</button>
+    </div>
+    <div class="form-grid" style="gap:8px;">
+      <div class="form-group"><label style="font-size:11px;">Full Name</label><input type="text" id="ir-person-name-${uid}" placeholder="Full name"/></div>
+      <div class="form-group"><label style="font-size:11px;">Role / Position</label>
+        <select id="ir-person-role-${uid}">
+          <option value="">Select role…</option>
+          <option>Trainee / Student</option>
+          <option>Instructor</option>
+          <option>Proctor / Examiner</option>
+          <option>Training Manager</option>
+          <option>Chief Instructor</option>
+          <option>Safety Manager</option>
+          <option>Witness</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label style="font-size:11px;">Involvement</label>
+        <select id="ir-person-involvement-${uid}">
+          <option>Originator / Primary Actor</option>
+          <option>Recipient / Secondary Actor</option>
+          <option>Witness</option>
+          <option>Detecting / Reporting Person</option>
+          <option>First Responder</option>
+          <option>Investigator</option>
+          <option>Not Directly Involved</option>
+        </select>
+      </div>
+      <div class="form-group"><label style="font-size:11px;">Contact / ID No.</label><input type="text" id="ir-person-contact-${uid}" placeholder="Phone, email, or trainee ID"/></div>
+      <div class="form-group full"><label style="font-size:11px;">Notes / Statement Summary</label><input type="text" id="ir-person-notes-${uid}" placeholder="Brief note on this person's role in the event…"/></div>
+    </div>`;
+  container.appendChild(row);
+}
+
+function collectIrPersonRows() {
+  const persons = [];
+  document.querySelectorAll('.ir-person-row-item').forEach(row => {
+    const nameEl = row.querySelector('[id^="ir-person-name-"]');
+    if (nameEl && nameEl.value.trim()) {
+      persons.push({
+        name:        nameEl.value,
+        role:        row.querySelector('[id^="ir-person-role-"]')?.value || '',
+        involvement: row.querySelector('[id^="ir-person-involvement-"]')?.value || '',
+        contact:     row.querySelector('[id^="ir-person-contact-"]')?.value || '',
+        notes:       row.querySelector('[id^="ir-person-notes-"]')?.value || '',
+      });
+    }
+  });
+  return persons;
+}
 
 function getNextIncidentId() {
   const year = new Date().getFullYear();
@@ -6614,6 +6738,7 @@ function submitIncidentReport() {
     role: isAnon ? '' : document.getElementById('ir-role').value,
     contact: isAnon ? '' : document.getElementById('ir-contact').value,
     supervisor: isAnon ? '' : document.getElementById('ir-supervisor').value,
+    invigilator: document.getElementById('ir-invigilator')?.value || '',
     org: document.getElementById('ir-org').value,
     location: document.getElementById('ir-location').value,
     activity: document.getElementById('ir-activity').value,
@@ -6621,6 +6746,8 @@ function submitIncidentReport() {
     consequence: document.getElementById('ir-consequence').value,
     affected,
     persons: document.getElementById('ir-persons').value,
+    personsCount: document.getElementById('ir-persons-count')?.value || '',
+    personsDetail: collectIrPersonRows(),
     injuries: document.getElementById('ir-injuries').value,
     stopped: document.getElementById('ir-stopped').value,
     responder: document.getElementById('ir-responder').value,
@@ -6667,9 +6794,9 @@ function submitIncidentReport() {
 
 function clearIncidentForm() {
   ['ir-type','ir-urgency','ir-via','ir-datetime','ir-name','ir-role','ir-contact',
-   'ir-supervisor','ir-org','ir-location','ir-activity','ir-description','ir-consequence',
-   'ir-persons','ir-injuries','ir-stopped','ir-responder','ir-immediate-action',
-   'ir-further','ir-root-cause','ir-contributing','ir-evidence'].forEach(id => {
+   'ir-supervisor','ir-invigilator','ir-org','ir-location','ir-activity','ir-description',
+   'ir-consequence','ir-persons','ir-persons-count','ir-injuries','ir-stopped','ir-responder',
+   'ir-immediate-action','ir-further','ir-root-cause','ir-contributing','ir-evidence'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -6678,6 +6805,9 @@ function clearIncidentForm() {
   document.getElementById('ir-reporter-fields').style.display = 'grid';
   document.getElementById('ir-cap-rows').innerHTML = '';
   irCapUid = 0;
+  const irPersonsRows = document.getElementById('ir-persons-rows');
+  if (irPersonsRows) irPersonsRows.innerHTML = '';
+  irPersonUid = 0;
   window._irPhotoLinks = [];
   const irPhotoList = document.getElementById('ir-photo-links-list');
   if (irPhotoList) irPhotoList.innerHTML = '';
@@ -9527,6 +9657,7 @@ function renderModalRcaTab(reportId) {
             ${doneCaps > 0 ? `&nbsp;·&nbsp;<span style="color:#16A34A;font-weight:600;">✅ ${doneCaps} done</span>` : ''}
           </div>
           ${r.rootCauses ? `<div style="font-size:12px;margin-top:6px;padding:8px 10px;background:white;border-radius:6px;border-left:3px solid var(--teal);"><strong style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Root Cause</strong><br>${r.rootCauses.slice(0,120)}${r.rootCauses.length>120?'…':''}</div>` : ''}
+          ${r.conclusion ? `<div style="font-size:12px;margin-top:6px;padding:8px 10px;background:white;border-radius:6px;border-left:3px solid var(--navy);font-style:italic;"><strong style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-style:normal;">Conclusion</strong><br>${r.conclusion.slice(0,150)}${r.conclusion.length>150?'…':''}</div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
           <button class="btn btn-outline btn-sm" onclick="openRcaFromModal('${r.id}')">✏️ Edit</button>
@@ -9626,6 +9757,7 @@ function loadRcaRecord(rec) {
     'rca-contributing': rec.contributing, 'rca-category': rec.category,
     'rca-recurrence-risk': rec.recurrenceRisk, 'rca-cap-review-date': rec.capReviewDate,
     'rca-cap-reviewer': rec.capReviewer, 'rca-success-criteria': rec.successCriteria,
+    'rca-conclusion': rec.conclusion||'',
     'rca-prepared-by': rec.preparedBy, 'rca-reviewed-by': rec.reviewedBy,
     'rca-approved-by': rec.approvedBy, 'rca-status': rec.status,
   };
@@ -9659,6 +9791,7 @@ function saveRca() {
     capReviewDate:   document.getElementById('rca-cap-review-date').value,
     capReviewer:     document.getElementById('rca-cap-reviewer').value,
     successCriteria: document.getElementById('rca-success-criteria').value,
+    conclusion:      document.getElementById('rca-conclusion')?.value || '',
     preparedBy:      document.getElementById('rca-prepared-by').value,
     reviewedBy:      document.getElementById('rca-reviewed-by').value,
     approvedBy:      document.getElementById('rca-approved-by').value,
@@ -9776,7 +9909,7 @@ function resetRca() {
   if (!confirm('Clear the current RCA form to start a new one?')) return;
   ['rca-ref','rca-analyst','rca-dept','rca-problem','rca-consequences','rca-root-causes',
    'rca-contributing','rca-cap-review-date','rca-cap-reviewer','rca-success-criteria',
-   'rca-prepared-by','rca-reviewed-by','rca-approved-by'].forEach(id => {
+   'rca-conclusion','rca-prepared-by','rca-reviewed-by','rca-approved-by'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('rca-date').value = new Date().toISOString().slice(0,10);
@@ -9811,6 +9944,7 @@ function printCurrentRca() {
     capReviewDate: document.getElementById('rca-cap-review-date').value,
     capReviewer: document.getElementById('rca-cap-reviewer').value,
     successCriteria: document.getElementById('rca-success-criteria').value,
+    conclusion: document.getElementById('rca-conclusion')?.value || '',
     preparedBy: document.getElementById('rca-prepared-by').value,
     reviewedBy: document.getElementById('rca-reviewed-by').value,
     approvedBy: document.getElementById('rca-approved-by').value,
@@ -9947,11 +10081,14 @@ function openRcaPrintWindow(r) {
   ${r.successCriteria?`<div class="box"><strong>Success Criteria:</strong><br>${r.successCriteria}</div>`:''}
   `:`<div class="box" style="color:#64748B;">No corrective actions recorded.</div>`}
 
-  <div class="sec">6. Authorization</div>
+  <div class="sec">6. Investigation Conclusion</div>
+  <div class="box" style="border-left:4px solid #1B3A6B;font-style:italic;">${r.conclusion ? r.conclusion.replace(/\n/g,'<br>') : '<span style="color:#64748B;">No conclusion recorded.</span>'}</div>
+
+  <div class="sec">7. Authorization</div>
   <div class="sign-row">
     <div class="sign-box"><div class="line"></div><div class="sl">Prepared By: ${r.preparedBy||'______________'} &amp; Date</div></div>
     <div class="sign-box"><div class="line"></div><div class="sl">Reviewed By (Safety Manager): ${r.reviewedBy||'______________'} &amp; Date</div></div>
-    <div class="sign-box"><div class="line"></div><div class="sl">Approved By (AE): ${r.approvedBy||'______________'} &amp; Date</div></div>
+    <div class="sign-box"><div class="line"></div><div class="sl">Approved By (AE / Director): ${r.approvedBy||'______________'} &amp; Date</div></div>
   </div>
 
   <div class="footer">
@@ -10326,8 +10463,14 @@ function exportSingleReportPDF() {
     twoCol('Equipment Damage', r.damage||'—', 'Damage Cost', r.damageCost||'—');
   } else {
     twoCol('Incident Classification', r.incidentClassification||'—', 'Consequence', r.consequence||'—');
-    twoCol('Persons Involved', r.persons||'—', 'Injuries / Illness', r.injuries||'—');
+    twoCol('Invigilator / Instructor', r.invigilator||'—', 'Injuries / Illness', r.injuries||'—');
     oneCol('Affected Areas', (r.affected||[]).join(', ')||'—');
+    if (r.personsDetail?.length) {
+      oneCol('Persons Involved', r.personsDetail.map(p=>`${p.name} (${p.role||'—'}) — ${p.involvement||''}`).join('\n'));
+    } else if (r.persons) {
+      oneCol('Persons Involved', r.persons);
+    }
+    if (r.humanFactors?.length) oneCol('Human Factors (HFACS)', r.humanFactors.join(', '));
   }
 
   // ── D. Response ────────────────────────────────────────────────────────────
