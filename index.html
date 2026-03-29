@@ -6193,6 +6193,8 @@ function saveModalRiskAssessment(reportId) {
     setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 4000);
   }
   toast(`✅ Risk assessment updated: ${caapCode}`, 'success');
+  // Refresh Details tab so new risk is immediately visible
+  try { viewReport(reportId); } catch(e) {}
 }
 
 
@@ -6233,6 +6235,9 @@ function saveModalReportControl(reportId) {
     setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
   }
   toast(`✅ Report Control updated`, 'success');
+
+  // Refresh the modal Details tab so edits are immediately visible
+  try { viewReport(reportId); } catch(e) {}
 }
 function switchModalTab(btn, panelId) {
   document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
@@ -9811,7 +9816,7 @@ function saveRca() {
   }
   lsSet('sms_rca', rcaRecords);
 
-  // Write RCA root cause + contributing back into the linked report
+  // Write RCA data back into the linked report
   if (linkedReportId) {
     const found = findReport(linkedReportId);
     if (found) {
@@ -9819,9 +9824,18 @@ function saveRca() {
       // Store RCA IDs list on the report
       if (!r.rcas) r.rcas = [];
       if (!r.rcas.includes(record.id)) r.rcas.push(record.id);
-      // Also sync root cause and contributing fields if empty on report
+      // Sync root cause and contributing fields if empty on report
       if (record.rootCauses && !r.rootCause) r.rootCause = record.rootCauses;
       if (record.contributing && !r.contributing) r.contributing = record.contributing;
+      // ✅ FIX: Merge RCA CAPs into the report's own caps array so they appear in the register modal
+      if (record.caps && record.caps.length > 0) {
+        const existingCaps = r.caps || [];
+        // Tag each RCA cap with its RCA id so we can update them on future saves
+        const rcaCaps = record.caps.map(c => ({ ...c, _rcaId: record.id }));
+        // Remove any previously synced caps from this same RCA, then add new ones
+        const otherCaps = existingCaps.filter(c => c._rcaId !== record.id);
+        r.caps = [...otherCaps, ...rcaCaps];
+      }
       fbSet(found.fbPath + linkedReportId, r);
       lsSet(found.lsKey, found.arr);
     }
@@ -10201,85 +10215,101 @@ function printReport() {
   const id = document.getElementById('modal-title').textContent.replace('Report: ','');
   const found = findReport(id);
   if (!found) return;
-  const r = found.r;
-  const win = window.open('','_blank');
-  const capsHtml = r.caps?.length ? r.caps.map((c,i) => `
-    <tr><td>${i+1}</td><td>${c.action||'—'}</td><td>${c.type||'—'}</td><td>${c.owner||'—'}</td><td>${c.date||'—'}</td><td>${c.status||'—'}</td></tr>`).join('') : '<tr><td colspan="6">No CAP actions</td></tr>';
-  win.document.write(`<!DOCTYPE html><html><head><title>Report: ${r.id}</title>
-  <style>
-    *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;margin:0;background:#F8FAFC;color:#1E293B;}
-    .page-wrap{max-width:860px;margin:0 auto;padding:28px 32px;}
-    .header{background:linear-gradient(135deg,#1B3A6B,#2563A8);color:white;padding:20px 28px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;}
-    .header h1{font-size:18px;margin:0 0 4px;font-weight:800;}
-    .header .ref{font-family:monospace;font-size:14px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:6px;}
-    .header .meta{font-size:11px;opacity:.8;margin-top:6px;}
-    .badge-wrap{text-align:right;}
-    .badge{display:inline-block;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:700;margin-bottom:4px;}
-    .immediate{background:#FEE2E2;color:#DC2626;}
-    .high{background:#FFEDD5;color:#EA580C;}
-    .medium{background:#FEF9C3;color:#D97706;}
-    .low{background:#DCFCE7;color:#16A34A;}
-    .status-open{background:#DBEAFE;color:#1D4ED8;}
-    .status-closed{background:#DCFCE7;color:#15803D;}
-    .status-progress{background:#EDE9FE;color:#6D28D9;}
-    .section{background:white;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:14px;overflow:hidden;}
-    .section-head{background:#1B3A6B;color:white;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.3px;}
-    .section-body{padding:14px 16px;}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;}
-    .field{}
-    .field .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748B;font-weight:700;margin-bottom:2px;}
-    .field .val{font-size:12px;color:#1E293B;line-height:1.5;}
-    .full{grid-column:1/-1;}
-    table{width:100%;border-collapse:collapse;font-size:11px;}
-    th{background:#1B3A6B;color:white;padding:7px 10px;text-align:left;font-size:10px;}
-    td{padding:6px 10px;border-bottom:1px solid #E2E8F0;vertical-align:top;}
-    .risk-box{display:inline-block;padding:5px 14px;border-radius:8px;font-weight:800;font-size:14px;}
-    .risk-crit{background:#FEE2E2;color:#991B1B;} .risk-med{background:#FEF9C3;color:#854D0E;} .risk-low{background:#DCFCE7;color:#166534;}
-    .print-btn{display:inline-flex;align-items:center;gap:6px;margin-right:8px;padding:8px 18px;background:#1B3A6B;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;}
-    .print-btn.secondary{background:white;color:#1B3A6B;border:1.5px solid #CBD5E1;}
-    .signoff{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;}
-    .signoff-cell{text-align:center;font-size:10px;color:#64748B;}
-    .sig-line{border-top:1px solid #94A3B8;margin-top:32px;padding-top:5px;}
-    @media print{.no-print{display:none!important;} body{background:white;} .page-wrap{padding:0;} @page{margin:1.5cm;}}
-  </style></head><body>
-  <div class="page-wrap">
-  <div class="no-print" style="margin-bottom:16px;">
-    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
-    <span style="font-size:11px;color:#64748B;">Tip: In your browser's print dialog, choose "Save as PDF" to download.</span>
-  </div>
-  <div class="header">
-    <div>
-      <div style="font-size:11px;opacity:.7;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Aircraft Maintenance Technology — Safety Management System</div>
-      <h1>Hazard Report</h1>
-      <div class="ref">${r.id}</div>
-      <div class="meta">Submitted: ${r.submitted ? new Date(r.submitted).toLocaleString() : '—'} &nbsp;·&nbsp; Via: ${r.via||'—'} &nbsp;·&nbsp; Submitted by: ${r.submittedBy||'—'}</div>
-    </div>
-    <div class="badge-wrap">
-      <div class="badge ${r.urgency||''}">${(r.urgency||'—').toUpperCase()}</div><br>
-      <div class="badge status-${(r.status||'').toLowerCase().replace(' ','-')}">${r.status||'—'}</div>
-    </div>
-  </div>
+  const { r, formType } = found;
+
+  const formTypeLabel = formType === 'accident' ? 'Accident Report'
+    : formType === 'incident' ? 'Incident Report' : 'Hazard Report';
+  const headerColor = formType === 'accident'
+    ? 'linear-gradient(135deg,#7F1D1D,#DC2626)'
+    : formType === 'incident'
+    ? 'linear-gradient(135deg,#78350F,#D97706)'
+    : 'linear-gradient(135deg,#1B3A6B,#2563A8)';
+
+  // Build CAPs — includes report.caps (which now includes RCA-synced CAPs)
+  const allLinkedRcaCaps = window.rcaRecords
+    ? window.rcaRecords.filter(rc => rc.linkedReport === id)
+        .flatMap(rc => (rc.caps||[]).map(c => ({ ...c, _rcaRef: rc.ref||rc.id })))
+    : [];
+  const reportCaps = r.caps || [];
+  // Show report caps; if none, fall back to any RCA-linked caps
+  const capsToShow = reportCaps.length ? reportCaps : allLinkedRcaCaps;
+  const capsHtml = capsToShow.length
+    ? capsToShow.map((c,i) => `<tr>
+        <td>${i+1}</td>
+        <td>${c.action||'—'}</td>
+        <td>${c.type||'—'}</td>
+        <td>${c.owner||'—'}</td>
+        <td>${c.date||c.due||'—'}</td>
+        <td>${c.status||'—'}</td>
+        ${c._rcaRef ? `<td style="font-size:10px;color:#64748B;">${c._rcaRef}</td>` : '<td>—</td>'}
+      </tr>`).join('')
+    : '<tr><td colspan="7" style="color:#64748B;font-style:italic;">No CAP actions recorded. Link an RCA to this report or add actions via the CAP tab.</td></tr>';
+
+  // Build type-specific sections
+  let typeSection = '';
+  if (formType === 'accident') {
+    typeSection = `
   <div class="section">
-    <div class="section-head">A. Report Control & Reporter</div>
+    <div class="section-head">C. Accident Details</div>
     <div class="section-body"><div class="grid">
-      <div class="field"><div class="lbl">Report Type</div><div class="val">${r.type||'—'}</div></div>
-      <div class="field"><div class="lbl">Date Observed</div><div class="val">${r.observed||'—'}</div></div>
-      <div class="field"><div class="lbl">Reporter</div><div class="val">${r.anonymous ? '🔒 Anonymous' : (r.name||'—') + ' (' + (r.role||'—') + ')'}</div></div>
-      <div class="field"><div class="lbl">Contact</div><div class="val">${r.anonymous ? '—' : (r.contact||'—')}</div></div>
+      <div class="field"><div class="lbl">Severity of Outcome</div><div class="val">${r.severityOutcome||'—'}</div></div>
+      <div class="field"><div class="lbl">Immediate Cause</div><div class="val">${r.immediateCause||'—'}</div></div>
+      <div class="field"><div class="lbl">Injured Person(s)</div><div class="val">${r.injuredNames||'—'}</div></div>
+      <div class="field"><div class="lbl">Nature of Injury</div><div class="val">${r.injuryNature||'—'}</div></div>
+      <div class="field"><div class="lbl">Medical Attention</div><div class="val">${r.medical||'—'}</div></div>
+      <div class="field"><div class="lbl">Days Lost</div><div class="val">${r.daysLost||'—'}</div></div>
+      <div class="field"><div class="lbl">Equipment Damage</div><div class="val">${r.damage||'—'}</div></div>
+      <div class="field"><div class="lbl">Damage Cost</div><div class="val">${r.damageCost||'—'}</div></div>
+      <div class="field full"><div class="lbl">Description</div><div class="val">${r.description||'—'}</div></div>
     </div></div>
   </div>
   <div class="section">
-    <div class="section-head">B. Location & Activity</div>
+    <div class="section-head">D. Investigation</div>
     <div class="section-body"><div class="grid">
-      <div class="field"><div class="lbl">Organization / Unit</div><div class="val">${r.org||'—'}</div></div>
-      <div class="field"><div class="lbl">Exact Location</div><div class="val">${r.location||'—'}</div></div>
-      <div class="field full"><div class="lbl">Activity / Task</div><div class="val">${r.activity||'—'}</div></div>
-      <div class="field"><div class="lbl">Supervisor</div><div class="val">${r.supervisor||'—'}</div></div>
-      <div class="field"><div class="lbl">Frequency</div><div class="val">${r.frequency||'—'}</div></div>
+      <div class="field full"><div class="lbl">Root Cause</div><div class="val">${r.rootCause||'—'}</div></div>
+      <div class="field full"><div class="lbl">Contributing Factors</div><div class="val">${r.contributing||'—'}</div></div>
+      <div class="field"><div class="lbl">Investigator</div><div class="val">${r.investigator||'—'}</div></div>
+      <div class="field"><div class="lbl">Investigation Date</div><div class="val">${r.investigationDate||'—'}</div></div>
+      ${r.humanFactors?.length ? `<div class="field full"><div class="lbl">Human Factors (HFACS)</div><div class="val">${r.humanFactors.join(' · ')}</div></div>` : ''}
+    </div></div>
+  </div>`;
+  } else if (formType === 'incident') {
+    const personsHtml = r.personsDetail?.length
+      ? r.personsDetail.map(p => `<div style="margin-bottom:4px;"><strong>${p.name}</strong> — ${p.role||'—'} <span style="color:#64748B;">(${p.involvement||'—'})</span>${p.notes ? ': ' + p.notes : ''}</div>`).join('')
+      : (r.persons || '—');
+    typeSection = `
+  <div class="section">
+    <div class="section-head">C. Incident Description</div>
+    <div class="section-body"><div class="grid">
+      <div class="field"><div class="lbl">Incident Classification</div><div class="val">${r.incidentClassification||'—'}</div></div>
+      <div class="field"><div class="lbl">Urgency</div><div class="val">${r.urgency||'—'}</div></div>
+      <div class="field full"><div class="lbl">Description</div><div class="val">${r.description||'—'}</div></div>
+      <div class="field full"><div class="lbl">Consequence</div><div class="val">${r.consequence||'—'}</div></div>
+      <div class="field"><div class="lbl">Injuries / Illness</div><div class="val">${r.injuries||'—'}</div></div>
+      <div class="field"><div class="lbl">Affected Areas</div><div class="val">${(r.affected||[]).join(', ')||'—'}</div></div>
     </div></div>
   </div>
   <div class="section">
-    <div class="section-head">C. Hazard Classification & Description</div>
+    <div class="section-head">D. Persons Involved</div>
+    <div class="section-body">
+      <div class="field"><div class="lbl">Invigilator / Instructor</div><div class="val">${r.invigilator||r.supervisor||'—'}</div></div>
+      <div style="margin-top:10px;">${personsHtml}</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head">E. Investigation</div>
+    <div class="section-body"><div class="grid">
+      <div class="field full"><div class="lbl">Root Cause</div><div class="val">${r.rootCause||'—'}</div></div>
+      <div class="field full"><div class="lbl">Contributing Factors</div><div class="val">${r.contributing||'—'}</div></div>
+      ${r.humanFactors?.length ? `<div class="field full"><div class="lbl">Human Factors (HFACS)</div><div class="val">${r.humanFactors.join(' · ')}</div></div>` : ''}
+      ${r.humanFactorsNotes ? `<div class="field full"><div class="lbl">HF Notes</div><div class="val">${r.humanFactorsNotes}</div></div>` : ''}
+    </div></div>
+  </div>`;
+  } else {
+    // Hazard
+    typeSection = `
+  <div class="section">
+    <div class="section-head">C. Hazard Classification &amp; Description</div>
     <div class="section-body">
       <div class="field" style="margin-bottom:10px;"><div class="lbl">Hazard Types</div><div class="val">${r.hazardTypes?.join(' · ')||'—'}</div></div>
       <div class="field" style="margin-bottom:10px;"><div class="lbl">Who / What is Exposed</div><div class="val">${r.exposed?.join(', ')||'—'}</div></div>
@@ -10295,31 +10325,102 @@ function printReport() {
       <div class="field"><div class="lbl">Risk Index</div><div class="val"><span class="risk-box risk-${r.riskIndex>14?'crit':r.riskIndex>5?'med':'low'}">${r.caapCode||r.riskIndex} — ${caapRiskLabel(r.riskIndex)}</span></div></div>
       <div class="field"><div class="lbl">Existing Controls</div><div class="val">${r.existing||'—'}</div></div>
     </div></div>
+  </div>`;
+  }
+
+  const win = window.open('','_blank');
+  if (!win) { toast('⚠️ Pop-up blocked — allow pop-ups for this site.', 'error'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><title>${formTypeLabel}: ${r.id}</title>
+  <style>
+    *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;margin:0;background:#F8FAFC;color:#1E293B;}
+    .page-wrap{max-width:860px;margin:0 auto;padding:28px 32px;}
+    .header{background:${headerColor};color:white;padding:20px 28px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;}
+    .header h1{font-size:18px;margin:0 0 4px;font-weight:800;}
+    .header .ref{font-family:monospace;font-size:14px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:6px;}
+    .header .meta{font-size:11px;opacity:.8;margin-top:6px;}
+    .badge-wrap{text-align:right;}
+    .badge{display:inline-block;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:700;margin-bottom:4px;}
+    .immediate{background:#FEE2E2;color:#DC2626;} .high{background:#FFEDD5;color:#EA580C;}
+    .medium{background:#FEF9C3;color:#D97706;} .low{background:#DCFCE7;color:#16A34A;}
+    .status-open{background:#DBEAFE;color:#1D4ED8;} .status-closed{background:#DCFCE7;color:#15803D;}
+    .status-progress{background:#EDE9FE;color:#6D28D9;}
+    .section{background:white;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:14px;overflow:hidden;}
+    .section-head{background:#1B3A6B;color:white;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.3px;}
+    .section-body{padding:14px 16px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;}
+    .field .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748B;font-weight:700;margin-bottom:2px;}
+    .field .val{font-size:12px;color:#1E293B;line-height:1.5;}
+    .full{grid-column:1/-1;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th{background:#1B3A6B;color:white;padding:7px 10px;text-align:left;font-size:10px;}
+    td{padding:6px 10px;border-bottom:1px solid #E2E8F0;vertical-align:top;}
+    .risk-box{display:inline-block;padding:5px 14px;border-radius:8px;font-weight:800;font-size:14px;}
+    .risk-crit{background:#FEE2E2;color:#991B1B;} .risk-med{background:#FEF9C3;color:#854D0E;} .risk-low{background:#DCFCE7;color:#166534;}
+    .print-btn{display:inline-flex;align-items:center;gap:6px;margin-right:8px;padding:8px 18px;background:#1B3A6B;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;}
+    .signoff{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;}
+    .signoff-cell{text-align:center;font-size:10px;color:#64748B;}
+    .sig-line{border-top:1px solid #94A3B8;margin-top:32px;padding-top:5px;}
+    @media print{.no-print{display:none!important;} body{background:white;} .page-wrap{padding:0;} @page{margin:1.5cm;}}
+  </style></head><body>
+  <div class="page-wrap">
+  <div class="no-print" style="margin-bottom:16px;">
+    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <span style="font-size:11px;color:#64748B;">Tip: In your browser's print dialog, choose "Save as PDF" to download.</span>
+  </div>
+  <div class="header">
+    <div>
+      <div style="font-size:11px;opacity:.7;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Aircraft Maintenance Technology — Safety Management System</div>
+      <h1>${formTypeLabel}</h1>
+      <div class="ref">${r.id}</div>
+      <div class="meta">Submitted: ${r.submitted ? new Date(r.submitted).toLocaleString() : '—'} &nbsp;·&nbsp; Via: ${r.via||'—'} &nbsp;·&nbsp; Submitted by: ${r.submittedBy||'—'}</div>
+    </div>
+    <div class="badge-wrap">
+      <div class="badge ${r.urgency||''}">${(r.urgency||r.severityOutcome||'—').toUpperCase()}</div><br>
+      <div class="badge status-${(r.status||'open').toLowerCase().replace(' ','-')}">${r.status||'Open'}</div>
+    </div>
   </div>
   <div class="section">
-    <div class="section-head">E. Immediate Controls</div>
+    <div class="section-head">A. Report Control &amp; Reporter</div>
     <div class="section-body"><div class="grid">
-      <div class="field"><div class="lbl">Work Stopped / Area Secured</div><div class="val">${r.stopped||'—'}</div></div>
-      <div class="field"><div class="lbl">Action Taken By</div><div class="val">${r.actionPerson||'—'}</div></div>
-      <div class="field full"><div class="lbl">Immediate Action</div><div class="val">${r.immediate||'—'}</div></div>
+      <div class="field"><div class="lbl">Report Type</div><div class="val">${r.type||formTypeLabel}</div></div>
+      <div class="field"><div class="lbl">Date / Time</div><div class="val">${r.datetime||r.observed||'—'}</div></div>
+      <div class="field"><div class="lbl">Reporter</div><div class="val">${r.anonymous ? '🔒 Anonymous' : (r.name||'—') + ' (' + (r.role||'—') + ')'}</div></div>
+      <div class="field"><div class="lbl">Contact</div><div class="val">${r.anonymous ? '—' : (r.contact||'—')}</div></div>
     </div></div>
   </div>
   <div class="section">
-    <div class="section-head">F. Corrective Action Plan</div>
+    <div class="section-head">B. Location &amp; Activity</div>
+    <div class="section-body"><div class="grid">
+      <div class="field"><div class="lbl">Organization / Unit</div><div class="val">${r.org||'—'}</div></div>
+      <div class="field"><div class="lbl">Exact Location</div><div class="val">${r.location||'—'}</div></div>
+      <div class="field full"><div class="lbl">Activity / Task</div><div class="val">${r.activity||'—'}</div></div>
+      <div class="field"><div class="lbl">Supervisor / Instructor</div><div class="val">${r.supervisor||r.invigilator||'—'}</div></div>
+    </div></div>
+  </div>
+  ${typeSection}
+  <div class="section">
+    <div class="section-head">${formType==='hazard'?'E':'F'}. Immediate Response</div>
+    <div class="section-body"><div class="grid">
+      <div class="field"><div class="lbl">Operations Stopped?</div><div class="val">${r.stopped||'—'}</div></div>
+      <div class="field"><div class="lbl">Responder</div><div class="val">${r.responder||'—'}</div></div>
+      <div class="field full"><div class="lbl">Immediate Action Taken</div><div class="val">${r.immediateAction||r.immediate||'—'}</div></div>
+    </div></div>
+  </div>
+  <div class="section">
+    <div class="section-head">${formType==='hazard'?'F':'G'}. Corrective Action Plan</div>
     <div class="section-body">
-      <table><thead><tr><th>#</th><th>Action</th><th>Control Type</th><th>Owner</th><th>Target Date</th><th>Status</th></tr></thead>
+      <table><thead><tr><th>#</th><th>Action</th><th>Control Type</th><th>Owner</th><th>Target Date</th><th>Status</th><th>Source</th></tr></thead>
       <tbody>${capsHtml}</tbody></table>
     </div>
   </div>
   <div class="section">
-    <div class="section-head">G. Evidence & Witness</div>
+    <div class="section-head">${formType==='hazard'?'G':'H'}. Evidence &amp; Witness</div>
     <div class="section-body"><div class="grid">
-      <div class="field"><div class="lbl">Witness</div><div class="val">${r.witness||'—'}</div></div>
-      <div class="field"><div class="lbl">Evidence Notes</div><div class="val">${r.evidence||'—'}</div></div>
+      <div class="field full"><div class="lbl">Evidence Notes</div><div class="val">${r.evidence||'—'}</div></div>
     </div></div>
   </div>
   ${r.acknowledgment ? `<div class="section">
-    <div class="section-head" style="background:#0F766E;">H. Safety Manager Acknowledgment</div>
+    <div class="section-head" style="background:#0F766E;">SMS Manager Acknowledgment</div>
     <div class="section-body"><div class="grid">
       <div class="field"><div class="lbl">Note</div><div class="val">${r.acknowledgment.note}</div></div>
       <div class="field"><div class="lbl">Next Step</div><div class="val">${r.acknowledgment.action||'—'}</div></div>
@@ -10330,7 +10431,7 @@ function printReport() {
   <div class="signoff">
     <div class="signoff-cell"><div class="sig-line">Reporter Signature &amp; Date</div></div>
     <div class="signoff-cell"><div class="sig-line">SMS Coordinator Signature &amp; Date</div></div>
-    <div class="signoff-cell"><div class="sig-line">Dept. Head Signature &amp; Date</div></div>
+    <div class="signoff-cell"><div class="sig-line">Dept. Head / AE Signature &amp; Date</div></div>
   </div>
   </div></body></html>`);
   win.document.close();
