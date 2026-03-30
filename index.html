@@ -5733,6 +5733,14 @@ function viewReport(id) {
     ? `<span style="font-size:11px;background:#FFF7ED;color:#D97706;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:6px;">⚡ Incident</span>`
     : `<span style="font-size:11px;background:#FFFBEB;color:#B45309;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:6px;">⚠️ Hazard</span>`;
 
+  // Format datetime for display - prefer incident datetime, fall back to submitted
+  function fmtModalDt(val) {
+    if (!val) return null;
+    try { const d = new Date(val); return isNaN(d.getTime()) ? val : d.toLocaleString(); } catch(e) { return val; }
+  }
+  const displayDateTime = fmtModalDt(r.datetime || r.observed) || fmtModalDt(r.submitted) || '—';
+  const dateLabel = formType === 'accident' ? 'Date / Time of Accident' : formType === 'incident' ? 'Date / Time of Incident' : 'Date / Time Observed';
+
   const commonTopFields = `
       ${field('Report ID', `<code style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--blue);background:#EFF6FF;padding:2px 8px;border-radius:4px;">${r.id}</code>${formTypeBadge}`)}
       ${field('Submitted', r.submitted ? new Date(r.submitted).toLocaleString() : '—')}
@@ -5740,8 +5748,8 @@ function viewReport(id) {
       ${field('Location', r.location||'—')}
       ${field('Reporter', r.anonymous ? '🔒 Anonymous' : (r.name||'—') + ' (' + (r.role||'—') + ')')}
       ${field('Activity / Course', r.activity||'—')}
-      ${field('Supervisor', r.supervisor||'—')}
-      ${field('Date / Time', r.datetime||'—')}`;
+      ${field('Supervisor', r.supervisor||r.invigilator||'—')}
+      ${field(dateLabel, displayDateTime)}`;
 
   const typeSpecificFields = formType === 'accident' ? `
       ${field('Severity of Outcome', r.severityOutcome||'—')}
@@ -5861,7 +5869,7 @@ function viewReport(id) {
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Date / Time of Report</label>
           <input type="datetime-local" id="modal-edit-datetime"
-            value="${(r.datetime||'').slice(0,16)}"
+            value="${((r.datetime || r.observed || r.submitted || '').slice(0,16))}"
             style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;"/>
         </div>
       </div>
@@ -10285,7 +10293,18 @@ function printReport() {
       </tr>`).join('')
     : '<tr><td colspan="7" style="color:#64748B;font-style:italic;">No CAP actions recorded. Link an RCA to this report or add actions via the CAP tab.</td></tr>';
 
-  // Build type-specific sections
+  // Helper: format any datetime string (ISO, datetime-local, or Date) to readable form
+  function fmtDt(val) {
+    if (!val) return null;
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val; // return raw if unparseable
+      return d.toLocaleString('en-PH', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+    } catch(e) { return val; }
+  }
+
+  // Date/Time of incident: prefer explicit datetime, fall back to submitted timestamp
+  const incidentDateTime = fmtDt(r.datetime || r.observed) || fmtDt(r.submitted) || '—';
   let typeSection = '';
   if (formType === 'accident') {
     typeSection = `
@@ -10423,7 +10442,7 @@ function printReport() {
     <div class="section-head">A. Report Control &amp; Reporter</div>
     <div class="section-body"><div class="grid">
       <div class="field"><div class="lbl">Report Type</div><div class="val">${r.type||formTypeLabel}</div></div>
-      <div class="field"><div class="lbl">Date / Time</div><div class="val">${r.datetime||r.observed||'—'}</div></div>
+      <div class="field"><div class="lbl">Date / Time of ${formType==='accident'?'Accident':formType==='incident'?'Incident':'Observation'}</div><div class="val">${incidentDateTime}</div></div>
       <div class="field"><div class="lbl">Reporter</div><div class="val">${r.anonymous ? '🔒 Anonymous' : (r.name||'—') + ' (' + (r.role||'—') + ')'}</div></div>
       <div class="field"><div class="lbl">Contact</div><div class="val">${r.anonymous ? '—' : (r.contact||'—')}</div></div>
     </div></div>
@@ -10579,9 +10598,21 @@ function exportSingleReportPDF() {
     y += 4 + lines.length * 4.5 + 3;
   }
 
+  // Helper: format datetime string to human-readable, fall back to submitted
+  function fmtDtPdf(val) {
+    if (!val) return null;
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      return d.toLocaleString('en-PH', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+    } catch(e) { return val; }
+  }
+  const pdfDateTime = fmtDtPdf(r.datetime || r.observed) || fmtDtPdf(r.submitted) || '—';
+  const pdfDateLabel = formType === 'accident' ? 'Date / Time of Accident' : formType === 'incident' ? 'Date / Time of Incident' : 'Date / Time Observed';
+
   // ── A. Report Control ──────────────────────────────────────────────────────
   section('A. Report Control & Reporter');
-  twoCol('Report Type', r.type||formTypeLabel, 'Date / Time', r.datetime||r.observed||'—');
+  twoCol('Report Type', r.type||formTypeLabel, pdfDateLabel, pdfDateTime);
   twoCol('Reporter', r.anonymous ? 'Anonymous' : `${r.name||'—'} (${r.role||'—'})`, 'Contact', r.anonymous ? '—' : (r.contact||'—'));
   twoCol('Organization / Unit', r.org||'—', 'Supervisor', r.supervisor||'—');
 
