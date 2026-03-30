@@ -5800,11 +5800,37 @@ function viewReport(id) {
           <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Report Type</label>
           <select id="modal-edit-type" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;">
             <option value="">Select…</option>
-            <option ${r.type==='Hazard'?'selected':''}>Hazard</option>
-            <option ${r.type==='Near-miss'?'selected':''}>Near-miss</option>
-            <option ${r.type==='Safety Concern / Observation'?'selected':''}>Safety Concern / Observation</option>
-            <option ${r.type==='Unsafe Act'?'selected':''}>Unsafe Act</option>
-            <option ${r.type==='Unsafe Condition'?'selected':''}>Unsafe Condition</option>
+            ${formType === 'incident' ? `
+            <optgroup label="— Incident Sub-Types —">
+              <option ${r.type==='Training Integrity Breach / Cheating Incident'?'selected':''}>Training Integrity Breach / Cheating Incident</option>
+              <option ${r.type==='Examination Security Breach'?'selected':''}>Examination Security Breach</option>
+              <option ${r.type==='Student Misconduct / Safety Breach'?'selected':''}>Student Misconduct / Safety Breach</option>
+              <option ${r.type==='Instructor / Staff Misconduct'?'selected':''}>Instructor / Staff Misconduct</option>
+              <option ${r.type==='Operational Incident'?'selected':''}>Operational Incident</option>
+              <option ${r.type==='Near-Miss / Close Call'?'selected':''}>Near-Miss / Close Call</option>
+              <option ${r.type==='Security Incident'?'selected':''}>Security Incident</option>
+              <option ${r.type==='Regulatory Non-Compliance'?'selected':''}>Regulatory Non-Compliance</option>
+              <option ${r.type==='IT / Data Incident'?'selected':''}>IT / Data Incident</option>
+              <option ${r.type==='Process Failure'?'selected':''}>Process Failure</option>
+              <option ${r.type==='Training Incident'?'selected':''}>Training Incident</option>
+              <option ${r.type==='Other'?'selected':''}>Other</option>
+            </optgroup>` : formType === 'accident' ? `
+            <optgroup label="— Accident Sub-Types —">
+              <option ${r.type==='Personal Injury'?'selected':''}>Personal Injury</option>
+              <option ${r.type==='Occupational Illness'?'selected':''}>Occupational Illness</option>
+              <option ${r.type==='Property / Equipment Damage'?'selected':''}>Property / Equipment Damage</option>
+              <option ${r.type==='Aircraft Ground Damage'?'selected':''}>Aircraft Ground Damage</option>
+              <option ${r.type==='Fire / Explosion'?'selected':''}>Fire / Explosion</option>
+              <option ${r.type==='Dangerous Occurrence'?'selected':''}>Dangerous Occurrence</option>
+              <option ${r.type==='Other'?'selected':''}>Other</option>
+            </optgroup>` : `
+            <optgroup label="— Hazard Sub-Types —">
+              <option ${r.type==='Hazard'?'selected':''}>Hazard</option>
+              <option ${r.type==='Near-miss'?'selected':''}>Near-miss</option>
+              <option ${r.type==='Safety Concern / Observation'?'selected':''}>Safety Concern / Observation</option>
+              <option ${r.type==='Unsafe Act'?'selected':''}>Unsafe Act</option>
+              <option ${r.type==='Unsafe Condition'?'selected':''}>Unsafe Condition</option>
+            </optgroup>`}
           </select>
         </div>
         <div>
@@ -5821,16 +5847,22 @@ function viewReport(id) {
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Submitted Via</label>
           <select id="modal-edit-via" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;">
+            <option ${r.via==='Online Form'?'selected':''}>Online Form</option>
             <option ${r.via==='In-person'?'selected':''}>In-person</option>
+            <option ${r.via==='Instructor Detection / Direct Observation'?'selected':''}>Instructor Detection / Direct Observation</option>
+            <option ${r.via==='CCTV / Video Evidence'?'selected':''}>CCTV / Video Evidence</option>
+            <option ${r.via==='Student / Peer Report'?'selected':''}>Student / Peer Report</option>
+            <option ${r.via==='Management Escalation'?'selected':''}>Management Escalation</option>
             <option ${r.via==='Email'?'selected':''}>Email</option>
             <option ${r.via==='Phone'?'selected':''}>Phone</option>
             <option ${r.via==='Drop box'?'selected':''}>Drop box</option>
-            <option ${r.via==='Online Form'?'selected':''}>Online Form</option>
           </select>
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Date / Time of Report</label>
-          <input type="datetime-local" id="modal-edit-datetime" value="${r.datetime||''}" style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;"/>
+          <input type="datetime-local" id="modal-edit-datetime"
+            value="${(r.datetime||'').slice(0,16)}"
+            style="width:100%;padding:8px 10px;border:1.5px solid #FDE68A;border-radius:8px;font-size:13px;background:white;"/>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -6224,10 +6256,10 @@ function saveModalReportControl(reportId) {
   const oldType    = arr[idx].type;
   const oldUrgency = arr[idx].urgency;
 
-  if (typeEl.value)      arr[idx].type     = typeEl.value;
-  if (urgencyEl.value)   arr[idx].urgency  = urgencyEl.value;
-  if (viaEl?.value)      arr[idx].via      = viaEl.value;
-  if (datetimeEl?.value) arr[idx].datetime = datetimeEl.value;
+  if (typeEl.value)                arr[idx].type     = typeEl.value;
+  if (urgencyEl.value)             arr[idx].urgency  = urgencyEl.value;
+  if (viaEl?.value)                arr[idx].via      = viaEl.value;
+  if (datetimeEl?.value !== undefined) arr[idx].datetime = datetimeEl.value;
 
   fbSet(fbPath + reportId, arr[idx]);
   lsSet(lsKey, arr);
