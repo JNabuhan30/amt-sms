@@ -8009,26 +8009,22 @@ function saveAudit() {
     `Auditor: ${record.auditor || '—'}. Date: ${record.date || '—'}. ` +
     `Results: ✅ ${yesCount} Yes · ❌ ${noCount} No · ➖ ${naCount} N/A.`;
 
+  // Step 1: Save to localStorage immediately (always works, instant render)
+  const lsIdx = audits.findIndex(r => r.id === record.id);
+  if (lsIdx >= 0) audits[lsIdx] = record; else audits.push(record);
+  lsSet('sms_audits', audits);
+  renderSavedAudits();
+  logAuditEvent('AUDIT_SAVED', record.id, logDetail, null, 'Saved');
+  toast('✅ Audit saved!', 'success');
+
+  // Step 2: Sync to Firebase in background (bonus — does not block or override UI)
   if (db()) {
-    // Show saving indicator
-    toast('⏳ Saving audit…', '');
     db().ref('sms/audits/' + record.id).set(record)
-      .then(() => {
-        logAuditEvent('AUDIT_SAVED', record.id, logDetail, null, 'Saved');
-        toast('✅ Audit saved!', 'success');
-      })
-      .catch(err => {
-        console.error('Firebase saveAudit error:', err);
-        toast('❌ Save failed: ' + (err.message || 'Firebase write error. Check connection.'), 'error');
+      .then(function() { /* real-time listener keeps audits[] in sync */ })
+      .catch(function(err) {
+        console.warn('Firebase sync failed (saved locally):', err.message || err);
+        toast('⚠️ Saved locally — Firebase sync failed. Data is safe.', '');
       });
-  } else {
-    // localStorage fallback
-    const i = audits.findIndex(r => r.id === record.id);
-    if (i >= 0) audits[i] = record; else audits.push(record);
-    lsSet('sms_audits', audits);
-    logAuditEvent('AUDIT_SAVED', record.id, logDetail, null, 'Saved');
-    renderSavedAudits();
-    toast('✅ Audit saved (offline)!', 'success');
   }
 }
 
@@ -8244,39 +8240,39 @@ function saveAuditA() {
     nextDate: document.getElementById('ga-next').value,
     saved: new Date().toISOString(),
   };
+
   // Count results for log detail
   const refs = AUDIT_A_ITEMS.filter(i => i.ref).map(i => i.ref);
   const yesCountA = refs.filter(r => (record.state||{})[r] === 'yes').length;
   const noCountA  = refs.filter(r => (record.state||{})[r] === 'no').length;
   const naCountA  = refs.filter(r => (record.state||{})[r] === 'na').length;
 
-  const logDetailA = `G.1-A Inspection saved — ${record.building || 'No location'}${record.room ? ' / ' + record.room : ''} (${record.trigger || 'Scheduled'}). ` +
-    `Inspector: ${record.inspector || '—'}. Dept: ${record.dept || '—'}. Date: ${record.date || '—'}. ` +
-    `Results: ✅ ${yesCountA} Yes · ❌ ${noCountA} No · ➖ ${naCountA} N/A. ` +
-    `Overall: ${(record.result || '').split('–')[0].trim()}.`;
+  const logDetailA = 'G.1-A Inspection saved \u2014 ' + (record.building || 'No location') +
+    (record.room ? ' / ' + record.room : '') + ' (' + (record.trigger || 'Scheduled') + '). ' +
+    'Inspector: ' + (record.inspector || '\u2014') + '. Dept: ' + (record.dept || '\u2014') +
+    '. Date: ' + (record.date || '\u2014') + '. ' +
+    'Results: \u2705 ' + yesCountA + ' Yes \u00b7 \u274c ' + noCountA +
+    ' No \u00b7 \u2796 ' + naCountA + ' N/A. ' +
+    'Overall: ' + ((record.result || '').split('\u2013')[0].trim()) + '.';
 
+  // Step 1: Save to localStorage immediately (always works, instant render)
+  const lsIdx = auditA.findIndex(r => r.id === record.id);
+  if (lsIdx >= 0) auditA[lsIdx] = record; else auditA.push(record);
+  lsSet('sms_auditA', auditA);
+  renderSavedInspections();
+  logAuditEvent('AUDIT_SAVED', record.id, logDetailA, null, 'Saved');
+  toast('\u2705 Inspection saved!', 'success');
+
+  // Step 2: Sync to Firebase in background (bonus \u2014 does not block or override UI)
   if (db()) {
-    toast('⏳ Saving inspection…', '');
     db().ref('sms/auditA/' + record.id).set(record)
-      .then(() => {
-        logAuditEvent('AUDIT_SAVED', record.id, logDetailA, null, 'Saved');
-        toast('✅ Inspection saved!', 'success');
-      })
-      .catch(err => {
-        console.error('Firebase saveAuditA error:', err);
-        toast('❌ Save failed: ' + (err.message || 'Firebase write error. Check connection.'), 'error');
+      .then(function() { /* real-time listener keeps auditA[] in sync */ })
+      .catch(function(err) {
+        console.warn('Firebase sync failed (saved locally):', err.message || err);
+        toast('\u26a0\ufe0f Saved locally \u2014 Firebase sync failed. Data is safe.', '');
       });
-  } else {
-    // localStorage fallback
-    const i = auditA.findIndex(r => r.id === record.id);
-    if (i >= 0) auditA[i] = record; else auditA.push(record);
-    lsSet('sms_auditA', auditA);
-    logAuditEvent('AUDIT_SAVED', record.id, logDetailA, null, 'Saved');
-    renderSavedInspections();
-    toast('✅ Inspection saved (offline)!', 'success');
   }
 }
-
 function resetAuditA() {
   if (!confirm('Reset all inspection responses?')) return;
   auditAState = {};
