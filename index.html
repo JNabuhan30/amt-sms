@@ -4067,23 +4067,83 @@ window.addEventListener('load', function() {
 
   // Audits G.1
   db().ref('sms/audits').on('value', function(snap) {
-    audits = snap.exists() ? Object.values(snap.val()) : [];
+    if (snap.exists()) {
+      // Firebase has data — merge with localStorage to avoid losing records saved during this session
+      const fbAudits = Object.values(snap.val());
+      const lsAudits = lsGet('sms_audits', []);
+      // Build a merged map: Firebase wins for records it knows about; keep any ls-only records
+      const merged = {};
+      lsAudits.forEach(r => { if (r && r.id) merged[r.id] = r; });
+      fbAudits.forEach(r => { if (r && r.id) merged[r.id] = r; });
+      audits = Object.values(merged);
+      // Always sync the authoritative merged result back to localStorage
+      lsSet('sms_audits', audits);
+      // Push any ls-only records up to Firebase so nothing is lost
+      lsAudits.forEach(r => {
+        if (r && r.id && !snap.val()[r.id]) {
+          db().ref('sms/audits/' + r.id).set(r).catch(function(){});
+        }
+      });
+    } else {
+      // Firebase is empty — use localStorage so we never lose saved data
+      const lsAudits = lsGet('sms_audits', []);
+      if (lsAudits.length > 0) {
+        audits = lsAudits;
+        // Re-upload localStorage records to Firebase
+        lsAudits.forEach(r => {
+          if (r && r.id) db().ref('sms/audits/' + r.id).set(r).catch(function(){});
+        });
+      }
+      // If both are empty, leave audits as-is (don't wipe any session data)
+    }
     if (currentRole === 'admin') {
       try { renderSavedAudits(); } catch(e) {}
       try { updateDashboard(); } catch(e) {}
     }
     onLoaded();
-  }, function() { onLoaded(); });
+  }, function() {
+    // Firebase error — fall back to localStorage, never wipe
+    const lsAudits = lsGet('sms_audits', []);
+    if (lsAudits.length > 0) audits = lsAudits;
+    onLoaded();
+  });
 
   // Audits G.1-A
   db().ref('sms/auditA').on('value', function(snap) {
-    auditA = snap.exists() ? Object.values(snap.val()) : [];
+    if (snap.exists()) {
+      // Firebase has data — merge with localStorage to avoid losing records saved during this session
+      const fbAuditA = Object.values(snap.val());
+      const lsAuditA = lsGet('sms_auditA', []);
+      const merged = {};
+      lsAuditA.forEach(r => { if (r && r.id) merged[r.id] = r; });
+      fbAuditA.forEach(r => { if (r && r.id) merged[r.id] = r; });
+      auditA = Object.values(merged);
+      lsSet('sms_auditA', auditA);
+      // Push any ls-only records up to Firebase
+      lsAuditA.forEach(r => {
+        if (r && r.id && !snap.val()[r.id]) {
+          db().ref('sms/auditA/' + r.id).set(r).catch(function(){});
+        }
+      });
+    } else {
+      const lsAuditA = lsGet('sms_auditA', []);
+      if (lsAuditA.length > 0) {
+        auditA = lsAuditA;
+        lsAuditA.forEach(r => {
+          if (r && r.id) db().ref('sms/auditA/' + r.id).set(r).catch(function(){});
+        });
+      }
+    }
     if (currentRole === 'admin') {
       try { renderSavedInspections(); } catch(e) {}
       try { updateDashboard(); } catch(e) {}
     }
     onLoaded();
-  }, function() { onLoaded(); });
+  }, function() {
+    const lsAuditA = lsGet('sms_auditA', []);
+    if (lsAuditA.length > 0) auditA = lsAuditA;
+    onLoaded();
+  });
 
   // Audit Log (append-only, non-blocking)
   db().ref('sms/auditlog').on('value', function(snap) {
@@ -8241,12 +8301,25 @@ function saveAudit() {
   logAuditEvent('AUDIT_SAVED', record.id, logDetail, null, 'Saved');
   toast('✅ Audit saved!', 'success');
 
-  // Step 2: Sync to Firebase in background (bonus — does not block or override UI)
+  // Step 2: Sync to Firebase in background (does not block or override UI)
   if (db()) {
     db().ref('sms/audits/' + record.id).set(record)
-      .then(function() { /* real-time listener keeps audits[] in sync */ })
+      .then(function() {
+        // Re-verify localStorage still has the record after Firebase write
+        const ls = lsGet('sms_audits', []);
+        if (!ls.find(function(r){ return r.id === record.id; })) {
+          if (audits.findIndex(function(r){ return r.id === record.id; }) < 0) audits.push(record);
+          lsSet('sms_audits', audits);
+        }
+      })
       .catch(function(err) {
         console.warn('Firebase sync failed (saved locally):', err.message || err);
+        // Re-ensure localStorage is intact after error
+        const ls = lsGet('sms_audits', []);
+        if (!ls.find(function(r){ return r.id === record.id; })) {
+          if (audits.findIndex(function(r){ return r.id === record.id; }) < 0) audits.push(record);
+          lsSet('sms_audits', audits);
+        }
         toast('⚠️ Saved locally — Firebase sync failed. Data is safe.', '');
       });
   }
@@ -8487,12 +8560,25 @@ function saveAuditA() {
   logAuditEvent('AUDIT_SAVED', record.id, logDetailA, null, 'Saved');
   toast('\u2705 Inspection saved!', 'success');
 
-  // Step 2: Sync to Firebase in background (bonus \u2014 does not block or override UI)
+  // Step 2: Sync to Firebase in background (does not block or override UI)
   if (db()) {
     db().ref('sms/auditA/' + record.id).set(record)
-      .then(function() { /* real-time listener keeps auditA[] in sync */ })
+      .then(function() {
+        // Re-verify localStorage still has the record after Firebase write
+        const ls = lsGet('sms_auditA', []);
+        if (!ls.find(function(r){ return r.id === record.id; })) {
+          if (auditA.findIndex(function(r){ return r.id === record.id; }) < 0) auditA.push(record);
+          lsSet('sms_auditA', auditA);
+        }
+      })
       .catch(function(err) {
         console.warn('Firebase sync failed (saved locally):', err.message || err);
+        // Re-ensure localStorage is intact after error
+        const ls = lsGet('sms_auditA', []);
+        if (!ls.find(function(r){ return r.id === record.id; })) {
+          if (auditA.findIndex(function(r){ return r.id === record.id; }) < 0) auditA.push(record);
+          lsSet('sms_auditA', auditA);
+        }
         toast('\u26a0\ufe0f Saved locally \u2014 Firebase sync failed. Data is safe.', '');
       });
   }
