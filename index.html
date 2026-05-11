@@ -3848,7 +3848,9 @@ function db() { return window._db; }
 // Write a record to Firebase (with localStorage fallback)
 function fbSet(path, data) {
   if (db()) {
-    db().ref(path).set(data);
+    db().ref(path).set(data).catch(err => {
+      console.error('fbSet error at path "' + path + '":', err.message || err);
+    });
   } else {
     // localStorage fallback
     const parts = path.split('/');
@@ -4609,7 +4611,10 @@ function toast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 2800);
+  // '⏳' saving toasts stay longer and don't auto-dismiss — they're replaced by the result toast
+  if (!msg.startsWith('⏳')) {
+    setTimeout(() => t.className = 'toast', 2800);
+  }
 }
 
 let _successRedirectTimer = null;
@@ -5112,18 +5117,39 @@ function submitReport() {
     signoffs: [],
   };
 
-  fbSet('sms/reports/' + report.id, report);
-  logAuditEvent('SUBMIT', report.id, `Report submitted: ${report.type || 'Hazard'} at ${report.location || 'unknown location'}. Urgency: ${finalUrgency}. Risk: ${report.caapCode}.`, null, 'Open');
+  const submitLogDetail = `Report submitted: ${report.type || 'Hazard'} at ${report.location || 'unknown location'}. Urgency: ${finalUrgency}. Risk: ${report.caapCode}.`;
 
-  // Clear draft on submit
-  localStorage.removeItem(DRAFT_KEY);
-  const _submitStatusEl = document.getElementById('autosave-status');
-  if (_submitStatusEl) _submitStatusEl.textContent = '';
+  function onReportSaved() {
+    logAuditEvent('SUBMIT', report.id, submitLogDetail, null, 'Open');
+    // Clear draft on submit
+    localStorage.removeItem(DRAFT_KEY);
+    const _submitStatusEl = document.getElementById('autosave-status');
+    if (_submitStatusEl) _submitStatusEl.textContent = '';
+    if (currentRole === 'student') {
+      showStudentSuccess(report.id);
+    } else {
+      showSubmitSuccessModal(report.id);
+    }
+  }
 
-  if (currentRole === 'student') {
-    showStudentSuccess(report.id);
+  if (db()) {
+    const submitBtn = document.querySelector('[onclick*="submitReport"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Submitting…'; }
+    db().ref('sms/reports/' + report.id).set(report)
+      .then(() => {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '📤 Submit Hazard Report'; }
+        onReportSaved();
+      })
+      .catch(err => {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '📤 Submit Hazard Report'; }
+        console.error('Firebase submitReport error:', err);
+        toast('❌ Submission failed: ' + (err.message || 'Firebase write error. Check your connection.'), 'error');
+      });
   } else {
-    showSubmitSuccessModal(report.id);
+    const i = reports.findIndex(r => r.id === report.id);
+    if (i >= 0) reports[i] = report; else reports.push(report);
+    lsSet('sms_reports', reports);
+    onReportSaved();
   }
 }
 
@@ -6586,29 +6612,42 @@ function submitAccidentReport() {
     submittedBy: currentRole || 'admin',
   };
 
+  const acLogDetail = `Accident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Severity: ${severity}.`;
+
+  function showAccidentSuccess() {
+    logAuditEvent('SUBMIT', report.id, acLogDetail, null, 'Open');
+    try { renderRegister(); updateDashboard(); renderCapTracker(); } catch(e) {}
+    const page = document.getElementById('page-accident-report');
+    const old = document.getElementById('ac-success-card');
+    if (old) old.remove();
+    const card = document.createElement('div');
+    card.id = 'ac-success-card';
+    card.style.cssText = 'background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:36px 24px;text-align:center;margin-bottom:20px;border-top:4px solid #DC2626;';
+    card.innerHTML = `
+      <div style="font-size:56px;margin-bottom:12px;">✅</div>
+      <div style="font-size:20px;font-weight:800;color:#1B3A6B;margin-bottom:8px;">Accident Report Submitted!</div>
+      <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Your report has been recorded and will be reviewed by the SMS Coordinator.</div>
+      <div style="font-family:monospace;font-size:17px;font-weight:700;color:#DC2626;background:#FEF2F2;padding:10px 20px;border-radius:8px;display:inline-block;margin-bottom:20px;">${report.id}</div>
+      <div style="font-size:11px;color:#94A3B8;margin-bottom:24px;">Save this Report ID for your records.</div>
+      <button onclick="document.getElementById('ac-success-card').remove();Array.from(document.getElementById('page-accident-report').children).forEach(el=>{el.style.display='';});clearAccidentForm();" style="background:#DC2626;color:white;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📝 Submit Another Report</button>`;
+    Array.from(page.children).forEach(el => { el.style.display = 'none'; });
+    page.insertBefore(card, page.firstChild);
+  }
+
   accidentReports.push(report);
   lsSet('sms_accidents', accidentReports);
-  fbSet('sms/accidents/' + report.id, report);
-  logAuditEvent('SUBMIT', report.id, `Accident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Severity: ${severity}.`, null, 'Open');
-  toast('🚨 Accident Report submitted: ' + report.id, 'success');
-  try { renderRegister(); updateDashboard(); renderCapTracker(); } catch(e) {}
 
-  // Show success banner
-  const page = document.getElementById('page-accident-report');
-  const old = document.getElementById('ac-success-card');
-  if (old) old.remove();
-  const card = document.createElement('div');
-  card.id = 'ac-success-card';
-  card.style.cssText = 'background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:36px 24px;text-align:center;margin-bottom:20px;border-top:4px solid #DC2626;';
-  card.innerHTML = `
-    <div style="font-size:56px;margin-bottom:12px;">✅</div>
-    <div style="font-size:20px;font-weight:800;color:#1B3A6B;margin-bottom:8px;">Accident Report Submitted!</div>
-    <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Your report has been recorded and will be reviewed by the SMS Coordinator.</div>
-    <div style="font-family:monospace;font-size:17px;font-weight:700;color:#DC2626;background:#FEF2F2;padding:10px 20px;border-radius:8px;display:inline-block;margin-bottom:20px;">${report.id}</div>
-    <div style="font-size:11px;color:#94A3B8;margin-bottom:24px;">Save this Report ID for your records.</div>
-    <button onclick="document.getElementById('ac-success-card').remove();Array.from(document.getElementById('page-accident-report').children).forEach(el=>{el.style.display='';});clearAccidentForm();" style="background:#DC2626;color:white;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📝 Submit Another Report</button>`;
-  Array.from(page.children).forEach(el => { el.style.display = 'none'; });
-  page.insertBefore(card, page.firstChild);
+  if (db()) {
+    toast('⏳ Submitting accident report…', '');
+    db().ref('sms/accidents/' + report.id).set(report)
+      .then(() => { showAccidentSuccess(); })
+      .catch(err => {
+        console.error('Firebase submitAccidentReport error:', err);
+        toast('❌ Submission failed: ' + (err.message || 'Firebase write error.'), 'error');
+      });
+  } else {
+    showAccidentSuccess();
+  }
 }
 
 function clearAccidentForm() {
@@ -6820,29 +6859,42 @@ function submitIncidentReport() {
     submittedBy: currentRole || 'admin',
   };
 
+  const irLogDetail = `Incident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Urgency: ${urgency}.`;
+
+  function showIncidentSuccess() {
+    logAuditEvent('SUBMIT', report.id, irLogDetail, null, 'Open');
+    try { renderRegister(); updateDashboard(); renderCapTracker(); } catch(e) {}
+    const page = document.getElementById('page-incident-report');
+    const old = document.getElementById('ir-success-card');
+    if (old) old.remove();
+    const card = document.createElement('div');
+    card.id = 'ir-success-card';
+    card.style.cssText = 'background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:36px 24px;text-align:center;margin-bottom:20px;border-top:4px solid #D97706;';
+    card.innerHTML = `
+      <div style="font-size:56px;margin-bottom:12px;">✅</div>
+      <div style="font-size:20px;font-weight:800;color:#1B3A6B;margin-bottom:8px;">Incident Report Submitted!</div>
+      <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Your report has been recorded and will be reviewed by the SMS Coordinator.</div>
+      <div style="font-family:monospace;font-size:17px;font-weight:700;color:#D97706;background:#FFFBEB;padding:10px 20px;border-radius:8px;display:inline-block;margin-bottom:20px;">${report.id}</div>
+      <div style="font-size:11px;color:#94A3B8;margin-bottom:24px;">Save this Report ID for your records.</div>
+      <button onclick="document.getElementById('ir-success-card').remove();Array.from(document.getElementById('page-incident-report').children).forEach(el=>{el.style.display='';});clearIncidentForm();" style="background:#D97706;color:white;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📝 Submit Another Report</button>`;
+    Array.from(page.children).forEach(el => { el.style.display = 'none'; });
+    page.insertBefore(card, page.firstChild);
+  }
+
   incidentReports.push(report);
   lsSet('sms_incidents', incidentReports);
-  fbSet('sms/incidents/' + report.id, report);
-  logAuditEvent('SUBMIT', report.id, `Incident Report submitted: ${report.type} at ${report.location || 'unknown location'}. Urgency: ${urgency}.`, null, 'Open');
-  toast('⚡ Incident Report submitted: ' + report.id, 'success');
-  try { renderRegister(); updateDashboard(); renderCapTracker(); } catch(e) {}
 
-  // Show success banner
-  const page = document.getElementById('page-incident-report');
-  const old = document.getElementById('ir-success-card');
-  if (old) old.remove();
-  const card = document.createElement('div');
-  card.id = 'ir-success-card';
-  card.style.cssText = 'background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:36px 24px;text-align:center;margin-bottom:20px;border-top:4px solid #D97706;';
-  card.innerHTML = `
-    <div style="font-size:56px;margin-bottom:12px;">✅</div>
-    <div style="font-size:20px;font-weight:800;color:#1B3A6B;margin-bottom:8px;">Incident Report Submitted!</div>
-    <div style="font-size:13px;color:#64748B;margin-bottom:16px;">Your report has been recorded and will be reviewed by the SMS Coordinator.</div>
-    <div style="font-family:monospace;font-size:17px;font-weight:700;color:#D97706;background:#FFFBEB;padding:10px 20px;border-radius:8px;display:inline-block;margin-bottom:20px;">${report.id}</div>
-    <div style="font-size:11px;color:#94A3B8;margin-bottom:24px;">Save this Report ID for your records.</div>
-    <button onclick="document.getElementById('ir-success-card').remove();Array.from(document.getElementById('page-incident-report').children).forEach(el=>{el.style.display='';});clearIncidentForm();" style="background:#D97706;color:white;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📝 Submit Another Report</button>`;
-  Array.from(page.children).forEach(el => { el.style.display = 'none'; });
-  page.insertBefore(card, page.firstChild);
+  if (db()) {
+    toast('⏳ Submitting incident report…', '');
+    db().ref('sms/incidents/' + report.id).set(report)
+      .then(() => { showIncidentSuccess(); })
+      .catch(err => {
+        console.error('Firebase submitIncidentReport error:', err);
+        toast('❌ Submission failed: ' + (err.message || 'Firebase write error.'), 'error');
+      });
+  } else {
+    showIncidentSuccess();
+  }
 }
 
 function clearIncidentForm() {
@@ -7953,19 +8005,31 @@ function saveAudit() {
   const noCount  = Object.values(record.state).filter(v => v === 'no').length;
   const naCount  = Object.values(record.state).filter(v => v === 'na').length;
 
-  fbSet('sms/audits/' + record.id, record);  // Firebase listener auto-refreshes the list
-
-  // Log to immutable audit trail
-  logAuditEvent(
-    'AUDIT_SAVED',
-    record.id,
-    `G.1 SMS Audit saved — ${record.area || 'No area'} (${record.type}). ` +
+  const logDetail = `G.1 SMS Audit saved — ${record.area || 'No area'} (${record.type}). ` +
     `Auditor: ${record.auditor || '—'}. Date: ${record.date || '—'}. ` +
-    `Results: ✅ ${yesCount} Yes · ❌ ${noCount} No · ➖ ${naCount} N/A.`,
-    null, 'Saved'
-  );
+    `Results: ✅ ${yesCount} Yes · ❌ ${noCount} No · ➖ ${naCount} N/A.`;
 
-  toast('✅ Audit saved!', 'success');
+  if (db()) {
+    // Show saving indicator
+    toast('⏳ Saving audit…', '');
+    db().ref('sms/audits/' + record.id).set(record)
+      .then(() => {
+        logAuditEvent('AUDIT_SAVED', record.id, logDetail, null, 'Saved');
+        toast('✅ Audit saved!', 'success');
+      })
+      .catch(err => {
+        console.error('Firebase saveAudit error:', err);
+        toast('❌ Save failed: ' + (err.message || 'Firebase write error. Check connection.'), 'error');
+      });
+  } else {
+    // localStorage fallback
+    const i = audits.findIndex(r => r.id === record.id);
+    if (i >= 0) audits[i] = record; else audits.push(record);
+    lsSet('sms_audits', audits);
+    logAuditEvent('AUDIT_SAVED', record.id, logDetail, null, 'Saved');
+    renderSavedAudits();
+    toast('✅ Audit saved (offline)!', 'success');
+  }
 }
 
 function resetAudit() {
@@ -8180,26 +8244,37 @@ function saveAuditA() {
     nextDate: document.getElementById('ga-next').value,
     saved: new Date().toISOString(),
   };
-  fbSet('sms/auditA/' + record.id, record);  // Firebase listener auto-refreshes the list
-
   // Count results for log detail
   const refs = AUDIT_A_ITEMS.filter(i => i.ref).map(i => i.ref);
   const yesCountA = refs.filter(r => (record.state||{})[r] === 'yes').length;
   const noCountA  = refs.filter(r => (record.state||{})[r] === 'no').length;
   const naCountA  = refs.filter(r => (record.state||{})[r] === 'na').length;
 
-  // Log to immutable audit trail
-  logAuditEvent(
-    'AUDIT_SAVED',
-    record.id,
-    `G.1-A Inspection saved — ${record.building || 'No location'}${record.room ? ' / ' + record.room : ''} (${record.trigger || 'Scheduled'}). ` +
+  const logDetailA = `G.1-A Inspection saved — ${record.building || 'No location'}${record.room ? ' / ' + record.room : ''} (${record.trigger || 'Scheduled'}). ` +
     `Inspector: ${record.inspector || '—'}. Dept: ${record.dept || '—'}. Date: ${record.date || '—'}. ` +
     `Results: ✅ ${yesCountA} Yes · ❌ ${noCountA} No · ➖ ${naCountA} N/A. ` +
-    `Overall: ${(record.result || '').split('–')[0].trim()}.`,
-    null, 'Saved'
-  );
+    `Overall: ${(record.result || '').split('–')[0].trim()}.`;
 
-  toast('✅ Inspection saved!', 'success');
+  if (db()) {
+    toast('⏳ Saving inspection…', '');
+    db().ref('sms/auditA/' + record.id).set(record)
+      .then(() => {
+        logAuditEvent('AUDIT_SAVED', record.id, logDetailA, null, 'Saved');
+        toast('✅ Inspection saved!', 'success');
+      })
+      .catch(err => {
+        console.error('Firebase saveAuditA error:', err);
+        toast('❌ Save failed: ' + (err.message || 'Firebase write error. Check connection.'), 'error');
+      });
+  } else {
+    // localStorage fallback
+    const i = auditA.findIndex(r => r.id === record.id);
+    if (i >= 0) auditA[i] = record; else auditA.push(record);
+    lsSet('sms_auditA', auditA);
+    logAuditEvent('AUDIT_SAVED', record.id, logDetailA, null, 'Saved');
+    renderSavedInspections();
+    toast('✅ Inspection saved (offline)!', 'success');
+  }
 }
 
 function resetAuditA() {
