@@ -509,6 +509,66 @@
   .saved-record-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--blue); font-weight:700; }
   .saved-record-meta { font-size: 11px; color: var(--muted); margin-top:2px; }
 
+  /* ── INSPECTION HISTORY PANEL ── */
+  .history-toolbar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    padding: 10px 0 12px; border-bottom: 1px solid var(--light); margin-bottom: 12px;
+  }
+  .history-toolbar input[type=text] {
+    flex: 1; min-width: 160px; max-width: 320px;
+    padding: 7px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: #FAFAFA;
+  }
+  .history-toolbar input[type=text]:focus { border-color: var(--blue); background: white; outline: none; }
+  .history-toolbar select {
+    padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: #FAFAFA; color: var(--text);
+  }
+  .history-toolbar select:focus { border-color: var(--blue); outline: none; }
+  .history-count {
+    font-size: 12px; color: var(--muted); font-weight: 600; margin-left: auto;
+    white-space: nowrap;
+  }
+  .history-scroll {
+    max-height: 480px; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    padding-right: 4px;
+  }
+  .history-scroll::-webkit-scrollbar { width: 5px; }
+  .history-scroll::-webkit-scrollbar-track { background: transparent; }
+  .history-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .history-empty {
+    text-align: center; padding: 36px 20px; color: var(--muted);
+    font-size: 13px; background: var(--bg); border-radius: 10px; border: 1.5px dashed var(--border);
+  }
+  .history-empty .he-icon { font-size: 32px; margin-bottom: 8px; display: block; }
+
+  /* View-details btn on saved rows */
+  .btn-view-detail {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    border: 1.5px solid var(--blue); background: #EFF6FF; color: var(--blue);
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .btn-view-detail:hover { background: var(--blue); color: white; }
+
+  /* ── INSPECTION DETAIL MODAL ── */
+  #inspection-detail-modal .modal { max-width: 820px; }
+  .detail-checklist-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid var(--light); font-size: 13px;
+  }
+  .detail-checklist-item:last-child { border-bottom: none; }
+  .detail-ref { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); min-width: 38px; padding-top: 2px; }
+  .detail-req { flex: 1; line-height: 1.5; }
+  .detail-verdict {
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; white-space: nowrap;
+  }
+  .dv-yes  { background: #DCFCE7; color: #166534; }
+  .dv-no   { background: #FEE2E2; color: #991B1B; }
+  .dv-na   { background: #F1F5F9; color: var(--muted); }
+  .dv-none { background: #F8FAFC; color: #CBD5E1; }
+  .detail-note { font-size: 11px; color: var(--muted); margin-top: 3px; font-style: italic; }
+
   /* ── SMS INSPECTION BUTTONS ── */
   .si-btn {
     padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
@@ -2435,11 +2495,27 @@
     <button class="btn btn-outline" onclick="resetAudit()">🔄 Reset</button>
   </div>
 
-  <!-- Saved Audits -->
+  <!-- Saved Audits History -->
   <div class="card" style="margin-top:20px;">
-    <div class="card-title"><span class="icon">📂</span> Saved Audits</div>
-    <div id="saved-audits-list">
-      <div style="color:var(--muted);font-size:13px;">No audits saved yet.</div>
+    <div class="card-title"><span class="icon">📂</span> G.1 Audit History</div>
+    <div class="history-toolbar">
+      <input type="text" id="audit-history-search" placeholder="🔍 Search by ID, auditor, area…" oninput="renderSavedAudits()">
+      <select id="audit-history-sort" onchange="renderSavedAudits()">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="area">By area</option>
+      </select>
+      <select id="audit-history-filter" onchange="renderSavedAudits()">
+        <option value="">All types</option>
+        <option value="Internal">Internal</option>
+        <option value="External">External</option>
+        <option value="Regulatory">Regulatory</option>
+        <option value="Unannounced">Unannounced</option>
+      </select>
+      <span class="history-count" id="audit-history-count"></span>
+    </div>
+    <div class="history-scroll" id="saved-audits-list">
+      <div class="history-empty"><span class="he-icon">📋</span>No audits saved yet.</div>
     </div>
   </div>
 </div>
@@ -3310,11 +3386,26 @@
     <button class="btn btn-outline" onclick="resetAuditA()">🔄 Reset</button>
   </div>
 
-  <!-- Saved Inspections -->
+  <!-- Saved Inspections History -->
   <div class="card" style="margin-top:20px;">
-    <div class="card-title"><span class="icon">📂</span> Saved Inspections</div>
-    <div id="saved-inspections-list">
-      <div style="color:var(--muted);font-size:13px;">No inspections saved yet.</div>
+    <div class="card-title"><span class="icon">📂</span> G.1-A Inspection History</div>
+    <div class="history-toolbar">
+      <input type="text" id="insp-history-search" placeholder="🔍 Search by ID, inspector, building…" oninput="renderSavedInspections()">
+      <select id="insp-history-sort" onchange="renderSavedInspections()">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="building">By building</option>
+      </select>
+      <select id="insp-history-filter" onchange="renderSavedInspections()">
+        <option value="">All results</option>
+        <option value="Satisfactory">Satisfactory</option>
+        <option value="Minor">Minor</option>
+        <option value="Unsatisfactory">Unsatisfactory</option>
+      </select>
+      <span class="history-count" id="insp-history-count"></span>
+    </div>
+    <div class="history-scroll" id="saved-inspections-list">
+      <div class="history-empty"><span class="he-icon">🏢</span>No inspections saved yet.</div>
     </div>
   </div>
 </div>
@@ -3809,6 +3900,21 @@
 </div>
 
 </div><!-- /#main-content-wrap -->
+
+<!-- ══════════════════════════════════════════════════════
+     INSPECTION / AUDIT DETAIL MODAL
+═══════════════════════════════════════════════════════ -->
+<div id="inspection-detail-modal" class="modal-overlay" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-header" id="detail-modal-header">
+      <h3 id="detail-modal-title">Inspection Details</h3>
+      <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body" style="padding:0;">
+      <!-- dynamically filled -->
+    </div>
+  </div>
+</div>
 
 <script>
 // ─── CHART.JS INSTANCES (destroy before recreating) ──────────────────────────
@@ -5528,27 +5634,69 @@ function updateStatus(id, status) {
 function renderSavedAudits() {
   const container = document.getElementById('saved-audits-list');
   if (!container) return;
-  if (!audits.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No audits saved yet.</div>';
+
+  // Search / filter / sort controls
+  const q      = (document.getElementById('audit-history-search')?.value || '').toLowerCase().trim();
+  const sortBy = document.getElementById('audit-history-sort')?.value || 'newest';
+  const typeF  = document.getElementById('audit-history-filter')?.value || '';
+
+  let list = [...audits];
+
+  // Filter
+  if (q) list = list.filter(a =>
+    (a.id||'').toLowerCase().includes(q) ||
+    (a.auditor||'').toLowerCase().includes(q) ||
+    (a.area||'').toLowerCase().includes(q) ||
+    (a.type||'').toLowerCase().includes(q)
+  );
+  if (typeF) list = list.filter(a => (a.type||'').includes(typeF));
+
+  // Sort
+  if (sortBy === 'oldest')  list.sort((a,b) => (a.saved||'') > (b.saved||'') ? 1 : -1);
+  else if (sortBy === 'area') list.sort((a,b) => (a.area||'').localeCompare(b.area||''));
+  else list.sort((a,b) => (a.saved||'') < (b.saved||'') ? 1 : -1); // newest
+
+  // Count label
+  const countEl = document.getElementById('audit-history-count');
+  if (countEl) countEl.textContent = list.length + ' of ' + audits.length + ' audit' + (audits.length !== 1 ? 's' : '');
+
+  if (!list.length) {
+    container.innerHTML = audits.length
+      ? `<div class="history-empty"><span class="he-icon">🔍</span>No audits match your search.</div>`
+      : `<div class="history-empty"><span class="he-icon">📋</span>No audits saved yet. Complete a G.1 audit and click Save Audit.</div>`;
     return;
   }
-  container.innerHTML = [...audits].reverse().map(a => {
+
+  container.innerHTML = list.map(a => {
     const yesCount = Object.values(a.state||{}).filter(v=>v==='yes').length;
     const noCount  = Object.values(a.state||{}).filter(v=>v==='no').length;
     const naCount  = Object.values(a.state||{}).filter(v=>v==='na').length;
+    const total    = yesCount + noCount + naCount;
+    const pct      = total ? Math.round(yesCount / total * 100) : 0;
     const safeArea = (a.area||'').replace(/'/g,"\\'");
+    const safeId   = (a.id||'').replace(/'/g,"\\'");
     return `<div class="saved-record-row">
       <div class="saved-record-info">
-        <div class="saved-record-id">${a.id}</div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px;">${a.area||'—'} · ${a.type||'Internal'}</div>
+        <div class="saved-record-id">${a.id} <span style="font-size:10px;color:var(--muted);font-family:inherit;font-weight:500;">${a.type||'Internal'}</span></div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px;">${a.area||'—'}</div>
         <div class="saved-record-meta">📅 ${a.date||'—'} &nbsp;|&nbsp; Auditor: ${a.auditor||'—'} &nbsp;|&nbsp;
-          ✅ ${yesCount} &nbsp; ❌ ${noCount} &nbsp; ➖ ${naCount}</div>
+          <span style="color:#16A34A;font-weight:600;">✅ ${yesCount}</span>
+          <span style="color:#DC2626;font-weight:600;"> ❌ ${noCount}</span>
+          <span style="color:var(--muted);"> ➖ ${naCount}</span>
+          &nbsp;|&nbsp; <span style="font-weight:700;">${pct}% compliant</span>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="background:var(--light);border-radius:99px;height:5px;overflow:hidden;max-width:220px;">
+            <div style="height:100%;border-radius:99px;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--gold)':'var(--red)'};transition:width .4s;"></div>
+          </div>
+        </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <button class="btn btn-outline btn-sm" onclick="printSavedAuditG1('${a.id}')">🖨️ Print</button>
+        <button class="btn-view-detail" onclick="viewAuditDetail('${safeId}')">🔎 View</button>
+        <button class="btn btn-outline btn-sm" onclick="printSavedAuditG1('${safeId}')">🖨️ Print</button>
         <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;white-space:nowrap;"
-          onclick="confirmDelete('audit','${a.id}','${a.id}','${safeArea ? ' — '+safeArea : ''}')">
-          🗑 Delete
+          onclick="confirmDelete('audit','${safeId}','${safeId}','${safeArea ? ' — '+safeArea : ''}')">
+          🗑
         </button>
       </div>
     </div>`;
@@ -5558,36 +5706,77 @@ function renderSavedAudits() {
 function renderSavedInspections() {
   const container = document.getElementById('saved-inspections-list');
   if (!container) return;
-  if (!auditA.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No inspections saved yet.</div>';
+
+  const q      = (document.getElementById('insp-history-search')?.value || '').toLowerCase().trim();
+  const sortBy = document.getElementById('insp-history-sort')?.value || 'newest';
+  const resF   = document.getElementById('insp-history-filter')?.value || '';
+
+  let list = [...auditA];
+
+  if (q) list = list.filter(a =>
+    (a.id||'').toLowerCase().includes(q) ||
+    (a.inspNo||'').toLowerCase().includes(q) ||
+    (a.inspector||'').toLowerCase().includes(q) ||
+    (a.building||'').toLowerCase().includes(q) ||
+    (a.dept||'').toLowerCase().includes(q) ||
+    (a.trigger||'').toLowerCase().includes(q)
+  );
+  if (resF) list = list.filter(a => (a.result||'').includes(resF));
+
+  if (sortBy === 'oldest')    list.sort((a,b) => (a.saved||'') > (b.saved||'') ? 1 : -1);
+  else if (sortBy === 'building') list.sort((a,b) => (a.building||'').localeCompare(b.building||''));
+  else list.sort((a,b) => (a.saved||'') < (b.saved||'') ? 1 : -1);
+
+  const countEl = document.getElementById('insp-history-count');
+  if (countEl) countEl.textContent = list.length + ' of ' + auditA.length + ' inspection' + (auditA.length !== 1 ? 's' : '');
+
+  if (!list.length) {
+    container.innerHTML = auditA.length
+      ? `<div class="history-empty"><span class="he-icon">🔍</span>No inspections match your search.</div>`
+      : `<div class="history-empty"><span class="he-icon">🏢</span>No inspections saved yet. Complete a G.1-A inspection and click Save Inspection.</div>`;
     return;
   }
+
   const refs = AUDIT_A_ITEMS.filter(i=>i.ref).map(i=>i.ref);
-  container.innerHTML = [...auditA].reverse().map(a => {
+  container.innerHTML = list.map(a => {
     const yesCount = refs.filter(r=>(a.state||{})[r]==='yes').length;
     const noCount  = refs.filter(r=>(a.state||{})[r]==='no').length;
     const naCount  = refs.filter(r=>(a.state||{})[r]==='na').length;
-    const pct = refs.length ? Math.round((yesCount+noCount+naCount)/refs.length*100) : 0;
+    const pct      = refs.length ? Math.round((yesCount+noCount+naCount)/refs.length*100) : 0;
+    const compPct  = (yesCount+noCount+naCount) ? Math.round(yesCount/(yesCount+noCount+naCount)*100) : 0;
     const resultColor = (a.result||'').includes('Unsatisfactory') ? '#DC2626' : (a.result||'').includes('Minor') ? '#D97706' : '#16A34A';
     const safeBuilding = (a.building||'').replace(/'/g,"\\'");
+    const safeId = (a.id||'').replace(/'/g,"\\'");
+    const resultLabel = (a.result||'').split('–')[0].trim() || '—';
     return `<div class="saved-record-row">
       <div class="saved-record-info">
-        <div class="saved-record-id">${a.id} &nbsp;<span style="font-size:10px;color:var(--muted);">Control: ${a.inspNo||'—'}</span></div>
+        <div class="saved-record-id">${a.id} &nbsp;<span style="font-size:10px;color:var(--muted);">No. ${a.inspNo||'—'}</span></div>
         <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px;">
-          ${a.building||'—'}${a.room?' / '+a.room:''} · ${a.trigger||'Scheduled'}
+          ${a.building||'—'}${a.room?' / '+a.room:''} &nbsp;·&nbsp; <span style="font-weight:500;">${a.trigger||'Scheduled'}</span>
         </div>
         <div class="saved-record-meta">📅 ${a.date||'—'} &nbsp;|&nbsp; Inspector: ${a.inspector||'—'} &nbsp;|&nbsp; Dept: ${a.dept||'—'}</div>
-        <div style="margin-top:6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:12px;">✅ ${yesCount} &nbsp; ❌ ${noCount} &nbsp; ➖ ${naCount} &nbsp; ${pct}% done</span>
+        <div style="margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:12px;">
+            <span style="color:#16A34A;font-weight:600;">✅ ${yesCount}</span>
+            <span style="color:#DC2626;font-weight:600;"> ❌ ${noCount}</span>
+            <span style="color:var(--muted);"> ➖ ${naCount}</span>
+            &nbsp;·&nbsp; ${pct}% complete
+          </span>
           ${noCount>0?`<span style="font-size:11px;background:#FEF2F2;color:#DC2626;padding:2px 8px;border-radius:99px;font-weight:600;">⚠️ ${noCount} non-compliance${noCount>1?'s':''}</span>`:''}
-          <span style="font-size:11px;font-weight:700;color:${resultColor};">${(a.result||'').split('–')[0].trim()}</span>
+          <span style="font-size:11px;font-weight:700;color:${resultColor};">${resultLabel}</span>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="background:var(--light);border-radius:99px;height:5px;overflow:hidden;max-width:220px;">
+            <div style="height:100%;border-radius:99px;width:${compPct}%;background:${compPct>=80?'var(--green)':compPct>=50?'var(--gold)':'var(--red)'};transition:width .4s;"></div>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <button class="btn btn-outline btn-sm" onclick="printSavedAuditA('${a.id}')">🖨️ Print</button>
+        <button class="btn-view-detail" onclick="viewInspectionDetail('${safeId}')">🔎 View</button>
+        <button class="btn btn-outline btn-sm" onclick="printSavedAuditA('${safeId}')">🖨️ Print</button>
         <button class="btn btn-sm" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;white-space:nowrap;"
-          onclick="confirmDelete('inspection','${a.id}','${a.id}','${safeBuilding ? ' — '+safeBuilding : ''}')">
-          🗑 Delete
+          onclick="confirmDelete('inspection','${safeId}','${safeId}','${safeBuilding ? ' — '+safeBuilding : ''}')">
+          🗑
         </button>
       </div>
     </div>`;
@@ -12426,5 +12615,154 @@ function discardDraft() {
 function initDraftSystem() {
   // Slight delay so all form elements are rendered
   setTimeout(startDraftAutosave, 500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INSPECTION / AUDIT DETAIL MODAL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function closeDetailModal() {
+  const overlay = document.getElementById('inspection-detail-modal');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function openDetailModal(titleHTML, bodyHTML) {
+  const overlay = document.getElementById('inspection-detail-modal');
+  const titleEl = document.getElementById('detail-modal-title');
+  const bodyEl  = document.getElementById('detail-modal-body');
+  if (!overlay || !titleEl || !bodyEl) return;
+  titleEl.innerHTML = titleHTML;
+  bodyEl.innerHTML  = bodyHTML;
+  overlay.classList.add('open');
+}
+
+function viewAuditDetail(id) {
+  const a = audits.find(x => x.id === id);
+  if (!a) { toast('Record not found.', 'error'); return; }
+
+  const yesC = Object.values(a.state||{}).filter(v=>v==='yes').length;
+  const noC  = Object.values(a.state||{}).filter(v=>v==='no').length;
+  const naC  = Object.values(a.state||{}).filter(v=>v==='na').length;
+  const total = yesC + noC + naC;
+  const pct  = total ? Math.round(yesC / total * 100) : 0;
+
+  let checklistHTML = '';
+  AUDIT_ITEMS.forEach(item => {
+    if (item.section) {
+      checklistHTML += `<div class="audit-section-hdr" style="margin:14px 0 4px;">${item.section}</div>`;
+    } else if (item.ref) {
+      const v     = (a.state||{})[item.ref] || '';
+      const note  = (a.notes||{})[item.ref] || '';
+      const cls   = v === 'yes' ? 'dv-yes' : v === 'no' ? 'dv-no' : v === 'na' ? 'dv-na' : 'dv-none';
+      const label = v === 'yes' ? '✅ Yes' : v === 'no' ? '❌ No' : v === 'na' ? '➖ N/A' : '— ';
+      checklistHTML += `<div class="detail-checklist-item">
+        <span class="detail-ref">${item.ref}</span>
+        <span class="detail-req">${item.req}${note ? `<div class="detail-note">📝 ${note}</div>` : ''}</span>
+        <span class="detail-verdict ${cls}">${label}</span>
+      </div>`;
+    }
+  });
+
+  const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--gold)' : 'var(--red)';
+  const body = `
+    <div style="padding:20px;border-bottom:1px solid var(--light);background:#F8FAFC;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:12px;">
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Date</div><div style="font-size:13px;font-weight:600;">${a.date||'—'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Auditor</div><div style="font-size:13px;font-weight:600;">${a.auditor||'—'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Area</div><div style="font-size:13px;font-weight:600;">${a.area||'—'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Type</div><div style="font-size:13px;font-weight:600;">${a.type||'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:13px;color:#16A34A;font-weight:700;">✅ ${yesC} Yes</span>
+        <span style="font-size:13px;color:#DC2626;font-weight:700;">❌ ${noC} No</span>
+        <span style="font-size:13px;color:var(--muted);font-weight:700;">➖ ${naC} N/A</span>
+        <div style="flex:1;min-width:100px;">
+          <div style="background:var(--light);border-radius:99px;height:8px;overflow:hidden;">
+            <div style="height:100%;border-radius:99px;width:${pct}%;background:${barColor};"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${pct}% compliance</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:16px 20px;max-height:52vh;overflow-y:auto;">
+      ${checklistHTML || '<div style="color:var(--muted);font-size:13px;padding:20px 0;">No checklist data recorded.</div>'}
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--light);display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-gold btn-sm" onclick="printSavedAuditG1('${id}')">🖨️ Print Report</button>
+      <button class="btn btn-outline btn-sm" onclick="closeDetailModal()">Close</button>
+    </div>`;
+
+  openDetailModal(`🔍 G.1 Audit — ${a.id}`, body);
+}
+
+function viewInspectionDetail(id) {
+  const a = auditA.find(x => x.id === id);
+  if (!a) { toast('Record not found.', 'error'); return; }
+
+  const refs = AUDIT_A_ITEMS.filter(i=>i.ref).map(i=>i.ref);
+  const yesC = refs.filter(r=>(a.state||{})[r]==='yes').length;
+  const noC  = refs.filter(r=>(a.state||{})[r]==='no').length;
+  const naC  = refs.filter(r=>(a.state||{})[r]==='na').length;
+  const pct  = refs.length ? Math.round((yesC+noC+naC)/refs.length*100) : 0;
+  const compPct = (yesC+noC+naC) ? Math.round(yesC/(yesC+noC+naC)*100) : 0;
+  const resultColor = (a.result||'').includes('Unsatisfactory') ? '#DC2626' : (a.result||'').includes('Minor') ? '#D97706' : '#16A34A';
+
+  let checklistHTML = '';
+  AUDIT_A_ITEMS.forEach(item => {
+    if (item.section) {
+      checklistHTML += `<div class="audit-section-hdr" style="margin:14px 0 4px;">${item.section}</div>`;
+    } else if (item.ref) {
+      const v     = (a.state||{})[item.ref] || '';
+      const actions = (a.itemActions||{})[item.ref] || {};
+      const cls   = v === 'yes' ? 'dv-yes' : v === 'no' ? 'dv-no' : v === 'na' ? 'dv-na' : 'dv-none';
+      const label = v === 'yes' ? '✅ Yes' : v === 'no' ? '❌ No' : v === 'na' ? '➖ N/A' : '—';
+      const extra = [
+        actions.severity  ? `Severity: <strong>${actions.severity}</strong>` : '',
+        actions.action    ? `Action: ${actions.action}` : '',
+        actions.dueDate   ? `Due: ${actions.dueDate}` : '',
+        actions.owner     ? `Owner: ${actions.owner}` : '',
+      ].filter(Boolean).join(' · ');
+      checklistHTML += `<div class="detail-checklist-item">
+        <span class="detail-ref">${item.ref}</span>
+        <span class="detail-req">${item.req}${extra ? `<div class="detail-note">📋 ${extra}</div>` : ''}</span>
+        <span class="detail-verdict ${cls}">${label}</span>
+      </div>`;
+    }
+  });
+
+  const barColor = compPct >= 80 ? 'var(--green)' : compPct >= 50 ? 'var(--gold)' : 'var(--red)';
+  const body = `
+    <div style="padding:20px;border-bottom:1px solid var(--light);background:#F8FAFC;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px;">
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Date</div><div style="font-size:13px;font-weight:600;">${a.date||'—'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Inspector</div><div style="font-size:13px;font-weight:600;">${a.inspector||'—'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Location</div><div style="font-size:13px;font-weight:600;">${a.building||'—'}${a.room?' / '+a.room:''}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Department</div><div style="font-size:13px;font-weight:600;">${a.dept||'—'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Trigger</div><div style="font-size:13px;font-weight:600;">${a.trigger||'Scheduled'}</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Overall Result</div><div style="font-size:13px;font-weight:700;color:${resultColor};">${(a.result||'—').split('–')[0].trim()}</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:13px;color:#16A34A;font-weight:700;">✅ ${yesC} Yes</span>
+        <span style="font-size:13px;color:#DC2626;font-weight:700;">❌ ${noC} No</span>
+        <span style="font-size:13px;color:var(--muted);font-weight:700;">➖ ${naC} N/A</span>
+        <span style="font-size:12px;color:var(--muted);">(${pct}% of items answered)</span>
+        <div style="flex:1;min-width:100px;">
+          <div style="background:var(--light);border-radius:99px;height:8px;overflow:hidden;">
+            <div style="height:100%;border-radius:99px;width:${compPct}%;background:${barColor};"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${compPct}% compliance rate</div>
+        </div>
+      </div>
+      ${a.actionsummary?`<div style="margin-top:10px;padding:10px 14px;background:#FFFBEB;border-radius:8px;border:1px solid #FDE68A;font-size:12px;color:#92400E;"><strong>Action Summary:</strong> ${a.actionsummary}</div>`:''}
+    </div>
+    <div style="padding:16px 20px;max-height:50vh;overflow-y:auto;">
+      ${checklistHTML || '<div style="color:var(--muted);font-size:13px;padding:20px 0;">No checklist data recorded.</div>'}
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--light);display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-gold btn-sm" onclick="printSavedAuditA('${id}')">🖨️ Print Report</button>
+      <button class="btn btn-outline btn-sm" onclick="closeDetailModal()">Close</button>
+    </div>`;
+
+  openDetailModal(`🏢 G.1-A Inspection — ${a.id}`, body);
 }
 </script>
