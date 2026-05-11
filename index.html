@@ -3433,18 +3433,31 @@
     <input type="text" id="al-search" placeholder="🔍 Search log…" style="max-width:240px;" oninput="renderAuditLog()"/>
     <select id="al-filter-type" onchange="renderAuditLog()" style="max-width:180px;">
       <option value="">All Actions</option>
+      <option value="AUDIT_SAVED">Audit / Inspection Saved</option>
       <option value="SUBMIT">Report Submitted</option>
       <option value="STATUS">Status Changed</option>
       <option value="SIGNOFF">Sign-off</option>
       <option value="ACK">Acknowledged</option>
+      <option value="EDIT">Edited</option>
+      <option value="RISK_UPDATE">Risk Updated</option>
+      <option value="RCA_SAVED">RCA Saved</option>
       <option value="DELETE">Deleted</option>
     </select>
     <button class="btn btn-outline btn-sm" onclick="exportAuditLogCSV()">📥 Export CSV</button>
     <button class="btn btn-sm" onclick="confirmClearAuditLog()" style="background:#FEE2E2;color:#991B1B;border:1.5px solid #FECACA;font-weight:600;" title="Admin only — permanently clears all log entries">🗑 Clear All Log</button>
     <span id="al-count" style="font-size:12px;color:var(--muted);margin-left:auto;"></span>
   </div>
+
+  <!-- Quick-access: jump to G.1 / G.1-A inspection history -->
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-radius:10px;border:1.5px solid #BFDBFE;margin-bottom:16px;">
+    <span style="font-size:13px;font-weight:600;color:#1E40AF;">📂 View Saved Inspection Records:</span>
+    <button class="btn btn-outline btn-sm" style="border-color:#3B82F6;color:#1D4ED8;" onclick="showPage('audit')">📋 G.1 Audit History</button>
+    <button class="btn btn-outline btn-sm" style="border-color:#3B82F6;color:#1D4ED8;" onclick="showPage('audit-a')">🏢 G.1-A Inspection History</button>
+    <span style="font-size:11px;color:#3B82F6;margin-left:4px;">— or click any 🔎 INSP- / AUD- ID in the log below</span>
+  </div>
+
   <div class="card" style="padding:0;overflow:hidden;">
-    <div style="background:var(--navy);color:white;display:grid;grid-template-columns:170px 90px 120px 80px 1fr;gap:12px;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
+    <div style="background:var(--navy);color:white;display:grid;grid-template-columns:170px 110px 160px 80px 1fr;gap:12px;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
       <div>Timestamp</div><div>Type / Actor</div><div>Report ID</div><div>Hash</div><div>Action / Details</div>
     </div>
     <div id="audit-log-body">
@@ -7148,13 +7161,16 @@ function getNextReportId() {
 let auditLog = [];
 
 const AUDIT_TYPE_COLORS = {
-  SUBMIT:  { bg:'#DBEAFE', fg:'#1D4ED8' },
-  STATUS:  { bg:'#EDE9FE', fg:'#6D28D9' },
-  SIGNOFF: { bg:'#D1FAE5', fg:'#065F46' },
-  DELETE:  { bg:'#FEE2E2', fg:'#991B1B' },
-  ACK:     { bg:'#FEF3C7', fg:'#92400E' },
-  CAP:     { bg:'#F0FDF4', fg:'#14532D' },
-  EDIT:    { bg:'#F1F5F9', fg:'#475569' },
+  SUBMIT:      { bg:'#DBEAFE', fg:'#1D4ED8' },
+  STATUS:      { bg:'#EDE9FE', fg:'#6D28D9' },
+  SIGNOFF:     { bg:'#D1FAE5', fg:'#065F46' },
+  DELETE:      { bg:'#FEE2E2', fg:'#991B1B' },
+  ACK:         { bg:'#FEF3C7', fg:'#92400E' },
+  CAP:         { bg:'#F0FDF4', fg:'#14532D' },
+  EDIT:        { bg:'#F1F5F9', fg:'#475569' },
+  AUDIT_SAVED: { bg:'#EFF6FF', fg:'#1D4ED8' },
+  RISK_UPDATE: { bg:'#FFF7ED', fg:'#C2410C' },
+  RCA_SAVED:   { bg:'#F5F3FF', fg:'#6D28D9' },
 };
 
 // Compute SHA-256 of a string — returns hex string
@@ -7279,8 +7295,29 @@ function renderAuditLog() {
     return;
   }
 
-  body.innerHTML = filtered.map((e, i) => `
-    <div style="display:grid;grid-template-columns:170px 90px 120px 80px 1fr;gap:12px;align-items:start;
+  body.innerHTML = filtered.map((e, i) => {
+    const rid = e.reportId || '';
+    const isAuditSaved = e.type === 'AUDIT_SAVED';
+    const isInsp = rid.startsWith('INSP-');
+    const isAud  = rid.startsWith('AUD-');
+    const isClickable = isAuditSaved && (isInsp || isAud);
+    const clickFn = isInsp ? `viewInspectionDetail('${rid}')` : isAud ? `viewAuditDetail('${rid}')` : '';
+
+    const ridCell = isClickable && clickFn
+      ? `<code onclick="${clickFn}" title="Click to open full inspection record"
+           style="font-size:10px;color:var(--blue);background:#EFF6FF;padding:3px 8px;
+                  border-radius:4px;display:inline-flex;align-items:center;gap:4px;
+                  cursor:pointer;border:1.5px solid #BFDBFE;font-weight:700;
+                  transition:background .15s,color .15s;"
+           onmouseenter="this.style.background='var(--blue)';this.style.color='white';this.style.borderColor='var(--blue)';"
+           onmouseleave="this.style.background='#EFF6FF';this.style.color='var(--blue)';this.style.borderColor='#BFDBFE';">
+           🔎 ${rid}
+         </code>
+         <div style="font-size:9px;color:var(--blue);margin-top:3px;font-weight:600;">Click to view full record</div>`
+      : `<code style="font-size:10px;color:var(--blue);background:#EFF6FF;padding:2px 6px;border-radius:4px;display:inline-block;">${rid}</code>`;
+
+    return `
+    <div style="display:grid;grid-template-columns:170px 110px 160px 80px 1fr;gap:12px;align-items:start;
       padding:10px 16px;font-size:12px;border-bottom:1px solid var(--light);
       background:${i%2===0?'white':'#FAFBFC'};transition:background .1s;"
       onmouseenter="this.style.background='#F0F6FF'" onmouseleave="this.style.background='${i%2===0?'white':'#FAFBFC'}'">
@@ -7293,10 +7330,7 @@ function renderAuditLog() {
           color:${AUDIT_TYPE_COLORS[e.type]?.fg||'#64748B'};">${e.type}</span>
         <div style="font-size:10px;color:var(--muted);margin-top:3px;">${e.actor}</div>
       </div>
-      <div>
-        <code style="font-size:10px;color:var(--blue);background:#EFF6FF;padding:2px 6px;border-radius:4px;display:inline-block;">${e.reportId}</code>
-        ${e.from && e.to ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;">${e.from} → ${e.to}</div>` : ''}
-      </div>
+      <div>${ridCell}${e.from && e.to ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;">${e.from} → ${e.to}</div>` : ''}</div>
       <div title="${e.hash || 'No hash (legacy entry)'}">
         ${e.hash
           ? `<code style="font-size:9px;color:#0F766E;background:#F0FDFA;padding:2px 5px;border-radius:4px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px;" title="${e.hash}">${e.hash.slice(0,8)}…</code>
@@ -7304,7 +7338,8 @@ function renderAuditLog() {
           : `<span style="font-size:9px;color:#94A3B8;">—</span>`}
       </div>
       <div style="color:var(--text);line-height:1.5;">${e.detail}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function exportAuditLogCSV() {
