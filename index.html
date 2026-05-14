@@ -1329,6 +1329,18 @@
     </div>
   </div>
 
+  <!-- Recent Audits & Inspections panel -->
+  <div class="card" style="margin-top:16px;border-top:3px solid var(--teal);">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span><span class="icon">🔍</span> Recent Audits &amp; Inspections</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="showPage('audit')" style="font-size:11px;">📋 G.1 History</button>
+        <button class="btn btn-outline btn-sm" onclick="showPage('audit-a')" style="font-size:11px;">🏢 G.1-A History</button>
+      </div>
+    </div>
+    <div id="recent-audits-list" style="font-size:13px;"></div>
+  </div>
+
   <!-- Aviation-grade compliance panel -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
     <div class="card" style="border-top:3px solid var(--teal);">
@@ -4759,13 +4771,7 @@ function goToRegister(statusFilter, urgencyFilter) {
 }
 
 function goToAudit() {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-audit').classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => {
-    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'audit'") && !t.getAttribute('onclick').includes("audit-a")) t.classList.add('active');
-  });
-  renderSavedAudits();
+  showPage('audit-guide');
 }
 
 function scrollToRecurring() {
@@ -7591,6 +7597,9 @@ function updateDashboard() {
   animateStat('stat-incidents', incidentReports.length);
   animateStat('stat-audits', audits.length + auditA.length);
 
+  // Render recent audits panel
+  try { renderRecentAudits(); } catch(e) {}
+
   // Render recurring hazards & overdue panel
   renderRecurringAlerts();
 
@@ -7673,6 +7682,73 @@ function updateDashboard() {
 
   // Safety trends
   try { updateTrends(); } catch(e) {}
+}
+
+// ─── RECENT AUDITS PANEL ──────────────────────────────────────────────────────
+function renderRecentAudits() {
+  const container = document.getElementById('recent-audits-list');
+  if (!container) return;
+
+  // Combine G.1 and G.1-A, tag each with its type
+  const g1  = (audits  || []).map(a => ({ ...a, _kind: 'G.1'   }));
+  const g1a = (auditA || []).map(a => ({ ...a, _kind: 'G.1-A' }));
+  const all = [...g1, ...g1a]
+    .filter(a => a.id)
+    .sort((a, b) => ((b.saved || b.date || '') > (a.saved || a.date || '') ? 1 : -1))
+    .slice(0, 6);
+
+  if (!all.length) {
+    container.innerHTML = '<div style="color:var(--muted);padding:12px 0;">No audits or inspections on record yet. ' +
+      '<a href="#" onclick="showPage(\'audit\');return false;" style="color:var(--blue);font-weight:600;">Run your first G.1 Audit</a> or ' +
+      '<a href="#" onclick="showPage(\'audit-a\');return false;" style="color:var(--blue);font-weight:600;">G.1-A Inspection</a>.</div>';
+    return;
+  }
+
+  container.innerHTML = all.map(a => {
+    const isG1 = a._kind === 'G.1';
+    const refs = isG1
+      ? Object.keys(a.state || {})
+      : (typeof AUDIT_A_ITEMS !== 'undefined' ? AUDIT_A_ITEMS.filter(i => i.ref).map(i => i.ref) : Object.keys(a.state || {}));
+    const yesC = isG1
+      ? Object.values(a.state || {}).filter(v => v === 'yes').length
+      : refs.filter(r => (a.state || {})[r] === 'yes').length;
+    const total = isG1
+      ? Object.values(a.state || {}).filter(v => ['yes','no','na'].includes(v)).length
+      : refs.filter(r => ['yes','no','na'].includes((a.state || {})[r])).length;
+    const pct = total ? Math.round(yesC / total * 100) : 0;
+    const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--gold)' : 'var(--red)';
+    const label = isG1 ? (a.area || '—') : ((a.building || '—') + (a.room ? ' / ' + a.room : ''));
+    const who   = isG1 ? (a.auditor || '—') : (a.inspector || '—');
+    const typeTag = isG1
+      ? `<span style="background:#DBEAFE;color:#1E40AF;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;">G.1 SMS</span>`
+      : `<span style="background:#F0FDF4;color:#166534;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;">G.1-A Insp</span>`;
+    const viewFn = isG1 ? `viewAuditDetail('${a.id}')` : `viewInspectionDetail('${a.id}')`;
+    const navFn  = isG1 ? `showPage('audit')` : `showPage('audit-a')`;
+
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--light);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          ${typeTag}
+          <span style="font-weight:700;font-size:12px;color:var(--navy);">${a.id}</span>
+          <span style="font-size:11px;color:var(--muted);">${a.date || '—'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text);font-weight:500;">${label}</div>
+        <div style="font-size:11px;color:var(--muted);">by ${who}</div>
+        <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+          <div style="background:var(--light);border-radius:99px;height:4px;width:90px;overflow:hidden;">
+            <div style="height:100%;border-radius:99px;width:${pct}%;background:${barColor};"></div>
+          </div>
+          <span style="font-size:11px;color:var(--muted);font-weight:600;">${pct}% compliant</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-sm" style="background:#EFF6FF;color:#2563A8;border:1.5px solid #BFDBFE;padding:4px 10px;font-size:11px;"
+          onclick="${viewFn}">🔎 View</button>
+        <button class="btn btn-sm" style="background:#F0FDF4;color:#15803D;border:1.5px solid #BBF7D0;padding:4px 10px;font-size:11px;"
+          onclick="${navFn}">📂 History</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── HAZARD TRENDS ────────────────────────────────────────────────────────────
