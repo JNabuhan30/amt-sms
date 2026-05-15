@@ -10395,6 +10395,7 @@ function renderModalInvestigationTab(reportId, formType) {
 
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-sm" onclick="saveInvestigationResults('${reportId}')" style="background:linear-gradient(135deg,#0369A1,#0284C7);color:white;box-shadow:0 2px 8px rgba(3,105,161,0.3);">💾 Save Investigation Results</button>
+        ${Object.keys(inv).length > 0 ? `<button class="btn btn-sm" onclick="deleteInvestigationResults('${reportId}')" style="background:linear-gradient(135deg,#991B1B,#DC2626);color:white;box-shadow:0 2px 8px rgba(220,38,38,0.3);">🗑️ Delete Investigation Report</button>` : ''}
         <div id="inv-save-status" style="font-size:12px;font-weight:600;color:#16A34A;"></div>
       </div>
       <div style="font-size:10px;color:#0369A1;margin-top:8px;line-height:1.5;">
@@ -10458,6 +10459,25 @@ function saveInvestigationResults(reportId) {
   toast('🔍 Investigation results saved.', 'success');
 
   // Re-render to update summary banner
+  const found2 = findReport(reportId);
+  if (found2) renderModalInvestigationTab(reportId, found2.formType);
+}
+
+function deleteInvestigationResults(reportId) {
+  if (!confirm('⚠️ Delete all investigation results for this report?\n\nThis cannot be undone. The investigation data (findings, root cause, recommendations, etc.) will be permanently removed from this report.')) return;
+  const found = findReport(reportId);
+  if (!found) { toast('Report not found.', 'error'); return; }
+
+  delete found.r.investigationResults;
+  fbSet(found.fbPath + reportId, found.r);
+  lsSet(found.lsKey, found.arr);
+
+  logAuditEvent('DELETE', reportId,
+    'Investigation results deleted by admin.',
+    null, 'Investigation Deleted');
+
+  toast('🗑️ Investigation results deleted.', 'success');
+
   const found2 = findReport(reportId);
   if (found2) renderModalInvestigationTab(reportId, found2.formType);
 }
@@ -11080,6 +11100,26 @@ function printReport() {
     .signoff{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;}
     .signoff-cell{text-align:center;font-size:10px;color:#64748B;}
     .sig-line{border-top:1px solid #94A3B8;margin-top:32px;padding-top:5px;}
+    /* Investigation Results styles */
+    .inv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 20px;margin-bottom:14px;padding:12px 14px;background:#F0F9FF;border-radius:7px;border:1px solid #BAE6FD;}
+    .inv-meta-item{display:flex;flex-direction:column;gap:2px;}
+    .inv-meta-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748B;font-weight:700;}
+    .inv-meta-val{font-size:12px;color:#0C4A6E;font-weight:600;}
+    .inv-status-completed,.inv-status-closed{color:#15803D;}
+    .inv-status-in-progress{color:#1D4ED8;}
+    .inv-status-not-started{color:#64748B;}
+    .inv-block{border-radius:7px;padding:10px 14px;margin-bottom:10px;break-inside:avoid;}
+    .inv-block-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:4px;}
+    .inv-block-text{font-size:12px;line-height:1.6;color:#1E293B;}
+    .inv-italic{font-style:italic;}
+    .inv-findings{background:#F0FDFA;border-left:3px solid #0D9488;} .inv-findings .inv-block-lbl{color:#0F766E;}
+    .inv-rootcause{background:#FFF7ED;border-left:3px solid #D97706;} .inv-rootcause .inv-block-lbl{color:#92400E;}
+    .inv-contrib{background:#F8FAFC;border-left:3px solid #94A3B8;} .inv-contrib .inv-block-lbl{color:#475569;}
+    .inv-recs{background:#EFF6FF;border-left:3px solid #2563EB;} .inv-recs .inv-block-lbl{color:#1D4ED8;}
+    .inv-lessons{background:#F0FDF4;border-left:3px solid #16A34A;} .inv-lessons .inv-block-lbl{color:#15803D;}
+    .inv-conclusion{background:#F1F5F9;border-left:3px solid #1B3A6B;} .inv-conclusion .inv-block-lbl{color:#1B3A6B;}
+    .inv-followup{background:#FEF2F2;border-left:3px solid #DC2626;} .inv-followup .inv-block-lbl{color:#DC2626;}
+    .inv-footer{font-size:9px;color:#94A3B8;margin-top:12px;padding-top:8px;border-top:1px solid #E2E8F0;text-align:right;}
     @media print{.no-print{display:none!important;} body{background:white;} .page-wrap{padding:0;} @page{margin:1.5cm;}}
   </style></head><body>
   <div class="page-wrap">
@@ -11148,6 +11188,33 @@ function printReport() {
       <div class="field"><div class="lbl">Acknowledged By</div><div class="val">${r.acknowledgment.by||'—'}</div></div>
     </div></div>
   </div>` : ''}
+  ${(()=>{
+    const inv = r.investigationResults;
+    if (!inv || (!inv.findings && !inv.rootCauseDetermined && !inv.recommendations && !inv.lessonsLearned && !inv.conclusion)) return '';
+    const invStatusLabel = { 'not-started':'Not Started', 'in-progress':'In Progress', 'completed':'Completed', 'closed':'Closed' }[inv.status] || (inv.status||'—');
+    const invTypeLabel = inv.invType || '—';
+    return `<div class="section inv-section">
+      <div class="section-head" style="background:linear-gradient(135deg,#0C4A6E,#0369A1);">🔍 Investigation Results</div>
+      <div class="section-body">
+        <div class="inv-meta">
+          <div class="inv-meta-item"><span class="inv-meta-lbl">Status</span><span class="inv-meta-val inv-status-${inv.status||'not-started'}">${invStatusLabel}</span></div>
+          <div class="inv-meta-item"><span class="inv-meta-lbl">Type</span><span class="inv-meta-val">${invTypeLabel}</span></div>
+          <div class="inv-meta-item"><span class="inv-meta-lbl">Lead Investigator</span><span class="inv-meta-val">${inv.leadInvestigator||'—'}</span></div>
+          ${inv.team ? `<div class="inv-meta-item"><span class="inv-meta-lbl">Investigation Team</span><span class="inv-meta-val">${inv.team}</span></div>` : ''}
+          <div class="inv-meta-item"><span class="inv-meta-lbl">Start Date</span><span class="inv-meta-val">${inv.startDate||'—'}</span></div>
+          <div class="inv-meta-item"><span class="inv-meta-lbl">Close Date</span><span class="inv-meta-val">${inv.closeDate||'—'}</span></div>
+        </div>
+        ${inv.findings ? `<div class="inv-block inv-findings"><div class="inv-block-lbl">Investigation Findings</div><div class="inv-block-text">${inv.findings}</div></div>` : ''}
+        ${inv.rootCauseDetermined ? `<div class="inv-block inv-rootcause"><div class="inv-block-lbl">Confirmed Root Cause</div><div class="inv-block-text">${inv.rootCauseDetermined}</div></div>` : ''}
+        ${inv.confirmedContributing ? `<div class="inv-block inv-contrib"><div class="inv-block-lbl">Contributing Factors (Confirmed)</div><div class="inv-block-text">${inv.confirmedContributing}</div></div>` : ''}
+        ${inv.recommendations ? `<div class="inv-block inv-recs"><div class="inv-block-lbl">Safety Recommendations</div><div class="inv-block-text">${inv.recommendations}</div></div>` : ''}
+        ${inv.lessonsLearned ? `<div class="inv-block inv-lessons"><div class="inv-block-lbl">Lessons Learned</div><div class="inv-block-text">${inv.lessonsLearned}</div></div>` : ''}
+        ${inv.conclusion ? `<div class="inv-block inv-conclusion"><div class="inv-block-lbl">Conclusion / Outcome</div><div class="inv-block-text inv-italic">${inv.conclusion}</div></div>` : ''}
+        ${inv.followupRequired === 'yes' && inv.followupDetails ? `<div class="inv-block inv-followup"><div class="inv-block-lbl">⚠️ Follow-up Required</div><div class="inv-block-text">${inv.followupDetails}</div></div>` : ''}
+        <div class="inv-footer">Prepared by: ${inv.savedBy||'Administrator'} &nbsp;·&nbsp; Saved: ${inv.savedAt ? new Date(inv.savedAt).toLocaleString('en-PH',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}) : '—'}</div>
+      </div>
+    </div>`;
+  })()}
   <div class="signoff">
     <div class="signoff-cell"><div class="sig-line">Reporter Signature &amp; Date</div></div>
     <div class="signoff-cell"><div class="sig-line">SMS Coordinator Signature &amp; Date</div></div>
